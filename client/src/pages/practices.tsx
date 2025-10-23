@@ -95,19 +95,21 @@ export default function Practices() {
           <CardHeader>
             <CardTitle className="text-lg">Practices</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading practices...
               </div>
             ) : (
-              <PracticeTable
-                practices={practices || []}
-                onPracticeClick={(id) => {
-                  window.location.href = `/practices/${id}`;
-                }}
-                expandable
-              />
+              <div className="max-h-[600px] overflow-auto">
+                <PracticeTable
+                  practices={practices || []}
+                  onPracticeClick={(id) => {
+                    window.location.href = `/practices/${id}`;
+                  }}
+                  expandable
+                />
+              </div>
             )}
           </CardContent>
         </Card>
