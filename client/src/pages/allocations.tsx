@@ -5,9 +5,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useLocation } from "wouter";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { StatusBadge } from "@/components/status-badge";
+import { formatCurrency, formatDateTime } from "@/lib/formatters";
 
 export default function Allocations() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -44,7 +56,10 @@ export default function Allocations() {
               Transfer stipend budget between PSMs
             </p>
           </div>
-          <Button data-testid="button-new-allocation">
+          <Button 
+            onClick={() => setLocation("/allocations/new")}
+            data-testid="button-new-allocation"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Allocation
           </Button>
@@ -58,12 +73,53 @@ export default function Allocations() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="text-lg mb-2">No allocations yet</p>
-              <p className="text-sm">
-                Inter-PSM allocation feature coming soon
-              </p>
-            </div>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading allocations...
+              </div>
+            ) : !allocations || (allocations as any[]).length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-lg mb-2">No allocations yet</p>
+                <p className="text-sm">
+                  Click "New Allocation" to transfer budget between PSMs
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-medium">ID</TableHead>
+                    <TableHead className="font-medium">Donor PSM</TableHead>
+                    <TableHead className="font-medium">Recipient PSM</TableHead>
+                    <TableHead className="font-medium">Practices</TableHead>
+                    <TableHead className="font-medium text-right">Amount</TableHead>
+                    <TableHead className="font-medium">Status</TableHead>
+                    <TableHead className="font-medium">Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(allocations as any[]).map((allocation: any) => (
+                    <TableRow key={allocation.id} data-testid={`row-allocation-${allocation.id}`}>
+                      <TableCell className="font-mono">{allocation.id}</TableCell>
+                      <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
+                      <TableCell>{allocation.recipientPsmName || allocation.recipientPsmId}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {allocation.donorPracticeIds?.length || 0} practices
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        {formatCurrency(allocation.totalAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={allocation.status} />
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDateTime(allocation.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

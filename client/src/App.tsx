@@ -16,6 +16,7 @@ import NewRequest from "@/pages/new-request";
 import Requests from "@/pages/requests";
 import Approvals from "@/pages/approvals";
 import Allocations from "@/pages/allocations";
+import NewAllocation from "@/pages/new-allocation";
 import Reports from "@/pages/reports";
 import PayPeriods from "@/pages/pay-periods";
 import NotFound from "@/pages/not-found";
@@ -36,6 +37,7 @@ function Router() {
           <Route path="/requests" component={Requests} />
           <Route path="/approvals" component={Approvals} />
           <Route path="/allocations" component={Allocations} />
+          <Route path="/allocations/new" component={NewAllocation} />
           <Route path="/reports" component={Reports} />
           <Route path="/pay-periods" component={PayPeriods} />
         </>

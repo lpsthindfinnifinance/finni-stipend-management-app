@@ -53,6 +53,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // ============================================================================
   // DASHBOARD ROUTES
   // ============================================================================
@@ -141,7 +151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         portfolio: user.portfolioId,
       });
       
-      res.json(practices);
+      // Enrich with current balance for each practice
+      const enrichedPractices = await Promise.all(
+        practices.map(async (practice) => {
+          const currentBalance = await storage.getPracticeBalance(practice.id);
+          return {
+            ...practice,
+            currentBalance, // Numeric balance
+          };
+        })
+      );
+      
+      res.json(enrichedPractices);
     } catch (error) {
       console.error("Error fetching practices:", error);
       res.status(500).json({ message: "Failed to fetch practices" });
@@ -386,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // ALLOCATIONS ROUTES (Placeholder for future implementation)
+  // ALLOCATIONS ROUTES
   // ============================================================================
 
   app.get('/api/allocations', isAuthenticated, async (req: any, res) => {
@@ -397,6 +418,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching allocations:", error);
       res.status(500).json({ message: "Failed to fetch allocations" });
+    }
+  });
+
+  app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { donorPsmId, recipientPsmId, totalAmount, donorPracticeIds, donorPractices } = req.body;
+
+      // Verify donor PSM is the current user
+      if (donorPsmId !== userId) {
+        return res.status(403).json({ message: "Cannot allocate from another PSM's budget" });
+      }
+
+      // Coerce and validate numeric fields
+      const numericTotalAmount = Number(totalAmount);
+      if (!Number.isFinite(numericTotalAmount) || numericTotalAmount <= 0) {
+        return res.status(400).json({ message: "Invalid total amount" });
+      }
+
+      // Validate total amount matches sum of donor practices
+      const donorSum = donorPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+      if (Math.abs(donorSum - numericTotalAmount) > 0.01) {
+        return res.status(400).json({ message: "Total amount does not match practice amounts" });
+      }
+
+      // Validate each practice belongs to donor PSM and has sufficient balance
+      const user = await storage.getUser(userId);
+      for (const donorPractice of donorPractices) {
+        // Coerce amount to number
+        const requestedAmount = Number(donorPractice.amount);
+        if (!Number.isFinite(requestedAmount)) {
+          return res.status(400).json({ message: `Invalid amount for practice ${donorPractice.practiceId}` });
+        }
+        
+        const practice = await storage.getPracticeById(donorPractice.practiceId);
+        
+        if (!practice) {
+          return res.status(404).json({ message: `Practice ${donorPractice.practiceId} not found` });
+        }
+
+        // Verify practice belongs to donor's portfolio (for PSM role)
+        if (user?.role === "PSM" && practice.portfolioId !== user.portfolioId) {
+          return res.status(403).json({ message: `Practice ${donorPractice.practiceId} does not belong to your portfolio` });
+        }
+
+        // Check available balance (getPracticeBalance returns a number, not an object)
+        const available = await storage.getPracticeBalance(donorPractice.practiceId);
+        
+        if (requestedAmount <= 0) {
+          return res.status(400).json({ message: `Amount must be greater than 0 for practice ${practice.name}` });
+        }
+        
+        if (requestedAmount > available) {
+          return res.status(400).json({ 
+            message: `Insufficient balance for practice ${practice.name}. Available: $${available.toFixed(2)}, Requested: $${requestedAmount.toFixed(2)}` 
+          });
+        }
+      }
+
+      // Create allocation record
+      const allocation = await storage.createInterPsmAllocation({
+        donorPsmId,
+        recipientPsmId,
+        totalAmount: totalAmount.toString(),
+        donorPracticeIds,
+      });
+
+      // Create ledger entries for each donor practice (debit)
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      for (const donorPractice of donorPractices) {
+        await storage.createLedgerEntry({
+          practiceId: donorPractice.practiceId,
+          payPeriod: currentPeriod?.id || 1,
+          transactionType: "allocation_out",
+          amount: (-Math.abs(donorPractice.amount)).toString(), // Negative for debit
+          description: `Inter-PSM allocation #${allocation.id} to ${recipientPsmId}`,
+          relatedRequestId: null,
+          relatedAllocationId: allocation.id,
+        });
+      }
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `💸 Inter-PSM Allocation #${allocation.id}: $${totalAmount} transferred from ${donorPsmId} to ${recipientPsmId} (${donorPracticeIds.length} practices)`
+      );
+
+      // Update allocation status to completed
+      await storage.updateAllocationStatus(allocation.id, "completed");
+
+      res.json(allocation);
+    } catch (error) {
+      console.error("Error creating allocation:", error);
+      res.status(500).json({ message: "Failed to create allocation" });
     }
   });
 
