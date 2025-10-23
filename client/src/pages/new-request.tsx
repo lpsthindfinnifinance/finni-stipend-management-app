@@ -23,6 +23,7 @@ export default function NewRequest() {
   const [practiceId, setPracticeId] = useState("");
   const [amount, setAmount] = useState("");
   const [requestType, setRequestType] = useState("one_time");
+  const [stipendType, setStipendType] = useState("lease_stipend");
   const [recurringEndPeriod, setRecurringEndPeriod] = useState("");
   const [justification, setJustification] = useState("");
 
@@ -41,7 +42,7 @@ export default function NewRequest() {
 
   const { data: practices } = useQuery({
     queryKey: ["/api/practices/my"],
-    enabled: isAuthenticated && user?.role === "PSM",
+    enabled: isAuthenticated,
   });
 
   const { data: practiceBalance } = useQuery({
@@ -62,6 +63,7 @@ export default function NewRequest() {
       // Reset form
       setPracticeId("");
       setAmount("");
+      setStipendType("lease_stipend");
       setRequestType("one_time");
       setRecurringEndPeriod("");
       setJustification("");
@@ -122,6 +124,7 @@ export default function NewRequest() {
       practiceId,
       requestorId: user?.id,
       amount,
+      stipendType,
       requestType,
       recurringEndPeriod: requestType === "recurring" ? parseInt(recurringEndPeriod) : null,
       justification,
@@ -186,6 +189,23 @@ export default function NewRequest() {
                     onChange={(e) => setAmount(e.target.value)}
                     data-testid="input-amount"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stipendType">Stipend Type *</Label>
+                  <Select value={stipendType} onValueChange={setStipendType}>
+                    <SelectTrigger id="stipendType" data-testid="select-stipend-type">
+                      <SelectValue placeholder="Select stipend type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lease_stipend">Lease Stipend</SelectItem>
+                      <SelectItem value="staff_cost_reimbursement">Staff Cost Reimbursement</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="equipment">Equipment</SelectItem>
+                      <SelectItem value="training">Training</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

@@ -139,6 +139,7 @@ export const stipendRequests = pgTable("stipend_requests", {
   practiceId: varchar("practice_id").notNull(),
   requestorId: varchar("requestor_id").notNull(), // PSM who submitted
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  stipendType: varchar("stipend_type").notNull().default("other"), // lease_stipend, staff_cost_reimbursement, marketing, equipment, training, other
   requestType: varchar("request_type").notNull(), // one_time, recurring
   recurringEndPeriod: integer("recurring_end_period"), // Only for recurring, max 26 (PP26 2025)
   justification: text("justification").notNull(),

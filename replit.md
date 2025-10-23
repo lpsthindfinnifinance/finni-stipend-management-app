@@ -17,6 +17,9 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
   - Backend fully implemented with all API endpoints
   - Slack webhook integration for approval notifications
   - Numeric balance validation throughout the stack (no overdrafts possible)
+  - Added stipend type categorization (Lease Stipend, Staff Cost Reimbursement, Marketing, Equipment, Training, Other)
+  - Fixed practices dropdown visibility for all user roles
+  - Added scrollable table (max-height 600px) for practices page to handle 60 practices
 
 ## User Roles & Permissions
 1. **PSM (Practice Success Manager)**
