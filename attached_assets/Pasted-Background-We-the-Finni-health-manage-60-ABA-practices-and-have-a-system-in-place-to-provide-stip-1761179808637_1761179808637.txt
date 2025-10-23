@@ -1,0 +1,40 @@
+Background:
+We the Finni health manage 60+ ABA practices and have a system in place to provide stipend to practice owners.
+The stipend is calculated based on gross margin % and Collections % (0.6GM% + 0.4 Collections%). This data is updated at 14 days (pay period) interval and the stipend eliginbilt (cap) for each practice will chang each pay period. This base data will flow from Big query.
+
+All 60 practices roll into 5 portfolios and each portforlio has a Practice Success Manage (PSM).
+
+Now we decide steipend eligibility based on practice metrcis as mentioned above however PSM's can decide what sipend to be provided to which practice however they should remain withing the total stipend allowed for their portfolio (their practices).
+
+A PSM can allocate stipend to other PSM who is short on the stipend.
+
+For stipend request - PSM should submit a request (form) which will be approved first by him and then by lead PSM and then by Finance team. We need slack channel alerts for this.
+
+Stipend can be one time or recurring till Pay Period 26 (2025)
+
+We need to keep records of Opening stipend balance (as of today)
+
+Any additions or deductions on remeasurement at the end of pay period
+Stipend already requested by PSM
+a. Already paid till last pay period
+b. Committed for next pay periods
++/- Any allocations by PSMs to other PSM (this showuld be tied at clinic level)
+Point to note: Portfolio will remain same (G1, G2, G3, G4, G5) however PSM may change lateon for protfolio AND A practice in this payperiod tied to G1 may be moved to G3 in the upcomming pay periods so make provision for this.
+
+
+
+include the following features:
+
+Role-based authentication with three user types: PSM, Lead PSM, and Finance team with appropriate access controls
+Portfolio dashboard showing 5 portfolios (G1-G5) with assigned PSMs, total stipend cap, allocated amounts, and remaining balance
+Practice management interface displaying all 60+ practices with their portfolio assignment, gross margin %, collections %, calculated stipend cap per pay period
+Stipend balance tracking system showing: opening balance, pay period remeasurements, requested amounts (paid + committed), and inter-PSM allocations
+Stipend request form with fields for practice selection, amount, type (one-time or recurring till PP26 2025), justification, and automatic portfolio balance validation
+Multi-level approval workflow: PSM self-approval → Lead PSM approval → Finance approval with status tracking (Pending, Approved, Rejected)
+Inter-PSM allocation feature allowing PSMs to transfer stipend budget to other PSMs with clinic-level tracking
+Pay period management system (14-day intervals) with ability to advance periods and trigger remeasurement calculations
+BigQuery data import interface to update practice metrics (GM%, Collections%) and recalculate stipend caps every pay period
+Slack webhook integration for approval notifications at each workflow stage
+Comprehensive reporting dashboard with portfolio summaries, stipend utilization rates, pending requests, and historical allocation trends
+Practice reassignment tool allowing admin to move practices between portfolios for future pay periods
+Professional financial dashboard design with blue/gray palette, data tables, progress bars, and status badges
