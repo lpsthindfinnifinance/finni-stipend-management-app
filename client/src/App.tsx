@@ -75,7 +75,7 @@ function AppContent() {
                   </span>
                 </div>
               </header>
-              <main className="flex-1 overflow-hidden">
+              <main className="flex-1">
                 <Router />
               </main>
             </div>
