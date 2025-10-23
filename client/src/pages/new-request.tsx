@@ -18,7 +18,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 export default function NewRequest() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user, role } = useAuth();
   
   const [practiceId, setPracticeId] = useState("");
   const [amount, setAmount] = useState("");
@@ -246,7 +246,7 @@ export default function NewRequest() {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={!practiceId || !isValid || justification.length < 50 || submitMutation.isPending}
+                disabled={role === "Finance" || !practiceId || !isValid || justification.length < 50 || submitMutation.isPending}
                 data-testid="button-submit-request"
               >
                 {submitMutation.isPending ? "Submitting..." : "Submit Request"}
@@ -259,6 +259,15 @@ export default function NewRequest() {
                 Cancel
               </Button>
             </div>
+            
+            {role === "Finance" && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Finance users can view stipend requests but cannot create them.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Validation Panel */}

@@ -47,13 +47,13 @@ export function AppSidebar() {
       title: "Submit Request",
       url: "/requests/new",
       icon: FileText,
-      roles: ["PSM"],
+      roles: ["PSM", "Finance"],
     },
     {
       title: "My Requests",
       url: "/requests",
       icon: FileText,
-      roles: ["PSM"],
+      roles: ["PSM", "Finance"],
     },
     {
       title: "Approvals",

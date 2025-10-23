@@ -32,7 +32,7 @@ export default function NewAllocation() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user, role } = useAuth();
   
   const [recipientPsmId, setRecipientPsmId] = useState("");
   const [donorPractices, setDonorPractices] = useState<DonorPractice[]>([]);
@@ -309,7 +309,7 @@ export default function NewAllocation() {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={!recipientPsmId || donorPractices.length === 0 || totalAmount <= 0 || hasZeroOrNegative || hasBalanceErrors || submitMutation.isPending}
+                disabled={role === "Finance" || !recipientPsmId || donorPractices.length === 0 || totalAmount <= 0 || hasZeroOrNegative || hasBalanceErrors || submitMutation.isPending}
                 data-testid="button-submit-allocation"
               >
                 {submitMutation.isPending ? "Creating..." : "Create Allocation"}
@@ -322,6 +322,15 @@ export default function NewAllocation() {
                 Cancel
               </Button>
             </div>
+            
+            {role === "Finance" && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Finance users can view allocations but cannot create them.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Summary Panel */}

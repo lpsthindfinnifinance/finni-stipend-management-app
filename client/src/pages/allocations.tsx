@@ -56,15 +56,13 @@ export default function Allocations() {
               Transfer stipend budget between PSMs
             </p>
           </div>
-          {role !== "Finance" && (
-            <Button 
-              onClick={() => setLocation("/allocations/new")}
-              data-testid="button-new-allocation"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Allocation
-            </Button>
-          )}
+          <Button 
+            onClick={() => setLocation("/allocations/new")}
+            data-testid="button-new-allocation"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Allocation
+          </Button>
         </div>
 
         <Card>
