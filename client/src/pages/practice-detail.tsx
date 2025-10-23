@@ -180,13 +180,14 @@ export default function PracticeDetail() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {!ledger || (ledger as any[]).length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No transactions found
                   </div>
                 ) : (
-                  <Table>
+                  <div className="max-h-[600px] overflow-auto">
+                    <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="font-medium">Date</TableHead>
@@ -218,6 +219,7 @@ export default function PracticeDetail() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>

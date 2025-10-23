@@ -166,7 +166,8 @@ export default function Approvals() {
   };
 
   const RequestsTable = ({ requests, showActions = false }: any) => (
-    <Table>
+    <div className="max-h-[600px] overflow-auto">
+      <Table>
       <TableHeader>
         <TableRow>
           <TableHead className="font-medium">Request ID</TableHead>
@@ -237,6 +238,7 @@ export default function Approvals() {
         )}
       </TableBody>
     </Table>
+    </div>
   );
 
   return (
@@ -269,7 +271,7 @@ export default function Approvals() {
               <CardHeader>
                 <CardTitle>Pending Requests</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {pendingLoading ? (
                   <div className="text-center py-8 text-muted-foreground">
                     Loading requests...
@@ -286,7 +288,7 @@ export default function Approvals() {
               <CardHeader>
                 <CardTitle>Approved Requests</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {approvedLoading ? (
                   <div className="text-center py-8 text-muted-foreground">
                     Loading requests...
@@ -303,7 +305,7 @@ export default function Approvals() {
               <CardHeader>
                 <CardTitle>Rejected Requests</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {rejectedLoading ? (
                   <div className="text-center py-8 text-muted-foreground">
                     Loading requests...

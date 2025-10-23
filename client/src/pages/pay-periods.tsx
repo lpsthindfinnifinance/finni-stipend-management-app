@@ -205,13 +205,14 @@ export default function PayPeriods() {
           <CardHeader>
             <CardTitle>All Pay Periods</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading pay periods...
               </div>
             ) : (
-              <Table>
+              <div className="max-h-[600px] overflow-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-medium">Period</TableHead>
@@ -255,6 +256,7 @@ export default function PayPeriods() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -67,13 +67,14 @@ export default function Requests() {
           <CardHeader>
             <CardTitle>Request History</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading requests...
               </div>
             ) : (
-              <Table>
+              <div className="max-h-[600px] overflow-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-medium">Request ID</TableHead>
@@ -113,6 +114,7 @@ export default function Requests() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

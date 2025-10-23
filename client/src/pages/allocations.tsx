@@ -72,7 +72,7 @@ export default function Allocations() {
               View transfers between Practice Success Managers
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading allocations...
@@ -85,7 +85,8 @@ export default function Allocations() {
                 </p>
               </div>
             ) : (
-              <Table>
+              <div className="max-h-[600px] overflow-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-medium">ID</TableHead>
@@ -119,6 +120,7 @@ export default function Allocations() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
