@@ -65,7 +65,7 @@ export function AppSidebar() {
       title: "Allocations",
       url: "/allocations",
       icon: ArrowRightLeft,
-      roles: ["PSM", "Lead PSM"],
+      roles: ["PSM", "Lead PSM", "Finance"],
     },
     {
       title: "Reports",

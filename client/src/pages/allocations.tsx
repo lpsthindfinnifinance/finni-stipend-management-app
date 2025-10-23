@@ -20,7 +20,7 @@ import { formatCurrency, formatDateTime } from "@/lib/formatters";
 export default function Allocations() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -56,13 +56,15 @@ export default function Allocations() {
               Transfer stipend budget between PSMs
             </p>
           </div>
-          <Button 
-            onClick={() => setLocation("/allocations/new")}
-            data-testid="button-new-allocation"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Allocation
-          </Button>
+          {role !== "Finance" && (
+            <Button 
+              onClick={() => setLocation("/allocations/new")}
+              data-testid="button-new-allocation"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Allocation
+            </Button>
+          )}
         </div>
 
         <Card>

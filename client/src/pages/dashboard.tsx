@@ -149,38 +149,36 @@ export default function Dashboard() {
         </div>
 
         {/* Portfolio Grid */}
-        {role !== "Finance" && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Portfolios</h2>
-            {portfoliosLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Card key={i}>
-                    <CardHeader>
-                      <Skeleton className="h-6 w-24 mb-2" />
-                      <Skeleton className="h-4 w-32" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-32" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {portfolios?.map((portfolio: any) => (
-                  <PortfolioCard
-                    key={portfolio.id}
-                    portfolio={portfolio}
-                    onViewDetails={() => {
-                      window.location.href = `/portfolios/${portfolio.id}`;
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Portfolios</h2>
+          {portfoliosLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-24 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-32" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {portfolios?.map((portfolio: any) => (
+                <PortfolioCard
+                  key={portfolio.id}
+                  portfolio={portfolio}
+                  onViewDetails={() => {
+                    window.location.href = `/portfolios/${portfolio.id}`;
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Recent Activity (placeholder for future) */}
         <div>
