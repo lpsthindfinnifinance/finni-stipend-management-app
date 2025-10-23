@@ -1,10 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -13,12 +23,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Upload, RefreshCw } from "lucide-react";
+import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 
 export default function PayPeriods() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [csvContent, setCsvContent] = useState("");
+  const [csvFileName, setCsvFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -42,6 +56,64 @@ export default function PayPeriods() {
     queryKey: ["/api/pay-periods"],
     enabled: isAuthenticated,
   });
+
+  const importMutation = useMutation({
+    mutationFn: async (csvData: string) => {
+      return await apiRequest("/api/pay-periods/import", "POST", { csvData });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Import Successful",
+        description: `${data.imported} metrics imported, ${data.remeasurements} remeasurements applied`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/pay-periods"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pay-periods/current"] });
+      setShowImportDialog(false);
+      setCsvContent("");
+      setCsvFileName("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import CSV data",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: "Invalid File",
+        description: "Please select a CSV file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setCsvContent(content);
+      setCsvFileName(file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = () => {
+    if (!csvContent) {
+      toast({
+        title: "No Data",
+        description: "Please select a CSV file first",
+        variant: "destructive",
+      });
+      return;
+    }
+    importMutation.mutate(csvContent);
+  };
 
   if (authLoading || !isAuthenticated) {
     return null;
@@ -110,7 +182,11 @@ export default function PayPeriods() {
             )}
 
             <div className="flex gap-3">
-              <Button variant="outline" data-testid="button-import-bigquery">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowImportDialog(true)}
+                data-testid="button-import-bigquery"
+              >
                 <Upload className="h-4 w-4 mr-2" />
                 Import BigQuery Data
               </Button>
@@ -182,6 +258,84 @@ export default function PayPeriods() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Import BigQuery Data</DialogTitle>
+              <DialogDescription>
+                Upload a CSV file with practice metrics (practice_id, gross_margin_percent, collections_percent)
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <Alert>
+                <FileText className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Expected CSV format:</strong>
+                  <pre className="text-xs mt-2 p-2 bg-muted rounded">
+practice_id,gross_margin_percent,collections_percent{'\n'}
+P001,45.5,82.3{'\n'}
+P002,52.1,78.9
+                  </pre>
+                  <p className="text-xs mt-2 text-muted-foreground">
+                    Stipend cap will be calculated as: 0.6 × GM% + 0.4 × Collections%
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  data-testid="input-csv-file"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                  data-testid="button-select-csv"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {csvFileName || "Select CSV File"}
+                </Button>
+              </div>
+
+              {csvContent && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-600">
+                    File loaded: {csvFileName} ({csvContent.split('\n').length - 1} data rows)
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowImportDialog(false);
+                  setCsvContent("");
+                  setCsvFileName("");
+                }}
+                data-testid="button-cancel-import"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleImport}
+                disabled={!csvContent || importMutation.isPending}
+                data-testid="button-confirm-import"
+              >
+                {importMutation.isPending ? "Importing..." : "Import Data"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

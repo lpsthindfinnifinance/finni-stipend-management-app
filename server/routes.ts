@@ -25,6 +25,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Role-based middleware
+  const isFinance = async (req: any, res: any, next: any) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (user?.role !== "Finance") {
+        return res.status(403).json({ message: "Finance access required" });
+      }
+      
+      next();
+    } catch (error) {
+      console.error("Finance middleware error:", error);
+      res.status(500).json({ message: "Authentication error" });
+    }
+  };
+
   // ============================================================================
   // AUTH ROUTES
   // ============================================================================
@@ -403,6 +423,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching pay periods:", error);
       res.status(500).json({ message: "Failed to fetch pay periods" });
+    }
+  });
+
+  app.post('/api/pay-periods/import', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { csvData } = req.body;
+      
+      if (!csvData || typeof csvData !== 'string') {
+        return res.status(400).json({ message: "CSV data is required" });
+      }
+
+      // Get current pay period
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      if (!currentPeriod) {
+        return res.status(400).json({ message: "No active pay period found" });
+      }
+
+      // Parse CSV (expect format: practice_id,gross_margin_percent,collections_percent)
+      const lines = csvData.trim().split('\n');
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+      
+      // Validate headers
+      const requiredHeaders = ['practice_id', 'gross_margin_percent', 'collections_percent'];
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        return res.status(400).json({ 
+          message: `Missing required headers: ${missingHeaders.join(', ')}` 
+        });
+      }
+
+      const practiceIdIndex = headers.indexOf('practice_id');
+      const gmIndex = headers.indexOf('gross_margin_percent');
+      const collIndex = headers.indexOf('collections_percent');
+
+      const imports: any[] = [];
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue; // Skip empty lines
+
+        const values = line.split(',').map(v => v.trim());
+        
+        const practiceId = values[practiceIdIndex];
+        const gmPercent = parseFloat(values[gmIndex]);
+        const collPercent = parseFloat(values[collIndex]);
+
+        // Validate data
+        if (!practiceId) {
+          errors.push(`Line ${i + 1}: Missing practice_id`);
+          continue;
+        }
+        if (!Number.isFinite(gmPercent) || gmPercent < 0 || gmPercent > 100) {
+          errors.push(`Line ${i + 1}: Invalid gross_margin_percent (${values[gmIndex]})`);
+          continue;
+        }
+        if (!Number.isFinite(collPercent) || collPercent < 0 || collPercent > 100) {
+          errors.push(`Line ${i + 1}: Invalid collections_percent (${values[collIndex]})`);
+          continue;
+        }
+
+        // Check practice exists
+        const practice = await storage.getPracticeById(practiceId);
+        if (!practice) {
+          errors.push(`Line ${i + 1}: Practice ${practiceId} not found`);
+          continue;
+        }
+
+        // Calculate stipend cap: 0.6 * GM% + 0.4 * Collections%
+        const stipendCap = (0.6 * gmPercent) + (0.4 * collPercent);
+
+        imports.push({
+          practiceId,
+          grossMarginPercent: gmPercent,
+          collectionsPercent: collPercent,
+          stipendCap,
+          payPeriod: currentPeriod.id,
+        });
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          message: "CSV validation errors", 
+          errors: errors.slice(0, 10), // Limit error messages
+        });
+      }
+
+      if (imports.length === 0) {
+        return res.status(400).json({ message: "No valid data to import" });
+      }
+
+      // Process imports and create ledger entries for remeasurement
+      let importedCount = 0;
+      let remeasurementCount = 0;
+
+      for (const importData of imports) {
+        // Get previous metrics for this practice
+        const previousMetrics = await storage.getCurrentMetrics(
+          importData.practiceId, 
+          currentPeriod.id - 1
+        );
+
+        // Upsert metrics
+        await storage.upsertPracticeMetrics(importData);
+        importedCount++;
+
+        // Calculate remeasurement adjustment
+        if (previousMetrics) {
+          const previousCap = Number(previousMetrics.stipendCap);
+          const newCap = importData.stipendCap;
+          const adjustment = newCap - previousCap;
+
+          // Create ledger entry for remeasurement (can be positive or negative)
+          if (Math.abs(adjustment) > 0.01) {
+            await storage.createPracticeLedger({
+              practiceId: importData.practiceId,
+              payPeriod: currentPeriod.id,
+              transactionType: adjustment > 0 ? 'remeasurement_increase' : 'remeasurement_decrease',
+              amount: Math.abs(adjustment).toString(),
+              description: `Remeasurement adjustment for Pay Period ${currentPeriod.id}: ${adjustment > 0 ? '+' : ''}$${adjustment.toFixed(2)} (Previous: $${previousCap.toFixed(2)}, New: $${newCap.toFixed(2)})`,
+            });
+            remeasurementCount++;
+          }
+        }
+      }
+
+      res.json({ 
+        message: `Successfully imported ${importedCount} practice metrics`,
+        imported: importedCount,
+        remeasurements: remeasurementCount,
+      });
+    } catch (error) {
+      console.error("Error importing BigQuery data:", error);
+      res.status(500).json({ message: "Failed to import data" });
     }
   });
 
