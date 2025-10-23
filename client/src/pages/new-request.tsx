@@ -1,0 +1,323 @@
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiRequest } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/formatters";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isUnauthorizedError } from "@/lib/authUtils";
+
+export default function NewRequest() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  
+  const [practiceId, setPracticeId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [requestType, setRequestType] = useState("one_time");
+  const [recurringEndPeriod, setRecurringEndPeriod] = useState("");
+  const [justification, setJustification] = useState("");
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [isAuthenticated, authLoading, toast]);
+
+  const { data: practices } = useQuery({
+    queryKey: ["/api/practices/my"],
+    enabled: isAuthenticated && user?.role === "PSM",
+  });
+
+  const { data: practiceBalance } = useQuery({
+    queryKey: ["/api/practices", practiceId, "balance"],
+    enabled: !!practiceId,
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("POST", "/api/stipend-requests", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Stipend request submitted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      // Reset form
+      setPracticeId("");
+      setAmount("");
+      setRequestType("one_time");
+      setRecurringEndPeriod("");
+      setJustification("");
+      window.location.href = "/requests";
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!practiceId || !amount || !justification) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (justification.length < 50) {
+      toast({
+        title: "Validation Error",
+        description: "Justification must be at least 50 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const numAmount = parseFloat(amount);
+    if (practiceBalance && numAmount > practiceBalance.available) {
+      toast({
+        title: "Validation Error",
+        description: "Amount exceeds available balance",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    submitMutation.mutate({
+      practiceId,
+      requestorId: user?.id,
+      amount,
+      requestType,
+      recurringEndPeriod: requestType === "recurring" ? parseInt(recurringEndPeriod) : null,
+      justification,
+    });
+  };
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
+
+  const numAmount = parseFloat(amount) || 0;
+  const isValid = numAmount > 0 && practiceBalance && numAmount <= practiceBalance.available;
+
+  return (
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground mb-2">
+            Submit Stipend Request
+          </h1>
+          <p className="text-muted-foreground">
+            Request stipend allocation for a practice in your portfolio
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Form Fields */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Request Details</CardTitle>
+                <CardDescription>
+                  Provide information about your stipend request
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="practice">Practice *</Label>
+                  <Select value={practiceId} onValueChange={setPracticeId}>
+                    <SelectTrigger id="practice" data-testid="select-practice">
+                      <SelectValue placeholder="Select a practice" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {practices?.map((practice: any) => (
+                        <SelectItem key={practice.id} value={practice.id}>
+                          {practice.name} ({practice.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount ($) *</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    data-testid="input-amount"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Request Type *</Label>
+                  <RadioGroup value={requestType} onValueChange={setRequestType}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="one_time" id="one_time" data-testid="radio-one-time" />
+                      <Label htmlFor="one_time" className="font-normal cursor-pointer">
+                        One-time
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="recurring" id="recurring" data-testid="radio-recurring" />
+                      <Label htmlFor="recurring" className="font-normal cursor-pointer">
+                        Recurring till Pay Period 26 (2025)
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {requestType === "recurring" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="endPeriod">End Pay Period *</Label>
+                    <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
+                      <SelectTrigger id="endPeriod" data-testid="select-end-period">
+                        <SelectValue placeholder="Select end period" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
+                          <SelectItem key={period} value={period.toString()}>
+                            Pay Period {period}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="justification">
+                    Justification * (minimum 50 characters)
+                  </Label>
+                  <Textarea
+                    id="justification"
+                    placeholder="Provide a detailed justification for this stipend request..."
+                    value={justification}
+                    onChange={(e) => setJustification(e.target.value)}
+                    rows={5}
+                    data-testid="textarea-justification"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {justification.length}/50 characters
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex gap-3">
+              <Button
+                type="submit"
+                disabled={!practiceId || !isValid || justification.length < 50 || submitMutation.isPending}
+                data-testid="button-submit-request"
+              >
+                {submitMutation.isPending ? "Submitting..." : "Submit Request"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { window.location.href = "/requests"; }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+
+          {/* Validation Panel */}
+          <div className="space-y-4">
+            <Card className="sticky top-6">
+              <CardHeader>
+                <CardTitle className="text-lg">Balance Validation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {practiceId && practiceBalance ? (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Available Balance</span>
+                        <span className="font-mono font-semibold">
+                          {formatCurrency(practiceBalance.available)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Requested Amount</span>
+                        <span className="font-mono font-semibold">
+                          {formatCurrency(numAmount)}
+                        </span>
+                      </div>
+                      <div className="h-px bg-border my-2" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Remaining After</span>
+                        <span className="font-mono font-semibold">
+                          {formatCurrency(practiceBalance.available - numAmount)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isValid ? (
+                      <Alert>
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-600">
+                          Request is within available balance
+                        </AlertDescription>
+                      </Alert>
+                    ) : numAmount > 0 ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Amount exceeds available balance
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Select a practice to view balance
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

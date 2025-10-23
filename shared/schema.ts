@@ -1,18 +1,334 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { sql, relations } from 'drizzle-orm';
+import {
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  varchar,
+  integer,
+  decimal,
+  text,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ============================================================================
+// SESSION & USER TABLES (Required for Replit Auth)
+// ============================================================================
+
+// Session storage table (MANDATORY for Replit Auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table (MANDATORY for Replit Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  role: varchar("role").notNull().default("PSM"), // PSM, Lead PSM, Finance
+  portfolioId: varchar("portfolio_id"), // G1-G5, null for Finance role
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// ============================================================================
+// PORTFOLIO TABLES
+// ============================================================================
+
+export const portfolios = pgTable("portfolios", {
+  id: varchar("id").primaryKey(), // G1, G2, G3, G4, G5
+  name: varchar("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPortfolioSchema = createInsertSchema(portfolios).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPortfolio = z.infer<typeof insertPortfolioSchema>;
+export type Portfolio = typeof portfolios.$inferSelect;
+
+// ============================================================================
+// PRACTICE TABLES
+// ============================================================================
+
+export const practices = pgTable("practices", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  portfolioId: varchar("portfolio_id").notNull(), // Current portfolio assignment
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPracticeSchema = createInsertSchema(practices).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPractice = z.infer<typeof insertPracticeSchema>;
+export type Practice = typeof practices.$inferSelect;
+
+// ============================================================================
+// PRACTICE METRICS TABLE (BigQuery Import Data)
+// ============================================================================
+
+export const practiceMetrics = pgTable("practice_metrics", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  practiceId: varchar("practice_id").notNull(),
+  payPeriod: integer("pay_period").notNull(), // 1-26 for 2025
+  grossMarginPercent: decimal("gross_margin_percent", { precision: 5, scale: 2 }).notNull(),
+  collectionsPercent: decimal("collections_percent", { precision: 5, scale: 2 }).notNull(),
+  stipendCap: decimal("stipend_cap", { precision: 12, scale: 2 }).notNull(), // Calculated: 0.6*GM% + 0.4*Collections%
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPracticeMetricsSchema = createInsertSchema(practiceMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPracticeMetrics = z.infer<typeof insertPracticeMetricsSchema>;
+export type PracticeMetrics = typeof practiceMetrics.$inferSelect;
+
+// ============================================================================
+// PRACTICE LEDGER TABLE (Transaction History)
+// ============================================================================
+
+export const practiceLedger = pgTable("practice_ledger", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  practiceId: varchar("practice_id").notNull(),
+  payPeriod: integer("pay_period").notNull(),
+  transactionType: varchar("transaction_type").notNull(), // opening_balance, remeasurement, paid, committed, allocation_in, allocation_out
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(), // Can be positive or negative
+  description: text("description"),
+  relatedRequestId: integer("related_request_id"), // Reference to stipend_requests.id if applicable
+  relatedAllocationId: integer("related_allocation_id"), // Reference to inter_psm_allocations.id if applicable
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPracticeLedgerSchema = createInsertSchema(practiceLedger).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPracticeLedger = z.infer<typeof insertPracticeLedgerSchema>;
+export type PracticeLedger = typeof practiceLedger.$inferSelect;
+
+// ============================================================================
+// STIPEND REQUEST TABLE
+// ============================================================================
+
+export const stipendRequests = pgTable("stipend_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  practiceId: varchar("practice_id").notNull(),
+  requestorId: varchar("requestor_id").notNull(), // PSM who submitted
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  requestType: varchar("request_type").notNull(), // one_time, recurring
+  recurringEndPeriod: integer("recurring_end_period"), // Only for recurring, max 26 (PP26 2025)
+  justification: text("justification").notNull(),
+  status: varchar("status").notNull().default("pending_psm"), // pending_psm, pending_lead_psm, pending_finance, approved, rejected
+  psmApprovedAt: timestamp("psm_approved_at"),
+  psmApprovedBy: varchar("psm_approved_by"),
+  leadPsmApprovedAt: timestamp("lead_psm_approved_at"),
+  leadPsmApprovedBy: varchar("lead_psm_approved_by"),
+  financeApprovedAt: timestamp("finance_approved_at"),
+  financeApprovedBy: varchar("finance_approved_by"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectedBy: varchar("rejected_by"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStipendRequestSchema = createInsertSchema(stipendRequests).omit({
+  id: true,
+  status: true,
+  psmApprovedAt: true,
+  psmApprovedBy: true,
+  leadPsmApprovedAt: true,
+  leadPsmApprovedBy: true,
+  financeApprovedAt: true,
+  financeApprovedBy: true,
+  rejectedAt: true,
+  rejectedBy: true,
+  rejectionReason: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  justification: z.string().min(50, "Justification must be at least 50 characters"),
+  amount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
+});
+
+export type InsertStipendRequest = z.infer<typeof insertStipendRequestSchema>;
+export type StipendRequest = typeof stipendRequests.$inferSelect;
+
+// ============================================================================
+// INTER-PSM ALLOCATION TABLE
+// ============================================================================
+
+export const interPsmAllocations = pgTable("inter_psm_allocations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  donorPsmId: varchar("donor_psm_id").notNull(),
+  recipientPsmId: varchar("recipient_psm_id").notNull(),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  donorPracticeIds: text("donor_practice_ids").array().notNull(), // Array of practice IDs
+  status: varchar("status").notNull().default("pending"), // pending, allocated, completed
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertInterPsmAllocationSchema = createInsertSchema(interPsmAllocations).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export type InsertInterPsmAllocation = z.infer<typeof insertInterPsmAllocationSchema>;
+export type InterPsmAllocation = typeof interPsmAllocations.$inferSelect;
+
+// ============================================================================
+// PAY PERIOD TABLE
+// ============================================================================
+
+export const payPeriods = pgTable("pay_periods", {
+  id: integer("id").primaryKey(), // 1-26 for 2025
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isCurrent: integer("is_current").notNull().default(0), // 0 or 1 (boolean)
+  remeasurementCompleted: integer("remeasurement_completed").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({
+  createdAt: true,
+});
+
+export type InsertPayPeriod = z.infer<typeof insertPayPeriodSchema>;
+export type PayPeriod = typeof payPeriods.$inferSelect;
+
+// ============================================================================
+// PRACTICE REASSIGNMENT HISTORY TABLE
+// ============================================================================
+
+export const practiceReassignments = pgTable("practice_reassignments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  practiceId: varchar("practice_id").notNull(),
+  fromPortfolioId: varchar("from_portfolio_id").notNull(),
+  toPortfolioId: varchar("to_portfolio_id").notNull(),
+  effectivePayPeriod: integer("effective_pay_period").notNull(),
+  reassignedBy: varchar("reassigned_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPracticeReassignmentSchema = createInsertSchema(practiceReassignments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPracticeReassignment = z.infer<typeof insertPracticeReassignmentSchema>;
+export type PracticeReassignment = typeof practiceReassignments.$inferSelect;
+
+// ============================================================================
+// RELATIONS
+// ============================================================================
+
+export const usersRelations = relations(users, ({ one }) => ({
+  portfolio: one(portfolios, {
+    fields: [users.portfolioId],
+    references: [portfolios.id],
+  }),
+}));
+
+export const portfoliosRelations = relations(portfolios, ({ many }) => ({
+  practices: many(practices),
+  psms: many(users),
+}));
+
+export const practicesRelations = relations(practices, ({ one, many }) => ({
+  portfolio: one(portfolios, {
+    fields: [practices.portfolioId],
+    references: [portfolios.id],
+  }),
+  metrics: many(practiceMetrics),
+  ledgerEntries: many(practiceLedger),
+  stipendRequests: many(stipendRequests),
+  reassignments: many(practiceReassignments),
+}));
+
+export const practiceMetricsRelations = relations(practiceMetrics, ({ one }) => ({
+  practice: one(practices, {
+    fields: [practiceMetrics.practiceId],
+    references: [practices.id],
+  }),
+}));
+
+export const practiceLedgerRelations = relations(practiceLedger, ({ one }) => ({
+  practice: one(practices, {
+    fields: [practiceLedger.practiceId],
+    references: [practices.id],
+  }),
+  stipendRequest: one(stipendRequests, {
+    fields: [practiceLedger.relatedRequestId],
+    references: [stipendRequests.id],
+  }),
+  allocation: one(interPsmAllocations, {
+    fields: [practiceLedger.relatedAllocationId],
+    references: [interPsmAllocations.id],
+  }),
+}));
+
+export const stipendRequestsRelations = relations(stipendRequests, ({ one, many }) => ({
+  practice: one(practices, {
+    fields: [stipendRequests.practiceId],
+    references: [practices.id],
+  }),
+  requestor: one(users, {
+    fields: [stipendRequests.requestorId],
+    references: [users.id],
+  }),
+  ledgerEntries: many(practiceLedger),
+}));
+
+export const interPsmAllocationsRelations = relations(interPsmAllocations, ({ one, many }) => ({
+  donorPsm: one(users, {
+    fields: [interPsmAllocations.donorPsmId],
+    references: [users.id],
+  }),
+  recipientPsm: one(users, {
+    fields: [interPsmAllocations.recipientPsmId],
+    references: [users.id],
+  }),
+  ledgerEntries: many(practiceLedger),
+}));
+
+export const practiceReassignmentsRelations = relations(practiceReassignments, ({ one }) => ({
+  practice: one(practices, {
+    fields: [practiceReassignments.practiceId],
+    references: [practices.id],
+  }),
+  fromPortfolio: one(portfolios, {
+    fields: [practiceReassignments.fromPortfolioId],
+    references: [portfolios.id],
+  }),
+  toPortfolio: one(portfolios, {
+    fields: [practiceReassignments.toPortfolioId],
+    references: [portfolios.id],
+  }),
+}));
