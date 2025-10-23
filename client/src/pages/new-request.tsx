@@ -28,7 +28,7 @@ export default function NewRequest() {
   const [amount, setAmount] = useState("");
   const [requestType, setRequestType] = useState("one_time");
   const [stipendType, setStipendType] = useState("lease_stipend");
-  const [recurringEndPeriod, setRecurringEndPeriod] = useState("");
+  const [recurringEndPeriod, setRecurringEndPeriod] = useState<string | undefined>(undefined);
   const [justification, setJustification] = useState("");
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function NewRequest() {
       setAmount("");
       setStipendType("lease_stipend");
       setRequestType("one_time");
-      setRecurringEndPeriod("");
+      setRecurringEndPeriod(undefined);
       setJustification("");
       window.location.href = "/requests";
     },
