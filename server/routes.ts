@@ -163,21 +163,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
+      console.log('[/api/practices/my] User:', { userId, role: user?.role, portfolioId: user?.portfolioId });
+      
       if (!user) {
+        console.log('[/api/practices/my] No user found');
         return res.json([]);
       }
 
-      // Finance and Lead PSM can see all practices, PSM sees only their portfolio
+      // Finance can see all practices, Lead PSM and PSM see only their portfolio
       let practices;
-      if (user.role === 'Finance' || user.role === 'Lead PSM') {
+      if (user.role === 'Finance') {
+        console.log('[/api/practices/my] Finance user - getting all practices');
         practices = await storage.getPractices({});
       } else if (user.portfolioId) {
+        console.log('[/api/practices/my] User with portfolio - getting portfolio practices:', user.portfolioId);
         practices = await storage.getPractices({
           portfolio: user.portfolioId,
         });
       } else {
+        console.log('[/api/practices/my] No portfolio and not Finance - returning empty');
         return res.json([]);
       }
+      
+      console.log('[/api/practices/my] Found practices:', practices.length);
       
       // Enrich with current balance for each practice
       const enrichedPractices = await Promise.all(
