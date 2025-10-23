@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Practices from "@/pages/practices";
+import PracticeDetail from "@/pages/practice-detail";
 import NewRequest from "@/pages/new-request";
 import Requests from "@/pages/requests";
 import Approvals from "@/pages/approvals";
@@ -30,6 +31,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/practices" component={Practices} />
+          <Route path="/practices/:id" component={PracticeDetail} />
           <Route path="/requests/new" component={NewRequest} />
           <Route path="/requests" component={Requests} />
           <Route path="/approvals" component={Approvals} />
