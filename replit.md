@@ -4,22 +4,19 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
-- **2025-10-23**: Complete MVP implementation
+- **2025-10-23**: Complete MVP Core Features (Tasks 1-4)
+  - **Task 1**: Stipend Request Workflow fully functional with multi-level approvals
+  - **Task 2**: Practice Detail Page with complete ledger history and balance tracking
+  - **Task 3**: Inter-PSM Allocation System with multi-practice donor selection and automatic ledger entries
+  - **Task 4**: BigQuery CSV Import with remeasurement calculation and ledger updates
   - Complete database schema with practice-level ledger tracking
   - Full frontend implementation with Carbon Design System aesthetics
   - Role-based authentication (PSM, Lead PSM, Finance)
-  - All core MVP pages created and wired to router:
-    - Dashboard with portfolio cards
-    - Practices management
-    - New stipend request form
-    - My Requests (request history)
-    - Approvals workflow interface
-    - Inter-PSM Allocations
-    - Reports & Analytics
-    - Pay Period Management (Finance only)
+  - All core MVP pages created and wired to router
   - Database seeded with 5 portfolios (G1-G5), 60 practices, and 26 pay periods
   - Backend fully implemented with all API endpoints
   - Slack webhook integration for approval notifications
+  - Numeric balance validation throughout the stack (no overdrafts possible)
 
 ## User Roles & Permissions
 1. **PSM (Practice Success Manager)**
