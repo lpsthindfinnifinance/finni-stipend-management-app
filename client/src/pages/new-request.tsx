@@ -131,7 +131,7 @@ export default function NewRequest() {
       amount,
       stipendType,
       requestType,
-      recurringEndPeriod: requestType === "recurring" ? parseInt(recurringEndPeriod) : null,
+      recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
       justification,
     });
   };
