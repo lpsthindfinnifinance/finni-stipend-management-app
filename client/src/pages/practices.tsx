@@ -27,8 +27,16 @@ export default function Practices() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
+  // Build URL with query parameters
+  const buildPracticesUrl = () => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (portfolioFilter) params.append('portfolio', portfolioFilter);
+    return `/api/practices?${params.toString()}`;
+  };
+
   const { data: practices, isLoading } = useQuery({
-    queryKey: ["/api/practices", { search, portfolio: portfolioFilter }],
+    queryKey: [buildPracticesUrl()],
     enabled: isAuthenticated,
   });
 
