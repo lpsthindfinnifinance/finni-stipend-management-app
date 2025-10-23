@@ -163,13 +163,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || !user.portfolioId) {
+      if (!user) {
         return res.json([]);
       }
 
-      const practices = await storage.getPractices({
-        portfolio: user.portfolioId,
-      });
+      // Finance and Lead PSM can see all practices, PSM sees only their portfolio
+      let practices;
+      if (user.role === 'Finance' || user.role === 'Lead PSM') {
+        practices = await storage.getPractices({});
+      } else if (user.portfolioId) {
+        practices = await storage.getPractices({
+          portfolio: user.portfolioId,
+        });
+      } else {
+        return res.json([]);
+      }
       
       // Enrich with current balance for each practice
       const enrichedPractices = await Promise.all(
