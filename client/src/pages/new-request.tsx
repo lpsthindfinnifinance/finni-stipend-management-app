@@ -44,12 +44,12 @@ export default function NewRequest() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const { data: practices } = useQuery({
+  const { data: practices = [] } = useQuery<any[]>({
     queryKey: ["/api/practices/my"],
     enabled: isAuthenticated,
   });
 
-  const { data: practiceBalance } = useQuery({
+  const { data: practiceBalance } = useQuery<{ practiceId: string; available: number }>({
     queryKey: ["/api/practices", practiceId, "balance"],
     enabled: !!practiceId,
   });
