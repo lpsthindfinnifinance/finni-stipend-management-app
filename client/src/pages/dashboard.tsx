@@ -172,7 +172,7 @@ export default function Dashboard() {
                   key={portfolio.id}
                   portfolio={portfolio}
                   onViewDetails={() => {
-                    window.location.href = `/portfolios/${portfolio.id}`;
+                    window.location.href = `/practices?portfolio=${portfolio.id}`;
                   }}
                 />
               ))}
