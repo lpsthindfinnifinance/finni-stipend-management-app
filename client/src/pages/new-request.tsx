@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Check, ChevronsUpDown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { cn } from "@/lib/utils";
 
 export default function NewRequest() {
   const { toast } = useToast();
@@ -21,6 +24,7 @@ export default function NewRequest() {
   const { isAuthenticated, isLoading: authLoading, user, role } = useAuth();
   
   const [practiceId, setPracticeId] = useState("");
+  const [practiceOpen, setPracticeOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [requestType, setRequestType] = useState("one_time");
   const [stipendType, setStipendType] = useState("lease_stipend");
@@ -62,6 +66,7 @@ export default function NewRequest() {
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
       // Reset form
       setPracticeId("");
+      setPracticeOpen(false);
       setAmount("");
       setStipendType("lease_stipend");
       setRequestType("one_time");
@@ -163,18 +168,51 @@ export default function NewRequest() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="practice">Practice *</Label>
-                  <Select value={practiceId} onValueChange={setPracticeId}>
-                    <SelectTrigger id="practice" data-testid="select-practice">
-                      <SelectValue placeholder="Select a practice" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {practices?.map((practice: any) => (
-                        <SelectItem key={practice.id} value={practice.id}>
-                          {practice.name} ({practice.id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={practiceOpen} onOpenChange={setPracticeOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={practiceOpen}
+                        className="w-full justify-between font-normal"
+                        data-testid="select-practice"
+                      >
+                        {practiceId
+                          ? practices?.find((p: any) => p.id === practiceId)?.name + ` (${practiceId})`
+                          : "Select a practice..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search practices..." />
+                        <CommandList>
+                          <CommandEmpty>No practice found.</CommandEmpty>
+                          <CommandGroup>
+                            {practices?.map((practice: any) => (
+                              <CommandItem
+                                key={practice.id}
+                                value={`${practice.name} ${practice.id}`}
+                                onSelect={() => {
+                                  setPracticeId(practice.id);
+                                  setPracticeOpen(false);
+                                }}
+                                data-testid={`practice-option-${practice.id}`}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    practiceId === practice.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {practice.name} ({practice.id})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-2">
