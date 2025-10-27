@@ -41,6 +41,22 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["PSM", "Lead PSM", "Finance"], { required_error: "Role is required" }),
+  portfolioId: z.string().nullable().optional(),
+});
+
+export const updateUserSchema = insertUserSchema.partial().extend({
+  id: z.string(),
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
@@ -58,9 +74,17 @@ export const portfolios = pgTable("portfolios", {
 export const insertPortfolioSchema = createInsertSchema(portfolios).omit({
   createdAt: true,
   updatedAt: true,
+}).extend({
+  id: z.string().regex(/^G[1-5]$/, "Portfolio ID must be G1, G2, G3, G4, or G5"),
+  name: z.string().min(3, "Name must be at least 3 characters"),
+});
+
+export const updatePortfolioSchema = insertPortfolioSchema.partial().extend({
+  id: z.string(),
 });
 
 export type InsertPortfolio = z.infer<typeof insertPortfolioSchema>;
+export type UpdatePortfolio = z.infer<typeof updatePortfolioSchema>;
 export type Portfolio = typeof portfolios.$inferSelect;
 
 // ============================================================================
@@ -78,9 +102,18 @@ export const practices = pgTable("practices", {
 export const insertPracticeSchema = createInsertSchema(practices).omit({
   createdAt: true,
   updatedAt: true,
+}).extend({
+  id: z.string().min(1, "Practice ID is required"),
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  portfolioId: z.string().regex(/^G[1-5]$/, "Portfolio must be G1, G2, G3, G4, or G5"),
+});
+
+export const updatePracticeSchema = insertPracticeSchema.partial().extend({
+  id: z.string(),
 });
 
 export type InsertPractice = z.infer<typeof insertPracticeSchema>;
+export type UpdatePractice = z.infer<typeof updatePracticeSchema>;
 export type Practice = typeof practices.$inferSelect;
 
 // ============================================================================

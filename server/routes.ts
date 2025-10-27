@@ -2,7 +2,15 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertStipendRequestSchema } from "@shared/schema";
+import { 
+  insertStipendRequestSchema,
+  insertPortfolioSchema,
+  updatePortfolioSchema,
+  insertPracticeSchema,
+  updatePracticeSchema,
+  insertUserSchema,
+  updateUserSchema
+} from "@shared/schema";
 import axios from "axios";
 
 // Slack notification helper
@@ -928,6 +936,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating allocation:", error);
       res.status(500).json({ message: "Failed to create allocation" });
+    }
+  });
+
+  // ============================================================================
+  // SETTINGS ROUTES (Finance only)
+  // ============================================================================
+
+  // Portfolios CRUD
+  app.get('/api/settings/portfolios', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const portfolios = await storage.getPortfolios();
+      res.json(portfolios);
+    } catch (error) {
+      console.error("Error fetching portfolios:", error);
+      res.status(500).json({ message: "Failed to fetch portfolios" });
+    }
+  });
+
+  app.post('/api/settings/portfolios', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const result = insertPortfolioSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+      
+      const portfolio = await storage.createPortfolio(result.data);
+      res.json(portfolio);
+    } catch (error: any) {
+      console.error("Error creating portfolio:", error);
+      res.status(500).json({ message: error.message || "Failed to create portfolio" });
+    }
+  });
+
+  app.patch('/api/settings/portfolios/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = updatePortfolioSchema.safeParse({ ...req.body, id });
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+      
+      const { id: _, ...updateData } = result.data;
+      const portfolio = await storage.updatePortfolio(id, updateData);
+      res.json(portfolio);
+    } catch (error: any) {
+      console.error("Error updating portfolio:", error);
+      res.status(500).json({ message: error.message || "Failed to update portfolio" });
+    }
+  });
+
+  app.delete('/api/settings/portfolios/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.deletePortfolio(id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error deleting portfolio:", error);
+      res.status(500).json({ message: error.message || "Failed to delete portfolio" });
+    }
+  });
+
+  // Practices CRUD
+  app.get('/api/settings/practices', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const practices = await storage.getPractices();
+      res.json(practices);
+    } catch (error) {
+      console.error("Error fetching practices:", error);
+      res.status(500).json({ message: "Failed to fetch practices" });
+    }
+  });
+
+  app.post('/api/settings/practices', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const result = insertPracticeSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+      
+      const practice = await storage.createPractice(result.data);
+      res.json(practice);
+    } catch (error: any) {
+      console.error("Error creating practice:", error);
+      res.status(500).json({ message: error.message || "Failed to create practice" });
+    }
+  });
+
+  app.patch('/api/settings/practices/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = updatePracticeSchema.safeParse({ ...req.body, id });
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+      
+      const { id: _, ...updateData } = result.data;
+      const practice = await storage.updatePractice(id, updateData);
+      res.json(practice);
+    } catch (error: any) {
+      console.error("Error updating practice:", error);
+      res.status(500).json({ message: error.message || "Failed to update practice" });
+    }
+  });
+
+  app.delete('/api/settings/practices/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.deletePractice(id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error deleting practice:", error);
+      res.status(500).json({ message: error.message || "Failed to delete practice" });
+    }
+  });
+
+  // Users CRUD
+  app.get('/api/settings/users', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/settings/users', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const result = insertUserSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+      
+      const user = await storage.createUser(result.data);
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: error.message || "Failed to create user" });
+    }
+  });
+
+  app.patch('/api/settings/users/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = updateUserSchema.safeParse({ ...req.body, id });
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+      
+      const { id: _, ...updateData } = result.data;
+      const user = await storage.updateUser(id, updateData);
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: error.message || "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/settings/users/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.deleteUser(id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: error.message || "Failed to delete user" });
+    }
+  });
+
+  // CSV Template Download
+  app.get('/api/templates/metrics', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      // Generate CSV template with headers
+      const headers = [
+        'ClinicName',
+        'DisplayName',
+        'Group',
+        'PayPeriod',
+        'StipendCap',
+        'NegativeEarningsCap',
+        'NegativeEarningsUtilized'
+      ];
+      
+      const csv = headers.join(',') + '\n';
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="bigquery_metrics_template.csv"');
+      res.send(csv);
+    } catch (error) {
+      console.error("Error generating CSV template:", error);
+      res.status(500).json({ message: "Failed to generate CSV template" });
+    }
+  });
+
+  // Current Pay Period endpoint
+  app.get('/api/pay-periods/current', isAuthenticated, async (req, res) => {
+    try {
+      const current = await storage.getCurrentPayPeriod();
+      res.json(current || { id: 1 });
+    } catch (error) {
+      console.error("Error fetching current pay period:", error);
+      res.status(500).json({ message: "Failed to fetch current pay period" });
     }
   });
 

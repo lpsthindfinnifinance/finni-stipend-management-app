@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText } from "lucide-react";
+import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Download } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 
 export default function PayPeriods() {
@@ -121,6 +121,34 @@ export default function PayPeriods() {
     importMutation.mutate(csvContent);
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch('/api/templates/metrics');
+      if (!response.ok) throw new Error('Failed to download template');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bigquery_metrics_template.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Template Downloaded",
+        description: "CSV template downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download CSV template",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (authLoading || !isAuthenticated) {
     return null;
   }
@@ -196,6 +224,14 @@ export default function PayPeriods() {
                 <Upload className="h-4 w-4 mr-2" />
                 Import BigQuery Data
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadTemplate}
+                data-testid="button-download-template"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download CSV Template
+              </Button>
               <Button variant="outline" data-testid="button-trigger-remeasurement">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Trigger Remeasurement
@@ -236,29 +272,32 @@ export default function PayPeriods() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    periods.slice(0, 10).map((period: any) => (
-                      <TableRow key={period.id}>
-                        <TableCell className="font-semibold">
-                          Pay Period {period.id}
-                        </TableCell>
-                        <TableCell>{formatDate(period.startDate)}</TableCell>
-                        <TableCell>{formatDate(period.endDate)}</TableCell>
-                        <TableCell>
-                          {period.isCurrent ? (
-                            <Badge className="bg-primary">Current</Badge>
-                          ) : (
-                            <Badge variant="secondary">Closed</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {period.remeasurementCompleted ? (
-                            <Badge variant="secondary">Completed</Badge>
-                          ) : (
-                            <Badge variant="outline">Pending</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    periods
+                      .filter((period: any) => period.id >= 21)
+                      .slice(0, 10)
+                      .map((period: any) => (
+                        <TableRow key={period.id}>
+                          <TableCell className="font-semibold">
+                            Pay Period {period.id}
+                          </TableCell>
+                          <TableCell>{formatDate(period.startDate)}</TableCell>
+                          <TableCell>{formatDate(period.endDate)}</TableCell>
+                          <TableCell>
+                            {period.isCurrent ? (
+                              <Badge className="bg-primary">Current</Badge>
+                            ) : (
+                              <Badge variant="secondary">Closed</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {period.remeasurementCompleted ? (
+                              <Badge variant="secondary">Completed</Badge>
+                            ) : (
+                              <Badge variant="outline">Pending</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>

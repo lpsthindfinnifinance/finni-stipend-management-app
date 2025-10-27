@@ -11,10 +11,14 @@ import {
   negativeEarningsCapRequests,
   type User,
   type UpsertUser,
+  type InsertUser,
+  type UpdateUser,
   type Portfolio,
   type InsertPortfolio,
+  type UpdatePortfolio,
   type Practice,
   type InsertPractice,
+  type UpdatePractice,
   type PracticeMetrics,
   type InsertPracticeMetrics,
   type PracticeLedger,
@@ -39,11 +43,16 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(id: string, role: string, portfolioId?: string): Promise<User>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<UpdateUser>): Promise<User>;
+  deleteUser(id: string): Promise<{ success: boolean; message?: string }>;
   
   // Portfolio operations
   getPortfolios(): Promise<Portfolio[]>;
   getPortfolioById(id: string): Promise<Portfolio | undefined>;
   createPortfolio(portfolio: InsertPortfolio): Promise<Portfolio>;
+  updatePortfolio(id: string, portfolio: Partial<UpdatePortfolio>): Promise<Portfolio>;
+  deletePortfolio(id: string): Promise<{ success: boolean; message?: string }>;
   
   // Practice operations
   getPractices(filters?: { search?: string; portfolio?: string }): Promise<any[]>;
@@ -51,6 +60,8 @@ export interface IStorage {
   getPracticeByClinicName(clinicName: string): Promise<Practice | undefined>;
   createPractice(practice: InsertPractice): Promise<Practice>;
   updatePracticePortfolio(id: string, portfolioId: string): Promise<Practice>;
+  updatePractice(id: string, practice: Partial<UpdatePractice>): Promise<Practice>;
+  deletePractice(id: string): Promise<{ success: boolean; message?: string }>;
   
   // Practice metrics operations
   getPracticeMetrics(practiceId: string, payPeriod?: number): Promise<PracticeMetrics[]>;
@@ -158,6 +169,51 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async createUser(userData: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
+  async updateUser(id: string, userData: Partial<UpdateUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...userData, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<{ success: boolean; message?: string }> {
+    // Check if user has any stipend requests
+    const requests = await db
+      .select({ count: sql`count(*)` })
+      .from(stipendRequests)
+      .where(eq(stipendRequests.requestorId, id));
+    
+    if (Number(requests[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete user. User has ${requests[0].count} associated stipend requests.` 
+      };
+    }
+
+    // Check if user has any negative earnings cap requests
+    const negEarningsRequests = await db
+      .select({ count: sql`count(*)` })
+      .from(negativeEarningsCapRequests)
+      .where(eq(negativeEarningsCapRequests.requestorId, id));
+    
+    if (Number(negEarningsRequests[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete user. User has ${negEarningsRequests[0].count} associated negative earnings requests.` 
+      };
+    }
+
+    await db.delete(users).where(eq(users.id, id));
+    return { success: true };
+  }
+
   // ============================================================================
   // PORTFOLIO OPERATIONS
   // ============================================================================
@@ -174,6 +230,46 @@ export class DatabaseStorage implements IStorage {
   async createPortfolio(portfolio: InsertPortfolio): Promise<Portfolio> {
     const [created] = await db.insert(portfolios).values(portfolio).returning();
     return created;
+  }
+
+  async updatePortfolio(id: string, portfolioData: Partial<UpdatePortfolio>): Promise<Portfolio> {
+    const [portfolio] = await db
+      .update(portfolios)
+      .set({ ...portfolioData, updatedAt: new Date() })
+      .where(eq(portfolios.id, id))
+      .returning();
+    return portfolio;
+  }
+
+  async deletePortfolio(id: string): Promise<{ success: boolean; message?: string }> {
+    // Check if portfolio has any practices
+    const practiceCount = await db
+      .select({ count: sql`count(*)` })
+      .from(practices)
+      .where(eq(practices.portfolioId, id));
+    
+    if (Number(practiceCount[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete portfolio. Portfolio has ${practiceCount[0].count} associated practices.` 
+      };
+    }
+
+    // Check if portfolio has any users assigned
+    const userCount = await db
+      .select({ count: sql`count(*)` })
+      .from(users)
+      .where(eq(users.portfolioId, id));
+    
+    if (Number(userCount[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete portfolio. Portfolio has ${userCount[0].count} assigned users.` 
+      };
+    }
+
+    await db.delete(portfolios).where(eq(portfolios.id, id));
+    return { success: true };
   }
 
   // ============================================================================
@@ -234,6 +330,59 @@ export class DatabaseStorage implements IStorage {
       .where(eq(practices.id, id))
       .returning();
     return updated;
+  }
+
+  async updatePractice(id: string, practiceData: Partial<UpdatePractice>): Promise<Practice> {
+    const [practice] = await db
+      .update(practices)
+      .set({ ...practiceData, updatedAt: new Date() })
+      .where(eq(practices.id, id))
+      .returning();
+    return practice;
+  }
+
+  async deletePractice(id: string): Promise<{ success: boolean; message?: string }> {
+    // Check if practice has any metrics
+    const metricsCount = await db
+      .select({ count: sql`count(*)` })
+      .from(practiceMetrics)
+      .where(eq(practiceMetrics.clinicName, id));
+    
+    if (Number(metricsCount[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete practice. Practice has ${metricsCount[0].count} associated metric records.` 
+      };
+    }
+
+    // Check if practice has any ledger entries
+    const ledgerCount = await db
+      .select({ count: sql`count(*)` })
+      .from(practiceLedger)
+      .where(eq(practiceLedger.practiceId, id));
+    
+    if (Number(ledgerCount[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete practice. Practice has ${ledgerCount[0].count} ledger entries.` 
+      };
+    }
+
+    // Check if practice has any stipend requests
+    const requestCount = await db
+      .select({ count: sql`count(*)` })
+      .from(stipendRequests)
+      .where(eq(stipendRequests.practiceId, id));
+    
+    if (Number(requestCount[0].count) > 0) {
+      return { 
+        success: false, 
+        message: `Cannot delete practice. Practice has ${requestCount[0].count} stipend requests.` 
+      };
+    }
+
+    await db.delete(practices).where(eq(practices.id, id));
+    return { success: true };
   }
 
   // ============================================================================
