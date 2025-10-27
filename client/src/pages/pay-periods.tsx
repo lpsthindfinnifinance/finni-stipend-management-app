@@ -65,7 +65,7 @@ export default function PayPeriods() {
     onSuccess: (data: any) => {
       toast({
         title: "Import Successful",
-        description: `${data.imported} practice metrics imported for PP${currentPeriod?.id}. ${data.remeasurements || 0} remeasurements processed.`,
+        description: `${data.imported} practice metrics imported for PP${currentPeriod?.id}. ${data.remeasurements || 0} remeasurements automatically calculated and applied to practice ledgers.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods/current"] });
@@ -228,10 +228,6 @@ export default function PayPeriods() {
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download CSV Template
-              </Button>
-              <Button variant="outline" data-testid="button-trigger-remeasurement">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Trigger Remeasurement
               </Button>
               <Button data-testid="button-advance-period">
                 Advance to Next Period

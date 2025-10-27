@@ -196,7 +196,7 @@ export const insertPracticeMetricsSchema = createInsertSchema(practiceMetrics).o
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as any);
 
 export type InsertPracticeMetrics = z.infer<typeof insertPracticeMetricsSchema>;
 export type PracticeMetrics = typeof practiceMetrics.$inferSelect;
@@ -220,7 +220,7 @@ export const practiceLedger = pgTable("practice_ledger", {
 export const insertPracticeLedgerSchema = createInsertSchema(practiceLedger).omit({
   id: true,
   createdAt: true,
-});
+} as any);
 
 export type InsertPracticeLedger = z.infer<typeof insertPracticeLedgerSchema>;
 export type PracticeLedger = typeof practiceLedger.$inferSelect;
@@ -266,7 +266,7 @@ export const insertStipendRequestSchema = createInsertSchema(stipendRequests).om
   rejectionReason: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
+} as any).extend({
   justification: z.string().min(50, "Justification must be at least 50 characters"),
   amount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
 });
@@ -294,7 +294,7 @@ export const insertInterPsmAllocationSchema = createInsertSchema(interPsmAllocat
   status: true,
   createdAt: true,
   completedAt: true,
-});
+} as any);
 
 export type InsertInterPsmAllocation = z.infer<typeof insertInterPsmAllocationSchema>;
 export type InterPsmAllocation = typeof interPsmAllocations.$inferSelect;
@@ -336,7 +336,7 @@ export const practiceReassignments = pgTable("practice_reassignments", {
 export const insertPracticeReassignmentSchema = createInsertSchema(practiceReassignments).omit({
   id: true,
   createdAt: true,
-});
+} as any);
 
 export type InsertPracticeReassignment = z.infer<typeof insertPracticeReassignmentSchema>;
 export type PracticeReassignment = typeof practiceReassignments.$inferSelect;
@@ -363,20 +363,12 @@ export const negativeEarningsCapRequests = pgTable("negative_earnings_cap_reques
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertNegativeEarningsCapRequestSchema = createInsertSchema(negativeEarningsCapRequests).omit({
-  id: true,
-  status: true,
-  approvedAmount: true,
-  approvedAt: true,
-  approvedBy: true,
-  rejectedAt: true,
-  rejectedBy: true,
-  rejectionReason: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  justification: z.string().min(20, "Justification must be at least 20 characters"),
+export const insertNegativeEarningsCapRequestSchema = z.object({
+  practiceId: z.string(),
+  requestorId: z.string(),
+  payPeriod: z.number(),
   requestedAmount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
+  justification: z.string().min(20, "Justification must be at least 20 characters"),
 });
 
 export type InsertNegativeEarningsCapRequest = z.infer<typeof insertNegativeEarningsCapRequestSchema>;
