@@ -448,73 +448,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No active pay period found" });
       }
 
-      // Parse CSV (expect format: practice_id,gross_margin_percent,collections_percent)
+      // Parse CSV - expecting BigQuery export with all columns
       const lines = csvData.trim().split('\n');
-      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+      const headers = lines[0].split(',').map(h => h.trim());
       
-      // Validate headers
-      const requiredHeaders = ['practice_id', 'gross_margin_percent', 'collections_percent'];
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-      if (missingHeaders.length > 0) {
-        return res.status(400).json({ 
-          message: `Missing required headers: ${missingHeaders.join(', ')}` 
-        });
-      }
+      // Map BigQuery column names to database column names (complete mapping for all 40+ columns)
+      const columnMapping: Record<string, string> = {
+        // Practice identification
+        'ClinicName': 'clinicName',
+        'DisplayName': 'displayName',
+        'Group': 'group',
+        'Practice_DisplayName_Group': 'practiceDisplayNameGroup',
+        'IsActivePractice': 'isActivePractice',
+        'CurrentPayPeriod_Number': 'currentPayPeriodNumber', // Fixed case to match BigQuery header
+        
+        // YTD metrics - Basic
+        'BilledPPs_YTD': 'billedPpsYtd',
+        'NetRevenue_SubTotal_YTD': 'netRevenueSubTotalYtd',
+        'Rent_Lease_Stipend_YTD': 'rentLeaseStipendYtd',
+        'Staff_Training_Cost_YTD': 'staffTrainingCostYtd',
+        'Total_Staff_Cost_YTD': 'totalStaffCostYtd',
+        'Miscellaneous_YTD': 'miscellaneousYtd',
+        'HQ_Errors_Stipend_YTD': 'hqErrorsStipendYtd',
+        'PO_Errors_Stipend_YTD': 'poErrorsStipendYtd',
+        'Negative_Earnings_YTD': 'negativeEarningsYtd',
+        'Brex_Expenses_Reimbursement_Mkt_YTD': 'brexExpensesReimbursementMktYtd',
+        'Covered_Benefits_YTD': 'coveredBenefitsYtd',
+        'Sales_Marketing_SubTotal_YTD': 'salesMarketingSubTotalYtd',
+        'Gross_Margin_SubTotal_YTD': 'grossMarginSubTotalYtd',
+        'Total_Promotional_Spend_YTD': 'totalPromotionalSpendYtd',
+        'Gross_Margin_before_PromSpend_YTD': 'grossMarginBeforePromSpendYtd',
+        'Promotional_Spend_excl_HQErr_NegErns_YTD': 'promotionalSpendExclHqErrNegErnsYtd',
+        
+        // L6PP metrics
+        'BilledPPs_L6PP': 'billedPpsL6pp',
+        'NetRevenue_SubTotal_L6PP': 'netRevenueSubTotalL6pp',
+        'Gross_Margin_SubTotal_L6PP': 'grossMarginSubTotalL6pp',
+        'Total_Promotional_Spend_L6PP': 'totalPromotionalSpendL6pp',
+        'Gross_Margin_before_PromSpend_L6PP': 'grossMarginBeforePromSpendL6pp',
+        'Promotional_Spend_excl_HQErr_NegErns_L6PP': 'promotionalSpendExclHqErrNegErnsL6pp',
+        
+        // 2PP Lag metrics
+        'Charge_Dollars_2PP_Lag': 'chargeDollars2ppLag',
+        'Arbora_Collections_2PP_Lag': 'arboraCollections2ppLag',
+        
+        // Percentages
+        'Gross_Margin_before_Stipend_Percent_YTD': 'grossMarginBeforeStipendPercentYtd',
+        'Gross_Margin_before_Stipend_Percent_L6PP': 'grossMarginBeforeStipendPercentL6pp',
+        'Collections_Percent_2PP_Lag': 'collectionsPercent2ppLag',
+        
+        // Revenue projections
+        'NetRevenue_FY': 'netRevenueFy',
+        'NetRevenue_Annualized_L6PP': 'netRevenueAnnualizedL6pp',
+        
+        // Performance metrics
+        'PerformanceMetric_YTD': 'performanceMetricYtd',
+        'PerformanceMetric_L6PP': 'performanceMetricL6pp',
+        
+        // Stipend caps
+        'StipendCapRate_FY': 'stipendCapRateFy',
+        'StipendCapRate_Annual': 'stipendCapRateAnnual',
+        'StipendCap_FY': 'stipendCapFy',
+        'StipendCap_AnnualizedAdj': 'stipendCapAnnualizedAdj',
+        'StipendCapAvgFinal': 'stipendCapAvgFinal', // KEY FOR REMEASUREMENT
+        
+        // Negative earnings cap
+        'NegativeEarningsCap': 'negativeEarningsCap',
+      };
 
-      const practiceIdIndex = headers.indexOf('practice_id');
-      const gmIndex = headers.indexOf('gross_margin_percent');
-      const collIndex = headers.indexOf('collections_percent');
+      // Build header index map
+      const headerIndex: Record<string, number> = {};
+      headers.forEach((header, index) => {
+        headerIndex[header] = index;
+      });
 
       const imports: any[] = [];
       const errors: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
-        if (!line) continue; // Skip empty lines
+        if (!line) continue;
 
         const values = line.split(',').map(v => v.trim());
         
-        const practiceId = values[practiceIdIndex];
-        const gmPercent = parseFloat(values[gmIndex]);
-        const collPercent = parseFloat(values[collIndex]);
+        // Helper to get value by BigQuery column name
+        const getValue = (bigQueryCol: string) => {
+          const idx = headerIndex[bigQueryCol];
+          return idx !== undefined ? values[idx] : null;
+        };
 
-        // Validate data
-        if (!practiceId) {
-          errors.push(`Line ${i + 1}: Missing practice_id`);
+        // Helper to parse numeric value (handles empty strings)
+        const parseNumeric = (value: string | null) => {
+          if (!value || value === '') return null;
+          const parsed = parseFloat(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        // Helper to parse integer value
+        const parseIntValue = (value: string | null) => {
+          if (!value || value === '') return null;
+          const parsed = parseInt(value, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        // Extract clinic name (primary identifier)
+        const clinicName = getValue('ClinicName');
+        if (!clinicName) {
+          errors.push(`Line ${i + 1}: Missing ClinicName`);
           continue;
         }
-        if (!Number.isFinite(gmPercent) || gmPercent < 0 || gmPercent > 100) {
-          errors.push(`Line ${i + 1}: Invalid gross_margin_percent (${values[gmIndex]})`);
-          continue;
-        }
-        if (!Number.isFinite(collPercent) || collPercent < 0 || collPercent > 100) {
-          errors.push(`Line ${i + 1}: Invalid collections_percent (${values[collIndex]})`);
-          continue;
-        }
 
-        // Check practice exists
-        const practice = await storage.getPracticeById(practiceId);
-        if (!practice) {
-          errors.push(`Line ${i + 1}: Practice ${practiceId} not found`);
-          continue;
-        }
+        // Build import data object with ALL BigQuery columns
+        const importData: any = {
+          // Practice identification
+          clinicName,
+          displayName: getValue('DisplayName'),
+          group: getValue('Group'),
+          practiceDisplayNameGroup: getValue('Practice_DisplayName_Group'),
+          isActivePractice: parseIntValue(getValue('IsActivePractice')),
+          currentPayPeriodNumber: parseIntValue(getValue('CurrentPayPeriod_Number')) || currentPeriod.id, // Fixed case to match BigQuery header
+          
+          // YTD metrics - Complete set
+          billedPpsYtd: parseIntValue(getValue('BilledPPs_YTD')),
+          netRevenueSubTotalYtd: parseNumeric(getValue('NetRevenue_SubTotal_YTD')),
+          rentLeaseStipendYtd: parseNumeric(getValue('Rent_Lease_Stipend_YTD')),
+          staffTrainingCostYtd: parseNumeric(getValue('Staff_Training_Cost_YTD')),
+          totalStaffCostYtd: parseNumeric(getValue('Total_Staff_Cost_YTD')),
+          miscellaneousYtd: parseNumeric(getValue('Miscellaneous_YTD')),
+          hqErrorsStipendYtd: parseNumeric(getValue('HQ_Errors_Stipend_YTD')),
+          poErrorsStipendYtd: parseNumeric(getValue('PO_Errors_Stipend_YTD')),
+          negativeEarningsYtd: parseNumeric(getValue('Negative_Earnings_YTD')),
+          brexExpensesReimbursementMktYtd: parseNumeric(getValue('Brex_Expenses_Reimbursement_Mkt_YTD')),
+          coveredBenefitsYtd: parseNumeric(getValue('Covered_Benefits_YTD')),
+          salesMarketingSubTotalYtd: parseNumeric(getValue('Sales_Marketing_SubTotal_YTD')),
+          grossMarginSubTotalYtd: parseNumeric(getValue('Gross_Margin_SubTotal_YTD')),
+          totalPromotionalSpendYtd: parseNumeric(getValue('Total_Promotional_Spend_YTD')),
+          grossMarginBeforePromSpendYtd: parseNumeric(getValue('Gross_Margin_before_PromSpend_YTD')),
+          promotionalSpendExclHqErrNegErnsYtd: parseNumeric(getValue('Promotional_Spend_excl_HQErr_NegErns_YTD')),
+          
+          // L6PP metrics - Complete set
+          billedPpsL6pp: parseIntValue(getValue('BilledPPs_L6PP')),
+          netRevenueSubTotalL6pp: parseNumeric(getValue('NetRevenue_SubTotal_L6PP')),
+          grossMarginSubTotalL6pp: parseNumeric(getValue('Gross_Margin_SubTotal_L6PP')),
+          totalPromotionalSpendL6pp: parseNumeric(getValue('Total_Promotional_Spend_L6PP')),
+          grossMarginBeforePromSpendL6pp: parseNumeric(getValue('Gross_Margin_before_PromSpend_L6PP')),
+          promotionalSpendExclHqErrNegErnsL6pp: parseNumeric(getValue('Promotional_Spend_excl_HQErr_NegErns_L6PP')),
+          
+          // 2PP Lag metrics
+          chargeDollars2ppLag: parseNumeric(getValue('Charge_Dollars_2PP_Lag')),
+          arboraCollections2ppLag: parseNumeric(getValue('Arbora_Collections_2PP_Lag')),
+          
+          // Percentages
+          grossMarginBeforeStipendPercentYtd: parseNumeric(getValue('Gross_Margin_before_Stipend_Percent_YTD')),
+          grossMarginBeforeStipendPercentL6pp: parseNumeric(getValue('Gross_Margin_before_Stipend_Percent_L6PP')),
+          collectionsPercent2ppLag: parseNumeric(getValue('Collections_Percent_2PP_Lag')),
+          
+          // Revenue projections
+          netRevenueFy: parseNumeric(getValue('NetRevenue_FY')),
+          netRevenueAnnualizedL6pp: parseNumeric(getValue('NetRevenue_Annualized_L6PP')),
+          
+          // Performance metrics
+          performanceMetricYtd: parseNumeric(getValue('PerformanceMetric_YTD')),
+          performanceMetricL6pp: parseNumeric(getValue('PerformanceMetric_L6PP')),
+          
+          // Stipend caps
+          stipendCapRateFy: parseNumeric(getValue('StipendCapRate_FY')),
+          stipendCapRateAnnual: parseNumeric(getValue('StipendCapRate_Annual')),
+          stipendCapFy: parseNumeric(getValue('StipendCap_FY')),
+          stipendCapAnnualizedAdj: parseNumeric(getValue('StipendCap_AnnualizedAdj')),
+          stipendCapAvgFinal: parseNumeric(getValue('StipendCapAvgFinal')), // KEY FIELD FOR REMEASUREMENT
+          
+          // Negative earnings cap
+          negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap')),
+        };
 
-        // Calculate stipend cap: 0.6 * GM% + 0.4 * Collections%
-        const stipendCap = (0.6 * gmPercent) + (0.4 * collPercent);
-
-        imports.push({
-          practiceId,
-          grossMarginPercent: gmPercent,
-          collectionsPercent: collPercent,
-          stipendCap,
-          payPeriod: currentPeriod.id,
-        });
+        imports.push(importData);
       }
 
       if (errors.length > 0) {
         return res.status(400).json({ 
           message: "CSV validation errors", 
-          errors: errors.slice(0, 10), // Limit error messages
+          errors: errors.slice(0, 10),
         });
       }
 
@@ -527,38 +641,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let remeasurementCount = 0;
 
       for (const importData of imports) {
-        // Get previous metrics for this practice
-        const previousMetrics = await storage.getCurrentMetrics(
-          importData.practiceId, 
-          currentPeriod.id - 1
-        );
-
-        // Upsert metrics
+        // Upsert metrics first
         await storage.upsertPracticeMetrics(importData);
         importedCount++;
 
-        // Calculate remeasurement adjustment
-        if (previousMetrics) {
-          const previousCap = Number(previousMetrics.stipendCap);
-          const newCap = importData.stipendCap;
-          const adjustment = newCap - previousCap;
+        // Calculate remeasurement adjustment using StipendCapAvgFinal
+        // Get previous period number from the imported data
+        const currentPeriodNum = importData.currentPayPeriodNumber;
+        const previousPeriodNum = currentPeriodNum - 1;
 
-          // Create ledger entry for remeasurement (can be positive or negative)
-          if (Math.abs(adjustment) > 0.01) {
-            await storage.createPracticeLedger({
-              practiceId: importData.practiceId,
-              payPeriod: currentPeriod.id,
-              transactionType: adjustment > 0 ? 'remeasurement_increase' : 'remeasurement_decrease',
-              amount: Math.abs(adjustment).toString(),
-              description: `Remeasurement adjustment for Pay Period ${currentPeriod.id}: ${adjustment > 0 ? '+' : ''}$${adjustment.toFixed(2)} (Previous: $${previousCap.toFixed(2)}, New: $${newCap.toFixed(2)})`,
-            });
-            remeasurementCount++;
+        // Only look for previous metrics if we're not in the first period
+        if (previousPeriodNum > 0) {
+          const previousMetrics = await storage.getPreviousMetricsByClinicName(
+            importData.clinicName, 
+            previousPeriodNum
+          );
+
+          // Only calculate remeasurement if both current and previous stipendCapAvgFinal exist
+          if (previousMetrics && importData.stipendCapAvgFinal !== null && previousMetrics.stipendCapAvgFinal !== null) {
+            const previousCap = Number(previousMetrics.stipendCapAvgFinal);
+            const newCap = Number(importData.stipendCapAvgFinal);
+            const adjustment = newCap - previousCap;
+
+            // Find practice by clinic name to get practiceId for ledger entry
+            const practice = await storage.getPracticeByClinicName(importData.clinicName);
+            
+            // Only create ledger entry if adjustment is significant (> $0.01) and practice exists
+            if (practice && Math.abs(adjustment) > 0.01) {
+              await storage.createLedgerEntry({
+                practiceId: practice.id,
+                payPeriod: currentPeriodNum,
+                transactionType: adjustment > 0 ? 'remeasurement_increase' : 'remeasurement_decrease',
+                amount: Math.abs(adjustment).toString(),
+                description: `Remeasurement PP${currentPeriodNum}: ${adjustment > 0 ? '+' : ''}$${adjustment.toFixed(2)} (Prev PP${previousPeriodNum}: $${previousCap.toFixed(2)}, New: $${newCap.toFixed(2)})`,
+              });
+              remeasurementCount++;
+            }
           }
         }
       }
 
       res.json({ 
-        message: `Successfully imported ${importedCount} practice metrics`,
+        message: `Successfully imported ${importedCount} practice metrics (${remeasurementCount} remeasurements)`,
         imported: importedCount,
         remeasurements: remeasurementCount,
       });

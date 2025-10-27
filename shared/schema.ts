@@ -8,6 +8,7 @@ import {
   integer,
   decimal,
   text,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -89,14 +90,14 @@ export type Practice = typeof practices.$inferSelect;
 export const practiceMetrics = pgTable("practice_metrics", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   // Practice identification
-  clinicName: varchar("clinic_name"),
+  clinicName: varchar("clinic_name").notNull(),
   displayName: varchar("display_name"),
   group: varchar("group"), // G1, G2, G3, G4, G5
   practiceDisplayNameGroup: varchar("practice_display_name_group"),
   isActivePractice: integer("is_active_practice"), // NULLABLE in BigQuery
   
   // Pay period
-  currentPayPeriodNumber: integer("current_pay_period_number"), // NULLABLE in BigQuery
+  currentPayPeriodNumber: integer("current_pay_period_number").notNull(), // Required for upsert
   
   // YTD (Year-to-date) metrics
   billedPpsYtd: integer("billed_pps_ytd"),
@@ -153,7 +154,10 @@ export const practiceMetrics = pgTable("practice_metrics", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint on clinicName + currentPayPeriodNumber for upsert
+  uniqueClinicPeriod: unique("unique_clinic_period").on(table.clinicName, table.currentPayPeriodNumber),
+}));
 
 export const insertPracticeMetricsSchema = createInsertSchema(practiceMetrics).omit({
   id: true,

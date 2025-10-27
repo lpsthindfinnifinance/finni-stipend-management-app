@@ -45,6 +45,7 @@ export interface IStorage {
   // Practice operations
   getPractices(filters?: { search?: string; portfolio?: string }): Promise<any[]>;
   getPracticeById(id: string): Promise<any | undefined>;
+  getPracticeByClinicName(clinicName: string): Promise<Practice | undefined>;
   createPractice(practice: InsertPractice): Promise<Practice>;
   updatePracticePortfolio(id: string, portfolioId: string): Promise<Practice>;
   
@@ -52,6 +53,7 @@ export interface IStorage {
   getPracticeMetrics(practiceId: string, payPeriod?: number): Promise<PracticeMetrics[]>;
   upsertPracticeMetrics(metrics: InsertPracticeMetrics): Promise<PracticeMetrics>;
   getCurrentMetrics(practiceId: string, payPeriod: number): Promise<PracticeMetrics | undefined>;
+  getPreviousMetricsByClinicName(clinicName: string, payPeriod: number): Promise<PracticeMetrics | undefined>;
   
   // Practice ledger operations
   getPracticeLedger(practiceId: string): Promise<any[]>;
@@ -206,6 +208,11 @@ export class DatabaseStorage implements IStorage {
     return practice;
   }
 
+  async getPracticeByClinicName(clinicName: string): Promise<Practice | undefined> {
+    const [practice] = await db.select().from(practices).where(eq(practices.name, clinicName));
+    return practice;
+  }
+
   async createPractice(practice: InsertPractice): Promise<Practice> {
     const [created] = await db.insert(practices).values(practice).returning();
     return created;
@@ -225,32 +232,29 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async getPracticeMetrics(practiceId: string, payPeriod?: number): Promise<PracticeMetrics[]> {
+    // Note: This method is deprecated as the new schema uses clinicName instead of practiceId
+    // Keeping for backward compatibility - returns all metrics
     if (payPeriod) {
       return await db
         .select()
         .from(practiceMetrics)
-        .where(and(
-          eq(practiceMetrics.practiceId, practiceId),
-          eq(practiceMetrics.payPeriod, payPeriod)
-        ));
+        .where(eq(practiceMetrics.currentPayPeriodNumber, payPeriod));
     }
     return await db
       .select()
       .from(practiceMetrics)
-      .where(eq(practiceMetrics.practiceId, practiceId))
-      .orderBy(desc(practiceMetrics.payPeriod));
+      .orderBy(desc(practiceMetrics.currentPayPeriodNumber));
   }
 
   async upsertPracticeMetrics(metrics: InsertPracticeMetrics): Promise<PracticeMetrics> {
+    // Upsert based on clinicName + currentPayPeriodNumber (unique combination)
     const [result] = await db
       .insert(practiceMetrics)
       .values(metrics)
       .onConflictDoUpdate({
-        target: [practiceMetrics.practiceId, practiceMetrics.payPeriod],
+        target: [practiceMetrics.clinicName, practiceMetrics.currentPayPeriodNumber],
         set: {
-          grossMarginPercent: metrics.grossMarginPercent,
-          collectionsPercent: metrics.collectionsPercent,
-          stipendCap: metrics.stipendCap,
+          ...metrics,
           updatedAt: new Date(),
         },
       })
@@ -259,12 +263,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCurrentMetrics(practiceId: string, payPeriod: number): Promise<PracticeMetrics | undefined> {
+    // This method is deprecated but kept for backward compatibility
+    // New code should use getPreviousMetricsByClinicName
+    const [metrics] = await db
+      .select()
+      .from(practiceMetrics)
+      .where(eq(practiceMetrics.currentPayPeriodNumber, payPeriod));
+    return metrics;
+  }
+
+  async getPreviousMetricsByClinicName(clinicName: string, payPeriod: number): Promise<PracticeMetrics | undefined> {
     const [metrics] = await db
       .select()
       .from(practiceMetrics)
       .where(and(
-        eq(practiceMetrics.practiceId, practiceId),
-        eq(practiceMetrics.payPeriod, payPeriod)
+        eq(practiceMetrics.clinicName, clinicName),
+        eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
       ));
     return metrics;
   }
