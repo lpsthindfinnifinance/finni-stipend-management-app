@@ -47,12 +47,12 @@ export default function PayPeriods() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const { data: currentPeriod } = useQuery({
+  const { data: currentPeriod } = useQuery<any>({
     queryKey: ["/api/pay-periods/current"],
     enabled: isAuthenticated,
   });
 
-  const { data: periods, isLoading } = useQuery({
+  const { data: periods, isLoading } = useQuery<any[]>({
     queryKey: ["/api/pay-periods"],
     enabled: isAuthenticated,
   });
@@ -62,12 +62,18 @@ export default function PayPeriods() {
       return await apiRequest("/api/pay-periods/import", "POST", { csvData });
     },
     onSuccess: (data: any) => {
+      const totalRemeasurementDelta = data.remeasurements?.reduce((sum: number, r: any) => 
+        sum + Math.abs(parseFloat(r.delta || 0)), 0
+      ) || 0;
+      
       toast({
         title: "Import Successful",
-        description: `${data.imported} metrics imported, ${data.remeasurements} remeasurements applied`,
+        description: `${data.imported} practice metrics imported for PP${data.payPeriod || currentPeriod?.id}. ${data.remeasurements?.length || 0} remeasurements ($${totalRemeasurementDelta.toFixed(2)} total delta)`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setShowImportDialog(false);
       setCsvContent("");
       setCsvFileName("");
@@ -266,7 +272,7 @@ export default function PayPeriods() {
             <DialogHeader>
               <DialogTitle>Import BigQuery Data</DialogTitle>
               <DialogDescription>
-                Upload a CSV file with practice metrics (practice_id, gross_margin_percent, collections_percent)
+                Upload CSV export from BigQuery table: bizops.finance_Views.perf_comp_practice_aggregate_KPIs_v1_Stipends_PP
               </DialogDescription>
             </DialogHeader>
 
@@ -274,14 +280,16 @@ export default function PayPeriods() {
               <Alert>
                 <FileText className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Expected CSV format:</strong>
-                  <pre className="text-xs mt-2 p-2 bg-muted rounded">
-practice_id,gross_margin_percent,collections_percent{'\n'}
-P001,45.5,82.3{'\n'}
-P002,52.1,78.9
-                  </pre>
+                  <strong>Required Columns (40+):</strong>
+                  <div className="text-xs mt-2 space-y-1 text-muted-foreground">
+                    <p><strong>Core:</strong> Practice_ID, CurrentPayPeriod_Number, Group_Name, Entity_ID, Entity_Name</p>
+                    <p><strong>Performance:</strong> GrossMargin_Percent, Collections_Percent_Trailing3Periods, StipendCapAvgFinal</p>
+                    <p><strong>Balance:</strong> NegativeEarningsCap, OpeningBalance_CurrentPP, CommittedStipend_CurrentPP</p>
+                    <p><strong>Revenue:</strong> Revenue_CurrentPP, Revenue_Trailing3Periods, RevChange_CurrentVPrior</p>
+                    <p><strong>Full list:</strong> See BigQuery table schema for all 40+ columns</p>
+                  </div>
                   <p className="text-xs mt-2 text-muted-foreground">
-                    Stipend cap will be calculated as: 0.6 × GM% + 0.4 × Collections%
+                    System will auto-calculate remeasurement based on StipendCapAvgFinal vs previous period
                   </p>
                 </AlertDescription>
               </Alert>
