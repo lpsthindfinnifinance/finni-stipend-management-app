@@ -4,21 +4,30 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
-- **2025-10-27**: BigQuery Integration & Negative Earnings Cap System (Tasks 1-8 Complete)
-  - **Task 1**: Database schema updated with all 40+ BigQuery columns
-  - **Task 2**: BigQuery import logic with remeasurement calculation (StipendCapAvgFinal comparison)
-  - **Task 3**: Negative Earnings Cap database with payPeriod tracking
-  - **Task 4**: Negative Earnings page with group-level summaries and practice-level details
-  - **Task 5**: PSM request form for additional Negative Earnings cap with Finance approval
-  - **Task 6**: Pay Periods page updated with BigQuery table documentation
-  - **Task 7**: Navigation and routing complete
-  - **Task 8**: End-to-end testing verified - all pages functional
+- **2025-10-27**: Settings Page & System Administration Features Complete
+  - **Settings Page (Finance-only)**: Complete CRUD interface with tabbed navigation for Portfolios, Practices, and Users
+    - Portfolios tab: Create, edit, delete portfolios with safe-delete validation (prevents deletion with associated practices)
+    - Practices tab: Create, edit, delete practices with group assignment and relationship checks
+    - Users tab: Create, edit, delete users with role/portfolio assignment and validation
+    - All operations use React Query for optimistic updates and cache invalidation
+    - Finance-only access control at both page and API levels
+  - **CSV Template Download**: Standardized 7-column template (ClinicName, DisplayName, Group, PayPeriod, StipendCap, NegativeEarningsCap, NegativeEarningsUtilized)
+  - **Pay Periods Enhancements**: CSV template download button, filtered display (Period 21+)
+  - **Dynamic Header**: Current pay period now fetched from API and displayed in header
+  - **Navigation**: Finance-only Settings link added to sidebar
+  - Database schemas extended with insert/update/delete validation using drizzle-zod
+  - Backend API routes with comprehensive relationship checks and safe-delete logic
+  - All CRUD operations properly secured with Finance middleware
+
+- **2025-10-27**: BigQuery Integration & Negative Earnings Cap System
   - Complete 40+ column BigQuery schema with case-sensitive header handling
-  - Accurate remeasurement using previous period StipendCapAvgFinal comparison
-  - Negative Earnings Cap utilization scoped per pay period
+  - BigQuery import logic with remeasurement calculation (StipendCapAvgFinal comparison)
+  - Negative Earnings Cap database with payPeriod tracking
+  - Negative Earnings page with group-level summaries and practice-level details
+  - PSM request form for additional Negative Earnings cap with Finance approval
+  - Pay Periods page updated with BigQuery table documentation
   - Database joins fixed: practiceMetrics.clinicName → practices.id
   - All API endpoints functional and tested
-  - System production-ready pending BigQuery CSV import
 
 - **2025-10-23**: Complete MVP Core Features
   - Stipend Request Workflow fully functional with multi-level approvals
@@ -86,8 +95,9 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
 - `/approvals` - Multi-level approval interface (PSM, Lead PSM, Finance)
 - `/allocations` - Inter-PSM allocation management
 - `/reports` - Comprehensive reports and analytics
-- `/pay-periods` - Pay period management with BigQuery import (Finance only)
+- `/pay-periods` - Pay period management with BigQuery import and CSV template download (Finance only)
 - `/negative-earnings` - Negative Earnings Cap tracking with group summaries and PSM request form
+- `/settings` - System administration with CRUD for Portfolios, Practices, and Users (Finance only)
 
 **Components:**
 - `AppSidebar` - Role-based navigation
@@ -107,6 +117,20 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
 - `POST /api/stipend-requests/:id/approve` - Approve request
 - `POST /api/stipend-requests/:id/reject` - Reject request
 - `POST /api/allocations` - Inter-PSM allocation
+- `GET /api/pay-periods/current` - Current pay period info
+- `GET /api/templates/metrics` - Download CSV template for BigQuery imports
+- `GET /api/settings/portfolios` - List all portfolios (Finance only)
+- `POST /api/settings/portfolios` - Create portfolio (Finance only)
+- `PATCH /api/settings/portfolios/:id` - Update portfolio (Finance only)
+- `DELETE /api/settings/portfolios/:id` - Delete portfolio with safe-delete checks (Finance only)
+- `GET /api/settings/practices` - List all practices (Finance only)
+- `POST /api/settings/practices` - Create practice (Finance only)
+- `PATCH /api/settings/practices/:id` - Update practice (Finance only)
+- `DELETE /api/settings/practices/:id` - Delete practice with safe-delete checks (Finance only)
+- `GET /api/settings/users` - List all users (Finance only)
+- `POST /api/settings/users` - Create user (Finance only)
+- `PATCH /api/settings/users/:id` - Update user (Finance only)
+- `DELETE /api/settings/users/:id` - Delete user with safe-delete checks (Finance only)
 
 ### Authentication
 - Replit Auth (OpenID Connect)
