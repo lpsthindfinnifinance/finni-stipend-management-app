@@ -597,9 +597,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'ClinicName': 'clinicName',
         'DisplayName': 'displayName',
         'Group': 'group',
+        'PayPeriod': 'payPeriod', // Simplified template format
         'Practice_DisplayName_Group': 'practiceDisplayNameGroup',
         'IsActivePractice': 'isActivePractice',
-        'CurrentPayPeriod_Number': 'currentPayPeriodNumber', // Fixed case to match BigQuery header
+        'CurrentPayPeriod_Number': 'currentPayPeriodNumber', // Full BigQuery format
         
         // YTD metrics - Basic
         'BilledPPs_YTD': 'billedPpsYtd',
@@ -644,12 +645,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'PerformanceMetric_YTD': 'performanceMetricYtd',
         'PerformanceMetric_L6PP': 'performanceMetricL6pp',
         
-        // Stipend caps
+        // Stipend caps (supports both simplified and full BigQuery formats)
+        'StipendCap': 'stipendCap', // Simplified template format
         'StipendCapRate_FY': 'stipendCapRateFy',
         'StipendCapRate_Annual': 'stipendCapRateAnnual',
         'StipendCap_FY': 'stipendCapFy',
         'StipendCap_AnnualizedAdj': 'stipendCapAnnualizedAdj',
-        'StipendCapAvgFinal': 'stipendCapAvgFinal', // KEY FOR REMEASUREMENT
+        'StipendCapAvgFinal': 'stipendCapAvgFinal', // Full BigQuery format
         
         // Negative earnings cap
         'NegativeEarningsCap': 'negativeEarningsCap',
@@ -705,7 +707,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           group: getValue('Group'),
           practiceDisplayNameGroup: getValue('Practice_DisplayName_Group'),
           isActivePractice: parseIntValue(getValue('IsActivePractice')),
-          currentPayPeriodNumber: parseIntValue(getValue('CurrentPayPeriod_Number')) || currentPeriod.id, // Fixed case to match BigQuery header
+          // Support both simplified template (PayPeriod) and full BigQuery format (CurrentPayPeriod_Number)
+          currentPayPeriodNumber: parseIntValue(getValue('PayPeriod')) || parseIntValue(getValue('CurrentPayPeriod_Number')) || currentPeriod.id,
           
           // YTD metrics - Complete set
           billedPpsYtd: parseIntValue(getValue('BilledPPs_YTD')),
@@ -755,7 +758,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stipendCapRateAnnual: parseNumeric(getValue('StipendCapRate_Annual')),
           stipendCapFy: parseNumeric(getValue('StipendCap_FY')),
           stipendCapAnnualizedAdj: parseNumeric(getValue('StipendCap_AnnualizedAdj')),
-          stipendCapAvgFinal: parseNumeric(getValue('StipendCapAvgFinal')), // KEY FIELD FOR REMEASUREMENT
+          // Support both simplified template (StipendCap) and full BigQuery format (StipendCapAvgFinal)
+          stipendCapAvgFinal: parseNumeric(getValue('StipendCap')) || parseNumeric(getValue('StipendCapAvgFinal')),
           
           // Negative earnings cap
           negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap')),
