@@ -490,11 +490,12 @@ export class DatabaseStorage implements IStorage {
   
   async getNegativeEarningsSummary(payPeriod: number): Promise<any[]> {
     // Get all practices with their current period metrics
+    // Note: practiceMetrics.clinicName (from BigQuery) matches practices.id (e.g., "P001")
     const result = await db
       .select({
         practiceId: practices.id,
         practiceName: practices.name,
-        clinicName: practices.clinicName,
+        clinicName: practiceMetrics.clinicName,
         portfolioId: practices.portfolioId,
         portfolioName: portfolios.name,
         negativeEarningsCap: practiceMetrics.negativeEarningsCap,
@@ -506,7 +507,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(
         practiceMetrics,
         and(
-          eq(practiceMetrics.clinicName, practices.clinicName),
+          eq(practiceMetrics.clinicName, practices.id),
           eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
         )
       );
