@@ -708,7 +708,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           practiceDisplayNameGroup: getValue('Practice_DisplayName_Group'),
           isActivePractice: parseIntValue(getValue('IsActivePractice')),
           // Support both simplified template (PayPeriod) and full BigQuery format (CurrentPayPeriod_Number)
-          currentPayPeriodNumber: parseIntValue(getValue('PayPeriod')) || parseIntValue(getValue('CurrentPayPeriod_Number')) || currentPeriod.id,
+          // Use nullish coalescing so that 0 is treated as valid
+          currentPayPeriodNumber: parseIntValue(getValue('PayPeriod')) ?? parseIntValue(getValue('CurrentPayPeriod_Number')) ?? currentPeriod.id,
           
           // YTD metrics - Complete set
           billedPpsYtd: parseIntValue(getValue('BilledPPs_YTD')),
@@ -759,7 +760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stipendCapFy: parseNumeric(getValue('StipendCap_FY')),
           stipendCapAnnualizedAdj: parseNumeric(getValue('StipendCap_AnnualizedAdj')),
           // Support both simplified template (StipendCap) and full BigQuery format (StipendCapAvgFinal)
-          stipendCapAvgFinal: parseNumeric(getValue('StipendCap')) || parseNumeric(getValue('StipendCapAvgFinal')),
+          // Use nullish coalescing so that 0 is treated as valid
+          stipendCapAvgFinal: parseNumeric(getValue('StipendCap')) ?? parseNumeric(getValue('StipendCapAvgFinal')),
           
           // Negative earnings cap
           negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap')),
@@ -790,9 +792,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.upsertPracticeMetrics(importData);
         importedCount++;
 
+        console.log(`Processing ${importData.clinicName}: stipendCapAvgFinal = ${importData.stipendCapAvgFinal}`);
+
         // Check if StipendCapAvgFinal is null - this is required for ledger entries
         if (importData.stipendCapAvgFinal === null) {
           skippedNullStipendCap++;
+          console.log(`  SKIPPED: stipendCapAvgFinal is null`);
           continue;
         }
 
@@ -800,11 +805,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get previous period number from the imported data
         const currentPeriodNum = importData.currentPayPeriodNumber;
         const previousPeriodNum = currentPeriodNum - 1;
+        console.log(`  currentPeriod: ${currentPeriodNum}, previousPeriod: ${previousPeriodNum}`);
 
         // Find practice by clinic name to get practiceId for ledger entry
         const practice = await storage.getPracticeByClinicName(importData.clinicName);
         
-        if (!practice) continue; // Skip if practice not found
+        if (!practice) {
+          console.log(`  SKIPPED: practice not found for ${importData.clinicName}`);
+          continue; // Skip if practice not found
+        }
+        console.log(`  Found practice: ${practice.id}`);
         
         // Only look for previous metrics if we're not in the first period
         if (previousPeriodNum > 0) {
