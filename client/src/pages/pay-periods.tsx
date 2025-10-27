@@ -59,7 +59,8 @@ export default function PayPeriods() {
 
   const importMutation = useMutation({
     mutationFn: async (csvData: string) => {
-      return await apiRequest("/api/pay-periods/import", "POST", { csvData });
+      const response = await apiRequest("POST", "/api/pay-periods/import", { csvData });
+      return await response.json();
     },
     onSuccess: (data: any) => {
       const totalRemeasurementDelta = data.remeasurements?.reduce((sum: number, r: any) => 
