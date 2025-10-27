@@ -83,16 +83,74 @@ export type InsertPractice = z.infer<typeof insertPracticeSchema>;
 export type Practice = typeof practices.$inferSelect;
 
 // ============================================================================
-// PRACTICE METRICS TABLE (BigQuery Import Data)
+// PRACTICE METRICS TABLE (BigQuery Import Data - Full Table)
 // ============================================================================
 
 export const practiceMetrics = pgTable("practice_metrics", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  practiceId: varchar("practice_id").notNull(),
-  payPeriod: integer("pay_period").notNull(), // 1-26 for 2025
-  grossMarginPercent: decimal("gross_margin_percent", { precision: 5, scale: 2 }).notNull(),
-  collectionsPercent: decimal("collections_percent", { precision: 5, scale: 2 }).notNull(),
-  stipendCap: decimal("stipend_cap", { precision: 12, scale: 2 }).notNull(), // Calculated: 0.6*GM% + 0.4*Collections%
+  // Practice identification
+  clinicName: varchar("clinic_name"),
+  displayName: varchar("display_name"),
+  group: varchar("group"), // G1, G2, G3, G4, G5
+  practiceDisplayNameGroup: varchar("practice_display_name_group"),
+  isActivePractice: integer("is_active_practice"), // NULLABLE in BigQuery
+  
+  // Pay period
+  currentPayPeriodNumber: integer("current_pay_period_number"), // NULLABLE in BigQuery
+  
+  // YTD (Year-to-date) metrics
+  billedPpsYtd: integer("billed_pps_ytd"),
+  netRevenueSubTotalYtd: decimal("net_revenue_sub_total_ytd", { precision: 12, scale: 2 }),
+  rentLeaseStipendYtd: decimal("rent_lease_stipend_ytd", { precision: 12, scale: 2 }),
+  staffTrainingCostYtd: decimal("staff_training_cost_ytd", { precision: 12, scale: 2 }),
+  totalStaffCostYtd: decimal("total_staff_cost_ytd", { precision: 12, scale: 2 }),
+  miscellaneousYtd: decimal("miscellaneous_ytd", { precision: 12, scale: 2 }),
+  hqErrorsStipendYtd: decimal("hq_errors_stipend_ytd", { precision: 12, scale: 2 }),
+  poErrorsStipendYtd: decimal("po_errors_stipend_ytd", { precision: 12, scale: 2 }),
+  negativeEarningsYtd: decimal("negative_earnings_ytd", { precision: 12, scale: 2 }),
+  brexExpensesReimbursementMktYtd: decimal("brex_expenses_reimbursement_mkt_ytd", { precision: 12, scale: 2 }),
+  coveredBenefitsYtd: decimal("covered_benefits_ytd", { precision: 12, scale: 2 }),
+  salesMarketingSubTotalYtd: decimal("sales_marketing_sub_total_ytd", { precision: 12, scale: 2 }),
+  grossMarginSubTotalYtd: decimal("gross_margin_sub_total_ytd", { precision: 12, scale: 2 }),
+  totalPromotionalSpendYtd: decimal("total_promotional_spend_ytd", { precision: 12, scale: 2 }),
+  grossMarginBeforePromSpendYtd: decimal("gross_margin_before_prom_spend_ytd", { precision: 12, scale: 2 }),
+  promotionalSpendExclHqErrNegErnsYtd: decimal("promotional_spend_excl_hq_err_neg_erns_ytd", { precision: 12, scale: 2 }),
+  
+  // L6PP (Last 6 pay periods) metrics
+  billedPpsL6pp: integer("billed_pps_l6pp"),
+  netRevenueSubTotalL6pp: decimal("net_revenue_sub_total_l6pp", { precision: 12, scale: 2 }),
+  grossMarginSubTotalL6pp: decimal("gross_margin_sub_total_l6pp", { precision: 12, scale: 2 }),
+  totalPromotionalSpendL6pp: decimal("total_promotional_spend_l6pp", { precision: 12, scale: 2 }),
+  grossMarginBeforePromSpendL6pp: decimal("gross_margin_before_prom_spend_l6pp", { precision: 12, scale: 2 }),
+  promotionalSpendExclHqErrNegErnsL6pp: decimal("promotional_spend_excl_hq_err_neg_erns_l6pp", { precision: 12, scale: 2 }),
+  
+  // 2PP Lag (2 pay periods lag) metrics
+  chargeDollars2ppLag: decimal("charge_dollars_2pp_lag", { precision: 12, scale: 2 }),
+  arboraCollections2ppLag: decimal("arbora_collections_2pp_lag", { precision: 12, scale: 2 }),
+  
+  // Percentages
+  grossMarginBeforeStipendPercentYtd: decimal("gross_margin_before_stipend_percent_ytd", { precision: 5, scale: 2 }),
+  grossMarginBeforeStipendPercentL6pp: decimal("gross_margin_before_stipend_percent_l6pp", { precision: 5, scale: 2 }),
+  collectionsPercent2ppLag: decimal("collections_percent_2pp_lag", { precision: 5, scale: 2 }),
+  
+  // Revenue projections
+  netRevenueFy: decimal("net_revenue_fy", { precision: 12, scale: 2 }),
+  netRevenueAnnualizedL6pp: decimal("net_revenue_annualized_l6pp", { precision: 12, scale: 2 }),
+  
+  // Performance metrics
+  performanceMetricYtd: decimal("performance_metric_ytd", { precision: 5, scale: 2 }),
+  performanceMetricL6pp: decimal("performance_metric_l6pp", { precision: 5, scale: 2 }),
+  
+  // Stipend caps
+  stipendCapRateFy: decimal("stipend_cap_rate_fy", { precision: 5, scale: 2 }),
+  stipendCapRateAnnual: decimal("stipend_cap_rate_annual", { precision: 5, scale: 2 }),
+  stipendCapFy: decimal("stipend_cap_fy", { precision: 12, scale: 2 }),
+  stipendCapAnnualizedAdj: decimal("stipend_cap_annualized_adj", { precision: 12, scale: 2 }),
+  stipendCapAvgFinal: decimal("stipend_cap_avg_final", { precision: 12, scale: 2 }), // NULLABLE in BigQuery, USED FOR REMEASUREMENT
+  
+  // Negative earnings cap
+  negativeEarningsCap: decimal("negative_earnings_cap", { precision: 12, scale: 2 }),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -247,6 +305,46 @@ export type InsertPracticeReassignment = z.infer<typeof insertPracticeReassignme
 export type PracticeReassignment = typeof practiceReassignments.$inferSelect;
 
 // ============================================================================
+// NEGATIVE EARNINGS CAP REQUESTS TABLE
+// ============================================================================
+
+export const negativeEarningsCapRequests = pgTable("negative_earnings_cap_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  practiceId: varchar("practice_id").notNull(),
+  requestorId: varchar("requestor_id").notNull(), // PSM who submitted
+  requestedAmount: decimal("requested_amount", { precision: 12, scale: 2 }).notNull(),
+  justification: text("justification").notNull(),
+  status: varchar("status").notNull().default("pending_finance"), // pending_finance, approved, rejected
+  approvedAmount: decimal("approved_amount", { precision: 12, scale: 2 }),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectedBy: varchar("rejected_by"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertNegativeEarningsCapRequestSchema = createInsertSchema(negativeEarningsCapRequests).omit({
+  id: true,
+  status: true,
+  approvedAmount: true,
+  approvedAt: true,
+  approvedBy: true,
+  rejectedAt: true,
+  rejectedBy: true,
+  rejectionReason: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  justification: z.string().min(50, "Justification must be at least 50 characters"),
+  requestedAmount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
+});
+
+export type InsertNegativeEarningsCapRequest = z.infer<typeof insertNegativeEarningsCapRequestSchema>;
+export type NegativeEarningsCapRequest = typeof negativeEarningsCapRequests.$inferSelect;
+
+// ============================================================================
 // RELATIONS
 // ============================================================================
 
@@ -267,17 +365,10 @@ export const practicesRelations = relations(practices, ({ one, many }) => ({
     fields: [practices.portfolioId],
     references: [portfolios.id],
   }),
-  metrics: many(practiceMetrics),
   ledgerEntries: many(practiceLedger),
   stipendRequests: many(stipendRequests),
   reassignments: many(practiceReassignments),
-}));
-
-export const practiceMetricsRelations = relations(practiceMetrics, ({ one }) => ({
-  practice: one(practices, {
-    fields: [practiceMetrics.practiceId],
-    references: [practices.id],
-  }),
+  negativeEarningsCapRequests: many(negativeEarningsCapRequests),
 }));
 
 export const practiceLedgerRelations = relations(practiceLedger, ({ one }) => ({
@@ -331,5 +422,16 @@ export const practiceReassignmentsRelations = relations(practiceReassignments, (
   toPortfolio: one(portfolios, {
     fields: [practiceReassignments.toPortfolioId],
     references: [portfolios.id],
+  }),
+}));
+
+export const negativeEarningsCapRequestsRelations = relations(negativeEarningsCapRequests, ({ one }) => ({
+  practice: one(practices, {
+    fields: [negativeEarningsCapRequests.practiceId],
+    references: [practices.id],
+  }),
+  requestor: one(users, {
+    fields: [negativeEarningsCapRequests.requestorId],
+    references: [users.id],
   }),
 }));
