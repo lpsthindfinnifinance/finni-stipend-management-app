@@ -63,13 +63,9 @@ export default function PayPeriods() {
       return await response.json();
     },
     onSuccess: (data: any) => {
-      const totalRemeasurementDelta = data.remeasurements?.reduce((sum: number, r: any) => 
-        sum + Math.abs(parseFloat(r.delta || 0)), 0
-      ) || 0;
-      
       toast({
         title: "Import Successful",
-        description: `${data.imported} practice metrics imported for PP${data.payPeriod || currentPeriod?.id}. ${data.remeasurements?.length || 0} remeasurements ($${totalRemeasurementDelta.toFixed(2)} total delta)`,
+        description: `${data.imported} practice metrics imported for PP${currentPeriod?.id}. ${data.remeasurements || 0} remeasurements processed.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods/current"] });
