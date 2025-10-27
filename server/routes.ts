@@ -779,11 +779,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedCount = 0;
       let remeasurementCount = 0;
       let openingBalanceCount = 0;
+      let skippedNullStipendCap = 0;
 
       for (const importData of imports) {
         // Upsert metrics first
         await storage.upsertPracticeMetrics(importData);
         importedCount++;
+
+        // Check if StipendCapAvgFinal is null - this is required for ledger entries
+        if (importData.stipendCapAvgFinal === null) {
+          skippedNullStipendCap++;
+          continue;
+        }
 
         // Calculate remeasurement adjustment using StipendCapAvgFinal
         // Get previous period number from the imported data
@@ -853,11 +860,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const balanceMsg = openingBalanceCount > 0 ? `, ${openingBalanceCount} opening balances` : '';
+      const warningMsg = skippedNullStipendCap > 0 ? ` ⚠️ WARNING: ${skippedNullStipendCap} practices skipped - StipendCapAvgFinal column is empty or missing in your CSV!` : '';
+      
       res.json({ 
-        message: `Successfully imported ${importedCount} practice metrics (${remeasurementCount} remeasurements${balanceMsg})`,
+        message: `Successfully imported ${importedCount} practice metrics (${remeasurementCount} remeasurements${balanceMsg})${warningMsg}`,
         imported: importedCount,
         remeasurements: remeasurementCount,
         openingBalances: openingBalanceCount,
+        skippedNullStipendCap,
       });
     } catch (error) {
       console.error("Error importing BigQuery data:", error);
