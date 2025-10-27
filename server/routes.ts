@@ -778,6 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process imports and create ledger entries for remeasurement
       let importedCount = 0;
       let remeasurementCount = 0;
+      let openingBalanceCount = 0;
 
       for (const importData of imports) {
         // Upsert metrics first
@@ -789,6 +790,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentPeriodNum = importData.currentPayPeriodNumber;
         const previousPeriodNum = currentPeriodNum - 1;
 
+        // Find practice by clinic name to get practiceId for ledger entry
+        const practice = await storage.getPracticeByClinicName(importData.clinicName);
+        
+        if (!practice) continue; // Skip if practice not found
+        
         // Only look for previous metrics if we're not in the first period
         if (previousPeriodNum > 0) {
           const previousMetrics = await storage.getPreviousMetricsByClinicName(
@@ -796,17 +802,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             previousPeriodNum
           );
 
-          // Only calculate remeasurement if both current and previous stipendCapAvgFinal exist
-          if (previousMetrics && importData.stipendCapAvgFinal !== null && previousMetrics.stipendCapAvgFinal !== null) {
+          // If no previous metrics exist, create opening balance from current StipendCapAvgFinal
+          if (!previousMetrics && importData.stipendCapAvgFinal !== null) {
+            const openingBalance = Number(importData.stipendCapAvgFinal);
+            if (openingBalance > 0.01) {
+              await storage.createLedgerEntry({
+                practiceId: practice.id,
+                payPeriod: currentPeriodNum,
+                transactionType: 'opening_balance',
+                amount: openingBalance.toString(),
+                description: `Opening balance for PP${currentPeriodNum}: $${openingBalance.toFixed(2)}`,
+              });
+              openingBalanceCount++;
+            }
+          }
+          // If previous metrics exist, calculate remeasurement
+          else if (previousMetrics && importData.stipendCapAvgFinal !== null && previousMetrics.stipendCapAvgFinal !== null) {
             const previousCap = Number(previousMetrics.stipendCapAvgFinal);
             const newCap = Number(importData.stipendCapAvgFinal);
             const adjustment = newCap - previousCap;
-
-            // Find practice by clinic name to get practiceId for ledger entry
-            const practice = await storage.getPracticeByClinicName(importData.clinicName);
             
-            // Only create ledger entry if adjustment is significant (> $0.01) and practice exists
-            if (practice && Math.abs(adjustment) > 0.01) {
+            // Only create ledger entry if adjustment is significant (> $0.01)
+            if (Math.abs(adjustment) > 0.01) {
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
@@ -817,13 +834,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
               remeasurementCount++;
             }
           }
+        } else {
+          // First period ever - create opening balance
+          if (importData.stipendCapAvgFinal !== null) {
+            const openingBalance = Number(importData.stipendCapAvgFinal);
+            if (openingBalance > 0.01) {
+              await storage.createLedgerEntry({
+                practiceId: practice.id,
+                payPeriod: currentPeriodNum,
+                transactionType: 'opening_balance',
+                amount: openingBalance.toString(),
+                description: `Opening balance for PP${currentPeriodNum}: $${openingBalance.toFixed(2)}`,
+              });
+              openingBalanceCount++;
+            }
+          }
         }
       }
 
+      const balanceMsg = openingBalanceCount > 0 ? `, ${openingBalanceCount} opening balances` : '';
       res.json({ 
-        message: `Successfully imported ${importedCount} practice metrics (${remeasurementCount} remeasurements)`,
+        message: `Successfully imported ${importedCount} practice metrics (${remeasurementCount} remeasurements${balanceMsg})`,
         imported: importedCount,
         remeasurements: remeasurementCount,
+        openingBalances: openingBalanceCount,
       });
     } catch (error) {
       console.error("Error importing BigQuery data:", error);

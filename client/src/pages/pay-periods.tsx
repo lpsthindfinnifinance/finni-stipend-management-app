@@ -63,9 +63,11 @@ export default function PayPeriods() {
       return await response.json();
     },
     onSuccess: (data: any) => {
+      const balanceMsg = data.openingBalances > 0 ? ` ${data.openingBalances} opening balances created.` : '';
+      const remeasureMsg = data.remeasurements > 0 ? ` ${data.remeasurements} remeasurements applied.` : '';
       toast({
         title: "Import Successful",
-        description: `${data.imported} practice metrics imported for PP${currentPeriod?.id}. ${data.remeasurements || 0} remeasurements automatically calculated and applied to practice ledgers.`,
+        description: `${data.imported} practice metrics imported for PP${currentPeriod?.id}.${balanceMsg}${remeasureMsg}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods/current"] });

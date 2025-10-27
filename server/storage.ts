@@ -791,27 +791,85 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async getDashboardSummary(userId: string, role: string, portfolioId?: string): Promise<any> {
-    // This is a placeholder implementation - will be enhanced with actual data
+    // Get practices based on role
+    let practicesList: Practice[] = [];
+    if (role === "PSM" && portfolioId) {
+      practicesList = await db.select().from(practices).where(eq(practices.portfolioId, portfolioId));
+    } else {
+      practicesList = await db.select().from(practices);
+    }
+
+    // Calculate total available balance from ledger
+    let totalAvailable = 0;
+    for (const practice of practicesList) {
+      const balance = await this.getPracticeBalance(practice.id);
+      totalAvailable += balance;
+    }
+
+    // Get pending approvals count (requests pending for this user's approval level)
+    let pendingCount = 0;
+    if (role === "PSM") {
+      const pending = await db.select().from(stipendRequests)
+        .where(eq(stipendRequests.status, 'pending_psm'));
+      pendingCount = pending.length;
+    } else if (role === "Lead PSM") {
+      const pending = await db.select().from(stipendRequests)
+        .where(eq(stipendRequests.status, 'pending_lead_psm'));
+      pendingCount = pending.length;
+    } else if (role === "Finance") {
+      const pending = await db.select().from(stipendRequests)
+        .where(eq(stipendRequests.status, 'pending_finance'));
+      pendingCount = pending.length;
+    }
+
     return {
-      totalCap: 0,
-      allocated: 0,
-      available: 0,
-      pendingApprovals: 0,
+      totalCap: totalAvailable,
+      allocated: 0, // Will be sum of approved but not yet disbursed stipends
+      available: totalAvailable,
+      pendingApprovals: pendingCount,
       utilizationPercent: 0,
     };
   }
 
   async getPortfolioSummaries(): Promise<any[]> {
-    // This is a placeholder implementation - will be enhanced with actual data
     const portfolioList = await this.getPortfolios();
-    return portfolioList.map(p => ({
-      id: p.id,
-      name: p.name,
-      psmName: null,
-      totalCap: 0,
-      allocated: 0,
-      remaining: 0,
-    }));
+    
+    const summaries = [];
+    for (const portfolio of portfolioList) {
+      // Get all practices in this portfolio
+      const portfolioPractices = await db.select()
+        .from(practices)
+        .where(eq(practices.portfolioId, portfolio.id));
+      
+      // Calculate total balance from ledger for all practices
+      let totalBalance = 0;
+      for (const practice of portfolioPractices) {
+        const balance = await this.getPracticeBalance(practice.id);
+        totalBalance += balance;
+      }
+      
+      // Get PSM name by finding user assigned to this portfolio
+      let psmName = null;
+      const [psm] = await db.select().from(users)
+        .where(eq(users.portfolioId, portfolio.id))
+        .limit(1);
+      if (psm) {
+        psmName = psm.firstName && psm.lastName 
+          ? `${psm.firstName} ${psm.lastName}` 
+          : psm.email;
+      }
+      
+      summaries.push({
+        id: portfolio.id,
+        name: portfolio.name,
+        psmName,
+        totalCap: totalBalance,
+        allocated: 0,
+        remaining: totalBalance,
+      });
+    }
+    
+    return summaries;
   }
 }
 
