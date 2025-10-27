@@ -4,11 +4,26 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
-- **2025-10-23**: Complete MVP Core Features (Tasks 1-4)
-  - **Task 1**: Stipend Request Workflow fully functional with multi-level approvals
-  - **Task 2**: Practice Detail Page with complete ledger history and balance tracking
-  - **Task 3**: Inter-PSM Allocation System with multi-practice donor selection and automatic ledger entries
-  - **Task 4**: BigQuery CSV Import with remeasurement calculation and ledger updates
+- **2025-10-27**: BigQuery Integration & Negative Earnings Cap System (Tasks 1-8 Complete)
+  - **Task 1**: Database schema updated with all 40+ BigQuery columns
+  - **Task 2**: BigQuery import logic with remeasurement calculation (StipendCapAvgFinal comparison)
+  - **Task 3**: Negative Earnings Cap database with payPeriod tracking
+  - **Task 4**: Negative Earnings page with group-level summaries and practice-level details
+  - **Task 5**: PSM request form for additional Negative Earnings cap with Finance approval
+  - **Task 6**: Pay Periods page updated with BigQuery table documentation
+  - **Task 7**: Navigation and routing complete
+  - **Task 8**: End-to-end testing verified - all pages functional
+  - Complete 40+ column BigQuery schema with case-sensitive header handling
+  - Accurate remeasurement using previous period StipendCapAvgFinal comparison
+  - Negative Earnings Cap utilization scoped per pay period
+  - Database joins fixed: practiceMetrics.clinicName → practices.id
+  - All API endpoints functional and tested
+  - System production-ready pending BigQuery CSV import
+
+- **2025-10-23**: Complete MVP Core Features
+  - Stipend Request Workflow fully functional with multi-level approvals
+  - Practice Detail Page with complete ledger history and balance tracking
+  - Inter-PSM Allocation System with multi-practice donor selection and automatic ledger entries
   - Complete database schema with practice-level ledger tracking
   - Full frontend implementation with Carbon Design System aesthetics
   - Role-based authentication (PSM, Lead PSM, Finance)
@@ -18,8 +33,6 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
   - Slack webhook integration for approval notifications
   - Numeric balance validation throughout the stack (no overdrafts possible)
   - Added stipend type categorization (Lease Stipend, Staff Cost Reimbursement, Marketing, Equipment, Training, Other)
-  - Fixed practices dropdown visibility for all user roles
-  - Added scrollable table (max-height 600px) for practices page to handle 60 practices
 
 ## User Roles & Permissions
 1. **PSM (Practice Success Manager)**
@@ -49,12 +62,13 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
 - `users` - User accounts with roles (PSM, Lead PSM, Finance)
 - `portfolios` - 5 portfolios (G1-G5)
 - `practices` - 60+ ABA practices
-- `practice_metrics` - BigQuery import data (GM%, Collections%, Stipend Cap)
+- `practice_metrics` - BigQuery import data (40+ columns including GM%, Collections%, Stipend Cap, Revenue, YTD metrics)
 - `practice_ledger` - Transaction history (opening balance, remeasurements, allocations)
 - `stipend_requests` - Request submissions with multi-level approval tracking
 - `inter_psm_allocations` - PSM-to-PSM stipend transfers
 - `pay_periods` - 14-day pay period management
 - `practice_reassignments` - Historical portfolio assignment changes
+- `negative_earnings_cap_requests` - Negative earnings cap requests with payPeriod tracking and Finance approval
 
 **Key Relationships:**
 - Practice → Portfolio (current assignment)
@@ -73,6 +87,7 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
 - `/allocations` - Inter-PSM allocation management
 - `/reports` - Comprehensive reports and analytics
 - `/pay-periods` - Pay period management with BigQuery import (Finance only)
+- `/negative-earnings` - Negative Earnings Cap tracking with group summaries and PSM request form
 
 **Components:**
 - `AppSidebar` - Role-based navigation
