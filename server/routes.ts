@@ -792,12 +792,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.upsertPracticeMetrics(importData);
         importedCount++;
 
-        console.log(`Processing ${importData.clinicName}: stipendCapAvgFinal = ${importData.stipendCapAvgFinal}`);
-
         // Check if StipendCapAvgFinal is null - this is required for ledger entries
         if (importData.stipendCapAvgFinal === null) {
           skippedNullStipendCap++;
-          console.log(`  SKIPPED: stipendCapAvgFinal is null`);
           continue;
         }
 
@@ -805,16 +802,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get previous period number from the imported data
         const currentPeriodNum = importData.currentPayPeriodNumber;
         const previousPeriodNum = currentPeriodNum - 1;
-        console.log(`  currentPeriod: ${currentPeriodNum}, previousPeriod: ${previousPeriodNum}`);
 
         // Find practice by clinic name to get practiceId for ledger entry
         const practice = await storage.getPracticeByClinicName(importData.clinicName);
         
-        if (!practice) {
-          console.log(`  SKIPPED: practice not found for ${importData.clinicName}`);
-          continue; // Skip if practice not found
-        }
-        console.log(`  Found practice: ${practice.id}`);
+        if (!practice) continue; // Skip if practice not found
         
         // Only look for previous metrics if we're not in the first period
         if (previousPeriodNum > 0) {

@@ -314,7 +314,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPracticeByClinicName(clinicName: string): Promise<Practice | undefined> {
-    const [practice] = await db.select().from(practices).where(eq(practices.name, clinicName));
+    // ClinicName in CSV is the practice ID (e.g., 'abaco', 'nm-lc'), not the display name
+    const [practice] = await db.select().from(practices).where(eq(practices.id, clinicName));
     return practice;
   }
 
