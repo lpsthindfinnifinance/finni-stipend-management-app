@@ -8,6 +8,7 @@ import {
   LogOut,
   Calendar,
   ArrowRightLeft,
+  TrendingDown,
 } from "lucide-react";
 import {
   Sidebar,
@@ -78,6 +79,12 @@ export function AppSidebar() {
       url: "/pay-periods",
       icon: Calendar,
       roles: ["Finance"],
+    },
+    {
+      title: "Negative Earnings",
+      url: "/negative-earnings",
+      icon: TrendingDown,
+      roles: ["PSM", "Lead PSM", "Finance"],
     },
   ];
 

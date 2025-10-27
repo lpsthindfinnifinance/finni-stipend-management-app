@@ -8,6 +8,7 @@ import {
   interPsmAllocations,
   payPeriods,
   practiceReassignments,
+  negativeEarningsCapRequests,
   type User,
   type UpsertUser,
   type Portfolio,
@@ -26,6 +27,8 @@ import {
   type InsertPayPeriod,
   type PracticeReassignment,
   type InsertPracticeReassignment,
+  type NegativeEarningsCapRequest,
+  type InsertNegativeEarningsCapRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
@@ -80,6 +83,12 @@ export interface IStorage {
   // Practice reassignment operations
   createPracticeReassignment(reassignment: InsertPracticeReassignment): Promise<PracticeReassignment>;
   getPracticeReassignments(practiceId: string): Promise<PracticeReassignment[]>;
+  
+  // Negative Earnings Cap operations
+  getNegativeEarningsSummary(payPeriod: number): Promise<any[]>;
+  getNegativeEarningsCapRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]>;
+  createNegativeEarningsCapRequest(request: InsertNegativeEarningsCapRequest): Promise<NegativeEarningsCapRequest>;
+  updateNegativeEarningsCapRequestStatus(id: number, status: string, userId: string, approvedAmount?: string, notes?: string): Promise<NegativeEarningsCapRequest>;
   
   // Dashboard/reporting operations
   getDashboardSummary(userId: string, role: string, portfolioId?: string): Promise<any>;
@@ -473,6 +482,158 @@ export class DatabaseStorage implements IStorage {
       .from(practiceReassignments)
       .where(eq(practiceReassignments.practiceId, practiceId))
       .orderBy(desc(practiceReassignments.createdAt));
+  }
+
+  // ============================================================================
+  // NEGATIVE EARNINGS CAP OPERATIONS
+  // ============================================================================
+  
+  async getNegativeEarningsSummary(payPeriod: number): Promise<any[]> {
+    // Get all practices with their current period metrics
+    const result = await db
+      .select({
+        practiceId: practices.id,
+        practiceName: practices.name,
+        clinicName: practices.clinicName,
+        portfolioId: practices.portfolioId,
+        portfolioName: portfolios.name,
+        negativeEarningsCap: practiceMetrics.negativeEarningsCap,
+        group: practiceMetrics.group,
+        metricsId: practiceMetrics.id,
+      })
+      .from(practices)
+      .leftJoin(portfolios, eq(practices.portfolioId, portfolios.id))
+      .leftJoin(
+        practiceMetrics,
+        and(
+          eq(practiceMetrics.clinicName, practices.clinicName),
+          eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
+        )
+      );
+
+    // Get approved negative earnings cap requests for CURRENT pay period only
+    const requests = await db
+      .select({
+        practiceId: negativeEarningsCapRequests.practiceId,
+        amount: negativeEarningsCapRequests.approvedAmount,
+      })
+      .from(negativeEarningsCapRequests)
+      .where(
+        and(
+          eq(negativeEarningsCapRequests.status, 'approved'),
+          eq(negativeEarningsCapRequests.payPeriod, payPeriod)
+        )
+      );
+
+    // Calculate utilized amounts per practice for current pay period
+    const utilizedByPractice = new Map<string, number>();
+    for (const req of requests) {
+      if (req.amount) {
+        const current = utilizedByPractice.get(req.practiceId) || 0;
+        utilizedByPractice.set(req.practiceId, current + Number(req.amount));
+      }
+    }
+
+    // Build summary - only include practices with metrics data (practices that have BigQuery data)
+    return result
+      .filter((row) => row.metricsId !== null) // Only practices with current period metrics
+      .map((row) => ({
+        practiceId: row.practiceId,
+        practiceName: row.practiceName,
+        clinicName: row.clinicName,
+        portfolioId: row.portfolioId,
+        portfolioName: row.portfolioName,
+        group: row.group,
+        negativeEarningsCap: row.negativeEarningsCap ? Number(row.negativeEarningsCap) : 0,
+        utilized: utilizedByPractice.get(row.practiceId) || 0,
+        available: (row.negativeEarningsCap ? Number(row.negativeEarningsCap) : 0) - (utilizedByPractice.get(row.practiceId) || 0),
+      }));
+  }
+
+  async getNegativeEarningsCapRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]> {
+    let query = db
+      .select({
+        id: negativeEarningsCapRequests.id,
+        practiceId: negativeEarningsCapRequests.practiceId,
+        practiceName: practices.name,
+        requestorId: negativeEarningsCapRequests.requestorId,
+        requestorName: users.name,
+        payPeriod: negativeEarningsCapRequests.payPeriod,
+        requestedAmount: negativeEarningsCapRequests.requestedAmount,
+        approvedAmount: negativeEarningsCapRequests.approvedAmount,
+        justification: negativeEarningsCapRequests.justification,
+        status: negativeEarningsCapRequests.status,
+        approvedBy: negativeEarningsCapRequests.approvedBy,
+        rejectionReason: negativeEarningsCapRequests.rejectionReason,
+        createdAt: negativeEarningsCapRequests.createdAt,
+        updatedAt: negativeEarningsCapRequests.updatedAt,
+      })
+      .from(negativeEarningsCapRequests)
+      .leftJoin(practices, eq(negativeEarningsCapRequests.practiceId, practices.id))
+      .leftJoin(users, eq(negativeEarningsCapRequests.requestorId, users.id));
+
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(negativeEarningsCapRequests.status, filters.status));
+    }
+    if (filters?.practiceId) {
+      conditions.push(eq(negativeEarningsCapRequests.practiceId, filters.practiceId));
+    }
+    if (filters?.requestorId) {
+      conditions.push(eq(negativeEarningsCapRequests.requestorId, filters.requestorId));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+
+    return await query.orderBy(desc(negativeEarningsCapRequests.createdAt));
+  }
+
+  async createNegativeEarningsCapRequest(request: InsertNegativeEarningsCapRequest): Promise<NegativeEarningsCapRequest> {
+    const [created] = await db.insert(negativeEarningsCapRequests).values(request).returning();
+    return created;
+  }
+
+  async updateNegativeEarningsCapRequestStatus(id: number, status: string, userId: string, approvedAmount?: string, notes?: string): Promise<NegativeEarningsCapRequest> {
+    const updateData: any = { 
+      status, 
+      updatedAt: new Date() 
+    };
+
+    // If Finance is approving, track approval details
+    if (status === 'approved') {
+      updateData.approvedBy = userId;
+      updateData.approvedAt = new Date();
+      if (approvedAmount) {
+        updateData.approvedAmount = approvedAmount;
+      } else {
+        // If no approved amount specified, use the requested amount
+        const [request] = await db
+          .select({ requestedAmount: negativeEarningsCapRequests.requestedAmount })
+          .from(negativeEarningsCapRequests)
+          .where(eq(negativeEarningsCapRequests.id, id));
+        if (request) {
+          updateData.approvedAmount = request.requestedAmount;
+        }
+      }
+    }
+
+    // If Finance is rejecting, track rejection details
+    if (status === 'rejected') {
+      updateData.rejectedBy = userId;
+      updateData.rejectedAt = new Date();
+      if (notes) {
+        updateData.rejectionReason = notes;
+      }
+    }
+
+    const [updated] = await db
+      .update(negativeEarningsCapRequests)
+      .set(updateData)
+      .where(eq(negativeEarningsCapRequests.id, id))
+      .returning();
+    return updated;
   }
 
   // ============================================================================

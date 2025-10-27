@@ -316,6 +316,7 @@ export const negativeEarningsCapRequests = pgTable("negative_earnings_cap_reques
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   practiceId: varchar("practice_id").notNull(),
   requestorId: varchar("requestor_id").notNull(), // PSM who submitted
+  payPeriod: integer("pay_period").notNull(), // Pay period this request applies to
   requestedAmount: decimal("requested_amount", { precision: 12, scale: 2 }).notNull(),
   justification: text("justification").notNull(),
   status: varchar("status").notNull().default("pending_finance"), // pending_finance, approved, rejected
@@ -341,7 +342,7 @@ export const insertNegativeEarningsCapRequestSchema = createInsertSchema(negativ
   createdAt: true,
   updatedAt: true,
 }).extend({
-  justification: z.string().min(50, "Justification must be at least 50 characters"),
+  justification: z.string().min(20, "Justification must be at least 20 characters"),
   requestedAmount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
 });
 

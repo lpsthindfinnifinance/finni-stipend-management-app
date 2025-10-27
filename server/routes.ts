@@ -411,6 +411,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // NEGATIVE EARNINGS CAP ROUTES
+  // ============================================================================
+
+  app.get('/api/negative-earnings/summary', isAuthenticated, async (req, res) => {
+    try {
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      if (!currentPeriod) {
+        return res.status(400).json({ message: "No active pay period found" });
+      }
+
+      const summary = await storage.getNegativeEarningsSummary(currentPeriod.id);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching negative earnings summary:", error);
+      res.status(500).json({ message: "Failed to fetch negative earnings summary" });
+    }
+  });
+
+  app.get('/api/negative-earnings/requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const filters: any = {};
+      
+      // PSMs only see their own requests
+      if (user.role === "PSM") {
+        filters.requestorId = userId;
+      }
+      
+      const requests = await storage.getNegativeEarningsCapRequests(filters);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching negative earnings requests:", error);
+      res.status(500).json({ message: "Failed to fetch negative earnings requests" });
+    }
+  });
+
+  app.post('/api/negative-earnings/requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { practiceId, amount, justification } = req.body;
+
+      if (!practiceId || !amount || !justification) {
+        return res.status(400).json({ message: "Practice, amount, and justification are required" });
+      }
+
+      // Get current pay period
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      if (!currentPeriod) {
+        return res.status(400).json({ message: "No active pay period found" });
+      }
+
+      const newRequest = await storage.createNegativeEarningsCapRequest({
+        practiceId,
+        requestorId: userId,
+        payPeriod: currentPeriod.id,
+        requestedAmount: amount.toString(),
+        justification,
+      });
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `New Negative Earnings Cap request #${newRequest.id} for $${amount} (PP${currentPeriod.id}) pending Finance approval`
+      );
+
+      res.status(201).json(newRequest);
+    } catch (error) {
+      console.error("Error creating negative earnings cap request:", error);
+      res.status(500).json({ message: "Failed to create request" });
+    }
+  });
+
+  app.post('/api/negative-earnings/requests/:id/approve', isAuthenticated, isFinance, async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { approvedAmount, notes } = req.body;
+
+      const updated = await storage.updateNegativeEarningsCapRequestStatus(
+        requestId, 
+        'approved', 
+        userId, 
+        approvedAmount?.toString(),
+        notes
+      );
+
+      // Send Slack notification
+      const amount = approvedAmount || updated.requestedAmount;
+      await sendSlackNotification(
+        `Negative Earnings Cap request #${requestId} approved by Finance for $${amount} (PP${updated.payPeriod})`
+      );
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving negative earnings request:", error);
+      res.status(500).json({ message: "Failed to approve request" });
+    }
+  });
+
+  app.post('/api/negative-earnings/requests/:id/reject', isAuthenticated, isFinance, async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { notes } = req.body;
+
+      const updated = await storage.updateNegativeEarningsCapRequestStatus(
+        requestId, 
+        'rejected', 
+        userId, 
+        undefined,
+        notes
+      );
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `Negative Earnings Cap request #${requestId} (PP${updated.payPeriod}) rejected by Finance. ${notes ? 'Reason: ' + notes : ''}`
+      );
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting negative earnings request:", error);
+      res.status(500).json({ message: "Failed to reject request" });
+    }
+  });
+
+  // ============================================================================
   // PAY PERIOD ROUTES
   // ============================================================================
 
