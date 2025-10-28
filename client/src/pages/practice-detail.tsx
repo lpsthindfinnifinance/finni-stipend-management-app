@@ -118,23 +118,7 @@ export default function PracticeDetail() {
         ) : (
           <>
             {/* Balance Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Current Balance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-mono font-bold">
-                    {formatCurrency((balance as any)?.currentBalance || 0)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Available for allocation
-                  </p>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -142,7 +126,7 @@ export default function PracticeDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-mono font-bold">
+                  <div className="text-2xl font-mono font-bold">
                     {formatCurrency((balance as any)?.stipendCap || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -154,17 +138,68 @@ export default function PracticeDetail() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Stipend Paid
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-mono font-bold">
+                    {formatCurrency((balance as any)?.stipendPaid || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Approved & disbursed
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Stipend Committed
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-mono font-bold">
+                    {formatCurrency((balance as any)?.stipendCommitted || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pending approval
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Available Balance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency((balance as any)?.currentBalance || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Can be allocated
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
                     Utilization
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-mono font-bold">
+                  <div className="text-2xl font-mono font-bold">
                     {(balance as any)?.utilizationPercent?.toFixed(1) || 0}%
                   </div>
                   <Progress 
                     value={(balance as any)?.utilizationPercent || 0} 
                     className="mt-2"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Paid + Committed
+                  </p>
                 </CardContent>
               </Card>
             </div>

@@ -246,18 +246,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/practices/:id/balance', isAuthenticated, async (req, res) => {
     try {
       const currentPeriod = await storage.getCurrentPayPeriod();
-      const [balance, metrics] = await Promise.all([
+      const [balance, stipendPaid, stipendCommitted, metrics] = await Promise.all([
         storage.getPracticeBalance(req.params.id),
+        storage.getStipendPaid(req.params.id),
+        storage.getStipendCommitted(req.params.id),
         currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.id) : Promise.resolve(undefined),
       ]);
       
       const stipendCap = metrics?.stipendCapAvgFinal ?? 0;
-      const utilizationPercent = stipendCap > 0 ? (balance / stipendCap) * 100 : 0;
+      // Utilization = (Paid + Committed) / Cap, not Available / Cap
+      const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
       
       res.json({
         practiceId: req.params.id,
         currentBalance: balance,
         stipendCap,
+        stipendPaid,
+        stipendCommitted,
         utilizationPercent,
         available: balance, // Keep for backward compatibility
       });
