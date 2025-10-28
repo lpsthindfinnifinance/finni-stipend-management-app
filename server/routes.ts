@@ -42,8 +42,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = await storage.getUser(userId);
-      if (user?.role !== "Finance") {
-        return res.status(403).json({ message: "Finance access required" });
+      // Admin has all Finance permissions
+      if (user?.role !== "Finance" && user?.role !== "Admin") {
+        return res.status(403).json({ message: "Finance or Admin access required" });
       }
       
       next();

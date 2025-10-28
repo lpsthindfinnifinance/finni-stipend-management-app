@@ -852,7 +852,7 @@ export class DatabaseStorage implements IStorage {
       const pending = await db.select().from(stipendRequests)
         .where(eq(stipendRequests.status, 'pending_lead_psm'));
       pendingCount = pending.length;
-    } else if (role === "Finance") {
+    } else if (role === "Finance" || role === "Admin") {
       const pending = await db.select().from(stipendRequests)
         .where(eq(stipendRequests.status, 'pending_finance'));
       pendingCount = pending.length;

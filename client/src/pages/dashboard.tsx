@@ -51,6 +51,7 @@ export default function Dashboard() {
             {role === "PSM" && "Manage your portfolio stipend allocations"}
             {role === "Lead PSM" && "Oversee all portfolio allocations and approvals"}
             {role === "Finance" && "Monitor financial operations and final approvals"}
+            {role === "Admin" && "Full system administration and oversight"}
           </p>
         </div>
 

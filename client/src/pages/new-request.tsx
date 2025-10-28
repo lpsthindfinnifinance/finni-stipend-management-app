@@ -304,7 +304,7 @@ export default function NewRequest() {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={role === "Finance" || !practiceId || !isValid || justification.length < 50 || submitMutation.isPending}
+                disabled={!practiceId || !isValid || justification.length < 50 || submitMutation.isPending}
                 data-testid="button-submit-request"
               >
                 {submitMutation.isPending ? "Submitting..." : "Submit Request"}
@@ -317,15 +317,6 @@ export default function NewRequest() {
                 Cancel
               </Button>
             </div>
-            
-            {role === "Finance" && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Finance users can view stipend requests but cannot create them.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
 
           {/* Validation Panel */}

@@ -161,7 +161,9 @@ export default function Approvals() {
   const canApprove = (request: any) => {
     if (role === "PSM" && request.status === "pending_psm") return true;
     if (role === "Lead PSM" && request.status === "pending_lead_psm") return true;
-    if (role === "Finance" && request.status === "pending_finance") return true;
+    if ((role === "Finance" || role === "Admin") && request.status === "pending_finance") return true;
+    // Admin can approve at any level
+    if (role === "Admin") return true;
     return false;
   };
 

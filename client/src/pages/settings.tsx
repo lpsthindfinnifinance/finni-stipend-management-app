@@ -64,17 +64,17 @@ export default function Settings() {
   // Fetch data - must be at top level (Rules of Hooks)
   const { data: portfolios = [], isLoading: loadingPortfolios } = useQuery<Portfolio[]>({
     queryKey: ["/api/settings/portfolios"],
-    enabled: isAuthenticated && role === "Finance",
+    enabled: isAuthenticated && (role === "Finance" || role === "Admin"),
   });
 
   const { data: practices = [], isLoading: loadingPractices } = useQuery<Practice[]>({
     queryKey: ["/api/settings/practices"],
-    enabled: isAuthenticated && role === "Finance",
+    enabled: isAuthenticated && (role === "Finance" || role === "Admin"),
   });
 
   const { data: users = [], isLoading: loadingUsers } = useQuery<User[]>({
     queryKey: ["/api/settings/users"],
-    enabled: isAuthenticated && role === "Finance",
+    enabled: isAuthenticated && (role === "Finance" || role === "Admin"),
   });
 
   // Redirect unauthenticated users
@@ -96,8 +96,8 @@ export default function Settings() {
     return null;
   }
 
-  // Show access denied for non-Finance users
-  if (role !== "Finance") {
+  // Show access denied for non-Finance/Admin users
+  if (role !== "Finance" && role !== "Admin") {
     return (
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto p-6">

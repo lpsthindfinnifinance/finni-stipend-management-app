@@ -127,7 +127,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-{role === "Finance" && (
+{(role === "Finance" || role === "Admin") && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wide px-3">
               System
