@@ -972,10 +972,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: `Practice ${donorPractice.practiceId} not found` });
         }
 
-        // Verify practice belongs to donor's portfolio (for PSM role)
+        // Verify practice belongs to donor's portfolio (for PSM role, Admin can allocate from any portfolio)
         if (user?.role === "PSM" && practice.portfolioId !== user.portfolioId) {
           return res.status(403).json({ message: `Practice ${donorPractice.practiceId} does not belong to your portfolio` });
         }
+        // Admin users can allocate from any practice, so no check needed
 
         // Check available balance (getPracticeBalance returns a number, not an object)
         const available = await storage.getPracticeBalance(donorPractice.practiceId);

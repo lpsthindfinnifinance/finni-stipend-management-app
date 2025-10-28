@@ -50,10 +50,10 @@ export default function NewAllocation() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  // Fetch donor PSM's practices
+  // Fetch donor PSM's practices (Admin can also create allocations)
   const { data: myPractices } = useQuery({
     queryKey: ["/api/practices/my"],
-    enabled: isAuthenticated && user?.role === "PSM",
+    enabled: isAuthenticated && (user?.role === "PSM" || user?.role === "Admin"),
   });
 
   // Fetch all PSMs for recipient selection
