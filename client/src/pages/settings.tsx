@@ -60,6 +60,11 @@ export default function Settings() {
   const [editingPractice, setEditingPractice] = useState<Practice | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingItem, setDeletingItem] = useState<{ type: string; id: string; name: string } | null>(null);
+  
+  // State for user form fields
+  const [userRole, setUserRole] = useState<string>("PSM");
+  const [userPortfolio, setUserPortfolio] = useState<string>("none");
+  const [practicePortfolio, setPracticePortfolio] = useState<string>("");
 
   // Fetch data - must be at top level (Rules of Hooks)
   const { data: portfolios = [], isLoading: loadingPortfolios } = useQuery<Portfolio[]>({
@@ -323,7 +328,7 @@ export default function Settings() {
     const data = {
       id: formData.get("id") as string,
       name: formData.get("name") as string,
-      portfolioId: formData.get("portfolioId") as string,
+      portfolioId: practicePortfolio,
     };
 
     if (editingPractice) {
@@ -340,8 +345,8 @@ export default function Settings() {
       email: formData.get("email") as string,
       firstName: formData.get("firstName") as string,
       lastName: formData.get("lastName") as string,
-      role: formData.get("role") as string,
-      portfolioId: (formData.get("portfolioId") as string) || undefined,
+      role: userRole,
+      portfolioId: userPortfolio === "none" ? undefined : userPortfolio,
     };
 
     if (editingUser) {
@@ -470,6 +475,7 @@ export default function Settings() {
                 <Button 
                   onClick={() => {
                     setEditingPractice(null);
+                    setPracticePortfolio("");
                     setPracticeDialogOpen(true);
                   }}
                   data-testid="button-create-practice"
@@ -511,6 +517,7 @@ export default function Settings() {
                                   size="sm"
                                   onClick={() => {
                                     setEditingPractice(practice);
+                                    setPracticePortfolio(practice.portfolioId);
                                     setPracticeDialogOpen(true);
                                   }}
                                   data-testid={`button-edit-practice-${practice.id}`}
@@ -550,6 +557,8 @@ export default function Settings() {
                 <Button 
                   onClick={() => {
                     setEditingUser(null);
+                    setUserRole("PSM");
+                    setUserPortfolio("none");
                     setUserDialogOpen(true);
                   }}
                   data-testid="button-create-user"
@@ -596,6 +605,8 @@ export default function Settings() {
                                 size="sm"
                                 onClick={() => {
                                   setEditingUser(user);
+                                  setUserRole(user.role);
+                                  setUserPortfolio(user.portfolioId || "none");
                                   setUserDialogOpen(true);
                                 }}
                                 data-testid={`button-edit-user-${user.id}`}
@@ -733,8 +744,8 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label htmlFor="practice-portfolio">Group</Label>
                   <Select 
-                    name="portfolioId" 
-                    defaultValue={editingPractice?.portfolioId}
+                    value={practicePortfolio}
+                    onValueChange={setPracticePortfolio}
                     required
                   >
                     <SelectTrigger id="practice-portfolio" data-testid="select-practice-portfolio">
@@ -824,8 +835,8 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label htmlFor="user-role">Role</Label>
                   <Select 
-                    name="role" 
-                    defaultValue={editingUser?.role || "PSM"}
+                    value={userRole}
+                    onValueChange={setUserRole}
                     required
                   >
                     <SelectTrigger id="user-role" data-testid="select-user-role">
@@ -835,20 +846,21 @@ export default function Settings() {
                       <SelectItem value="PSM">PSM</SelectItem>
                       <SelectItem value="Lead PSM">Lead PSM</SelectItem>
                       <SelectItem value="Finance">Finance</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="user-portfolio">Portfolio (PSM only)</Label>
                   <Select 
-                    name="portfolioId" 
-                    defaultValue={editingUser?.portfolioId || ""}
+                    value={userPortfolio}
+                    onValueChange={setUserPortfolio}
                   >
                     <SelectTrigger id="user-portfolio" data-testid="select-user-portfolio">
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {portfolios.map((portfolio) => (
                         <SelectItem key={portfolio.id} value={portfolio.id}>
                           {portfolio.id} - {portfolio.name}

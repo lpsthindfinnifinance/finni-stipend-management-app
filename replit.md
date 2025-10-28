@@ -4,6 +4,17 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
+- **2025-10-28**: Settings Page User Form & Dashboard Fixes
+  - **Bug Fixes**:
+    - Fixed missing `or` import in storage.ts causing dashboard crash
+    - Fixed Settings page user edit form SelectItem with empty string value error
+    - Converted all Select components to controlled components for proper form integration
+  - **Settings Page Enhancements**:
+    - Added "Admin" role option to user creation/edit form
+    - Portfolio select now uses "none" value instead of empty string
+    - Form properly submits with state-managed Select values
+  - **Testing**: End-to-end tests confirm user CRUD operations work correctly
+
 - **2025-10-28**: Admin Role Complete Implementation & UX Fixes
   - **Admin Role**:
     - Added "Admin" role with full system permissions (PSM + Finance capabilities combined)

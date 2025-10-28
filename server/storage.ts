@@ -35,7 +35,7 @@ import {
   type InsertNegativeEarningsCapRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (Required for Replit Auth)
