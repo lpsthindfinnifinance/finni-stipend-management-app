@@ -199,9 +199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      // Finance can see all practices, Lead PSM and PSM see only their portfolio
+      // Finance and Admin can see all practices, Lead PSM and PSM see only their portfolio
       let practices;
-      if (user.role === 'Finance') {
+      if (user.role === 'Finance' || user.role === 'Admin') {
         practices = await storage.getPractices({});
       } else if (user.portfolioId) {
         practices = await storage.getPractices({
