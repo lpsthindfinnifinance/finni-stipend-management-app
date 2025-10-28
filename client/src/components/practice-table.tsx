@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
@@ -16,10 +16,10 @@ interface Practice {
   id: string;
   name: string;
   portfolioId: string;
-  grossMarginPercent?: number;
-  collectionsPercent?: number;
   stipendCap?: number;
   availableBalance?: number;
+  stipendPaid?: number;
+  stipendCommitted?: number;
 }
 
 interface PracticeTableProps {
@@ -54,9 +54,9 @@ export function PracticeTable({
             <TableHead className="font-medium">Practice ID</TableHead>
             <TableHead className="font-medium">Practice Name</TableHead>
             <TableHead className="font-medium">Portfolio</TableHead>
-            <TableHead className="font-medium text-right">GM %</TableHead>
-            <TableHead className="font-medium text-right">Collections %</TableHead>
             <TableHead className="font-medium text-right">Stipend Cap</TableHead>
+            <TableHead className="font-medium text-right">Stipend Paid</TableHead>
+            <TableHead className="font-medium text-right">Stipend Committed</TableHead>
             <TableHead className="font-medium text-right">Available</TableHead>
           </TableRow>
         </TableHeader>
@@ -64,7 +64,7 @@ export function PracticeTable({
           {practices.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={expandable ? 8 : 7}
+                colSpan={expandable ? 9 : 8}
                 className="text-center py-8 text-muted-foreground"
               >
                 No practices found
@@ -113,19 +113,19 @@ export function PracticeTable({
                 <TableCell>
                   <Badge variant="secondary">{practice.portfolioId}</Badge>
                 </TableCell>
-                <TableCell className="text-right font-mono">
-                  {practice.grossMarginPercent !== undefined
-                    ? formatPercent(practice.grossMarginPercent)
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {practice.collectionsPercent !== undefined
-                    ? formatPercent(practice.collectionsPercent)
-                    : "—"}
-                </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
                   {practice.stipendCap !== undefined
                     ? formatCurrency(practice.stipendCap)
+                    : "—"}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {practice.stipendPaid !== undefined
+                    ? formatCurrency(practice.stipendPaid)
+                    : "—"}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {practice.stipendCommitted !== undefined
+                    ? formatCurrency(practice.stipendCommitted)
                     : "—"}
                 </TableCell>
                 <TableCell className="text-right font-mono font-semibold text-green-600 dark:text-green-400">

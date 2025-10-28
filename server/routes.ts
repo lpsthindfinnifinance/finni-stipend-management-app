@@ -159,7 +159,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         portfolio: portfolio as string,
       });
       
-      res.json(practices);
+      // Get current pay period to fetch latest metrics
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      
+      // Enrich with balance data and latest metrics
+      const enrichedPractices = await Promise.all(
+        practices.map(async (practice) => {
+          const [balance, stipendPaid, stipendCommitted, metrics] = await Promise.all([
+            storage.getPracticeBalance(practice.id),
+            storage.getStipendPaid(practice.id),
+            storage.getStipendCommitted(practice.id),
+            currentPeriod ? storage.getCurrentMetrics(practice.id, currentPeriod.id) : Promise.resolve(undefined),
+          ]);
+          
+          return {
+            ...practice,
+            stipendCap: metrics?.stipendCapAvgFinal ?? 0,
+            availableBalance: balance,
+            stipendPaid,
+            stipendCommitted,
+          };
+        })
+      );
+      
+      res.json(enrichedPractices);
     } catch (error) {
       console.error("Error fetching practices:", error);
       res.status(500).json({ message: "Failed to fetch practices" });

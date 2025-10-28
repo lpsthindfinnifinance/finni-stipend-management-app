@@ -4,6 +4,21 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
+- **2025-10-28**: Practice Balance Display & Table Improvements
+  - **Critical Bug Fix**: Fixed `getPracticeByClinicName()` to search by practice ID instead of display name, enabling all 101 practices to create ledger entries during CSV import
+  - **Balance Calculations**: `/api/practices` endpoint now enriches practice data with:
+    - `stipendCap` - From latest metrics in current pay period
+    - `availableBalance` - Sum of all ledger entries
+    - `stipendPaid` - Sum of approved stipend requests
+    - `stipendCommitted` - Sum of pending stipend requests (pending_psm, pending_lead_psm, pending_finance)
+  - **Practice Table Updates**:
+    - Removed GM% and Collections% columns (per user request)
+    - Added Stipend Paid and Stipend Committed columns
+    - Updated column order: Practice ID, Name, Portfolio, Stipend Cap, Stipend Paid, Stipend Committed, Available
+  - Dashboard now correctly shows $432K+ total cap across all portfolios
+  - Individual practice balances now display correctly throughout the system
+  - New storage methods: `getStipendPaid()` and `getStipendCommitted()` for per-practice calculations
+
 - **2025-10-27**: Settings Page & System Administration Features Complete
   - **Settings Page (Finance-only)**: Complete CRUD interface with tabbed navigation for Portfolios, Practices, and Users
     - Portfolios tab: Create, edit, delete portfolios with safe-delete validation (prevents deletion with associated practices)

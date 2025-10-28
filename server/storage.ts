@@ -73,6 +73,8 @@ export interface IStorage {
   getPracticeLedger(practiceId: string): Promise<any[]>;
   createLedgerEntry(entry: InsertPracticeLedger): Promise<PracticeLedger>;
   getPracticeBalance(practiceId: string): Promise<number>;
+  getStipendPaid(practiceId: string): Promise<number>;
+  getStipendCommitted(practiceId: string): Promise<number>;
   
   // Stipend request operations
   getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]>;
@@ -468,6 +470,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(practiceLedger.practiceId, practiceId));
     
     // Drizzle returns numeric sums as strings, so convert to number
+    return Number(result[0]?.total ?? 0);
+  }
+
+  async getStipendPaid(practiceId: string): Promise<number> {
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`,
+      })
+      .from(stipendRequests)
+      .where(
+        and(
+          eq(stipendRequests.practiceId, practiceId),
+          eq(stipendRequests.status, 'approved')
+        )
+      );
+    
+    return Number(result[0]?.total ?? 0);
+  }
+
+  async getStipendCommitted(practiceId: string): Promise<number> {
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`,
+      })
+      .from(stipendRequests)
+      .where(
+        and(
+          eq(stipendRequests.practiceId, practiceId),
+          inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+        )
+      );
+    
     return Number(result[0]?.total ?? 0);
   }
 

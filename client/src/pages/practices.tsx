@@ -103,7 +103,7 @@ export default function Practices() {
             ) : (
               <div className="max-h-[600px] overflow-auto">
                 <PracticeTable
-                  practices={practices || []}
+                  practices={Array.isArray(practices) ? practices : []}
                   onPracticeClick={(id) => {
                     window.location.href = `/practices/${id}`;
                   }}
