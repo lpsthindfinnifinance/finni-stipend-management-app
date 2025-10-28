@@ -245,11 +245,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/practices/:id/balance', isAuthenticated, async (req, res) => {
     try {
-      const balance = await storage.getPracticeBalance(req.params.id);
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      const [balance, metrics] = await Promise.all([
+        storage.getPracticeBalance(req.params.id),
+        currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.id) : Promise.resolve(undefined),
+      ]);
+      
+      const stipendCap = metrics?.stipendCapAvgFinal ?? 0;
+      const utilizationPercent = stipendCap > 0 ? (balance / stipendCap) * 100 : 0;
       
       res.json({
         practiceId: req.params.id,
-        available: balance,
+        currentBalance: balance,
+        stipendCap,
+        utilizationPercent,
+        available: balance, // Keep for backward compatibility
       });
     } catch (error) {
       console.error("Error fetching practice balance:", error);
