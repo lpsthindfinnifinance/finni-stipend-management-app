@@ -82,6 +82,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/auth/switch-role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { role } = req.body;
+      
+      // Validate role
+      const validRoles = ["Admin", "Finance", "Lead PSM", "PSM"];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      // For testing purposes, allow any user to switch to any role
+      // In production, you'd want to restrict this
+      const user = await storage.updateUserRole(userId, role, undefined);
+      res.json(user);
+    } catch (error) {
+      console.error("Error switching role:", error);
+      res.status(500).json({ message: "Failed to switch role" });
+    }
+  });
+
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
@@ -254,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.id) : Promise.resolve(undefined),
       ]);
       
-      const stipendCap = metrics?.stipendCapAvgFinal ?? 0;
+      const stipendCap = Number(metrics?.stipendCapAvgFinal ?? 0);
       // Utilization = (Paid + Committed) / Cap, not Available / Cap
       const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
       

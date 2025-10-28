@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { RoleSwitcher } from "@/components/role-switcher";
 import { useAuth } from "@/hooks/useAuth";
 
 // Pages
@@ -77,7 +78,9 @@ function AppContent() {
             <div className="flex flex-col flex-1 overflow-hidden">
               <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                  <RoleSwitcher />
+                  <div className="h-4 w-px bg-border" />
                   <span className="text-sm text-muted-foreground" data-testid="text-current-period">
                     Pay Period {currentPeriod?.id || 1}
                   </span>

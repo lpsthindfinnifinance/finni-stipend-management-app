@@ -24,6 +24,10 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
   - **UX Improvements**:
     - Reduced justification minimum from 50 to 10 characters
     - Removed debug console logging from Submit Request page
+  - **Developer Tools**:
+    - Added role switcher dropdown in header for easy testing of different user roles
+    - Switch between Admin, Finance, Lead PSM, and PSM roles instantly
+    - Automatically refreshes page after role switch to apply new permissions
 
 - **2025-10-28**: Database Schema Optimization
   - Removed unused metric columns from `practice_metrics` table to simplify data model:
