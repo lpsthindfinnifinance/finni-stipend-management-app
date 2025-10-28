@@ -424,12 +424,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCurrentMetrics(practiceId: string, payPeriod: number): Promise<PracticeMetrics | undefined> {
-    // This method is deprecated but kept for backward compatibility
-    // New code should use getPreviousMetricsByClinicName
     const [metrics] = await db
       .select()
       .from(practiceMetrics)
-      .where(eq(practiceMetrics.currentPayPeriodNumber, payPeriod));
+      .where(and(
+        eq(practiceMetrics.clinicName, practiceId),
+        eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
+      ));
     return metrics;
   }
 
