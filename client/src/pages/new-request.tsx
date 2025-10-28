@@ -142,6 +142,16 @@ export default function NewRequest() {
 
   const numAmount = parseFloat(amount) || 0;
   const isValid = numAmount > 0 && practiceBalance && numAmount <= practiceBalance.available;
+  
+  // Debug logging
+  console.log('Submit button validation:', {
+    practiceId,
+    numAmount,
+    practiceBalance,
+    isValid,
+    justificationLength: justification.length,
+    buttonDisabled: !practiceId || !isValid || justification.length < 50 || submitMutation.isPending
+  });
 
   return (
     <div className="flex-1 overflow-auto">
