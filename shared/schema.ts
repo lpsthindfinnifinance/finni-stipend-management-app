@@ -150,30 +150,8 @@ export const practiceMetrics = pgTable("practice_metrics", {
   grossMarginBeforePromSpendYtd: decimal("gross_margin_before_prom_spend_ytd", { precision: 12, scale: 2 }),
   promotionalSpendExclHqErrNegErnsYtd: decimal("promotional_spend_excl_hq_err_neg_erns_ytd", { precision: 12, scale: 2 }),
   
-  // L6PP (Last 6 pay periods) metrics
-  billedPpsL6pp: integer("billed_pps_l6pp"),
-  netRevenueSubTotalL6pp: decimal("net_revenue_sub_total_l6pp", { precision: 12, scale: 2 }),
-  grossMarginSubTotalL6pp: decimal("gross_margin_sub_total_l6pp", { precision: 12, scale: 2 }),
-  totalPromotionalSpendL6pp: decimal("total_promotional_spend_l6pp", { precision: 12, scale: 2 }),
-  grossMarginBeforePromSpendL6pp: decimal("gross_margin_before_prom_spend_l6pp", { precision: 12, scale: 2 }),
-  promotionalSpendExclHqErrNegErnsL6pp: decimal("promotional_spend_excl_hq_err_neg_erns_l6pp", { precision: 12, scale: 2 }),
-  
-  // 2PP Lag (2 pay periods lag) metrics
-  chargeDollars2ppLag: decimal("charge_dollars_2pp_lag", { precision: 12, scale: 2 }),
-  arboraCollections2ppLag: decimal("arbora_collections_2pp_lag", { precision: 12, scale: 2 }),
-  
-  // Percentages
-  grossMarginBeforeStipendPercentYtd: decimal("gross_margin_before_stipend_percent_ytd", { precision: 5, scale: 2 }),
-  grossMarginBeforeStipendPercentL6pp: decimal("gross_margin_before_stipend_percent_l6pp", { precision: 5, scale: 2 }),
-  collectionsPercent2ppLag: decimal("collections_percent_2pp_lag", { precision: 5, scale: 2 }),
-  
   // Revenue projections
   netRevenueFy: decimal("net_revenue_fy", { precision: 12, scale: 2 }),
-  netRevenueAnnualizedL6pp: decimal("net_revenue_annualized_l6pp", { precision: 12, scale: 2 }),
-  
-  // Performance metrics
-  performanceMetricYtd: decimal("performance_metric_ytd", { precision: 5, scale: 2 }),
-  performanceMetricL6pp: decimal("performance_metric_l6pp", { precision: 5, scale: 2 }),
   
   // Stipend caps
   stipendCapRateFy: decimal("stipend_cap_rate_fy", { precision: 5, scale: 2 }),

@@ -4,6 +4,14 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
+- **2025-10-28**: Database Schema Optimization
+  - Removed unused metric columns from `practice_metrics` table to simplify data model:
+    - Removed L6PP (Last 6 Pay Periods) metrics: 6 columns
+    - Removed 2PP Lag (2 Pay Periods Lag) metrics: 2 columns  
+    - Removed Performance Percentages: 5 columns
+  - Kept essential YTD metrics, stipend caps, and negative earnings cap
+  - Database now focuses on core business requirements only
+
 - **2025-10-28**: Practice Balance Display & Table Improvements
   - **Critical Bug Fix**: Fixed `getPracticeByClinicName()` to search by practice ID instead of display name, enabling all 101 practices to create ledger entries during CSV import
   - **Balance Calculations**: `/api/practices` endpoint now enriches practice data with:
@@ -86,7 +94,7 @@ A comprehensive stipend management system for managing 60+ ABA practices across 
 - `users` - User accounts with roles (PSM, Lead PSM, Finance)
 - `portfolios` - 5 portfolios (G1-G5)
 - `practices` - 60+ ABA practices
-- `practice_metrics` - BigQuery import data (40+ columns including GM%, Collections%, Stipend Cap, Revenue, YTD metrics)
+- `practice_metrics` - BigQuery import data (YTD metrics, stipend caps, negative earnings cap)
 - `practice_ledger` - Transaction history (opening balance, remeasurements, allocations)
 - `stipend_requests` - Request submissions with multi-level approval tracking
 - `inter_psm_allocations` - PSM-to-PSM stipend transfers
