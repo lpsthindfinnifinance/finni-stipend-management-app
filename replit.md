@@ -4,16 +4,26 @@
 A comprehensive stipend management system for managing 60+ ABA practices across 5 portfolios (G1-G5) with multi-level approval workflows, practice-level ledger tracking, and real-time portfolio analytics.
 
 ## Recent Changes
-- **2025-10-28**: Admin Role Implementation
-  - Added "Admin" role with full system permissions (PSM + Finance capabilities)
-  - Updated schema to support Admin role in user validation
-  - Backend middleware now allows Admin to access all Finance endpoints
-  - Frontend updated to grant Admin full permissions:
-    - Can create stipend requests and allocations (like PSMs)
-    - Can approve at all levels (PSM, Lead PSM, Finance)
-    - Can access Settings page and manage system administration
-  - Changed Finance user to Admin role
-  - Admin users can do everything that both PSMs and Finance users can do
+- **2025-10-28**: Admin Role Complete Implementation & UX Fixes
+  - **Admin Role**:
+    - Added "Admin" role with full system permissions (PSM + Finance capabilities combined)
+    - Admin can create stipend requests and allocations for any practice
+    - Admin can approve at all levels (PSM, Lead PSM, Finance)
+    - Admin can access Settings page and manage system administration
+    - Changed Finance user (finance@finnihealth.com) to Admin role
+  - **Navigation Fixes**:
+    - Fixed sidebar navigation to display all menu items for Admin users
+    - Updated all navigation role checks to include "Admin"
+  - **Backend Fixes**:
+    - `/api/practices/my` now returns all practices for Admin users (not just Finance)
+    - Admin users bypass portfolio restrictions when creating allocations
+  - **Frontend Fixes**:
+    - New Allocation page now loads practices for Admin users
+    - My Requests page fixed to properly fetch user's requests using query parameters
+    - Dashboard now shows all pending requests for Admin (any approval level)
+  - **UX Improvements**:
+    - Reduced justification minimum from 50 to 10 characters
+    - Removed debug console logging from Submit Request page
 
 - **2025-10-28**: Database Schema Optimization
   - Removed unused metric columns from `practice_metrics` table to simplify data model:

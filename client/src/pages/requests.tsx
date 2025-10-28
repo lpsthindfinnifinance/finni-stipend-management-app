@@ -34,7 +34,15 @@ export default function Requests() {
   }, [isAuthenticated, authLoading, toast]);
 
   const { data: requests, isLoading } = useQuery({
-    queryKey: ["/api/stipend-requests", { requestorId: user?.id }],
+    queryKey: ["/api/stipend-requests", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/stipend-requests?requestorId=${user.id}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch requests");
+      return res.json();
+    },
     enabled: isAuthenticated && !!user,
   });
 

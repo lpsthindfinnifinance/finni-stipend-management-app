@@ -852,9 +852,18 @@ export class DatabaseStorage implements IStorage {
       const pending = await db.select().from(stipendRequests)
         .where(eq(stipendRequests.status, 'pending_lead_psm'));
       pendingCount = pending.length;
-    } else if (role === "Finance" || role === "Admin") {
+    } else if (role === "Finance") {
       const pending = await db.select().from(stipendRequests)
         .where(eq(stipendRequests.status, 'pending_finance'));
+      pendingCount = pending.length;
+    } else if (role === "Admin") {
+      // Admin can approve at any level, so show all pending requests
+      const pending = await db.select().from(stipendRequests)
+        .where(or(
+          eq(stipendRequests.status, 'pending_psm'),
+          eq(stipendRequests.status, 'pending_lead_psm'),
+          eq(stipendRequests.status, 'pending_finance')
+        ));
       pendingCount = pending.length;
     }
 
