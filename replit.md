@@ -4,6 +4,22 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-30**: Practices Page - Fixed Sticky Headers & Added Allocation Columns
+  - **Sticky Header Fix** (CRITICAL FIX):
+    - ROOT CAUSE: Shadcn Table component wraps `<table>` in div with `overflow-auto`, breaking `position: sticky`
+    - SOLUTION: Replaced with native `<table>` element, moved overflow to parent container
+    - Headers now properly freeze and remain visible when scrolling through 101 practices
+    - Only table body scrolls, page stays fixed (document.scrollY === 0)
+  - **New Allocation Columns** (Toggle-able):
+    - Added "Show Allocation Columns" checkbox above table
+    - "Allocated-in": Sum of allocation_in transactions (funds received, displayed in blue)
+    - "Allocated-out": Sum of allocation_out transactions (funds given, displayed in purple)
+    - Backend: Added `getAllocatedIn()` and `getAllocatedOut()` storage methods
+    - Data sourced from practice_ledger table with transactionType filtering
+  - **Column Label Update**:
+    - "Utilization %" → "Utilized %" (as requested by user)
+  - **E2E Testing**: All functionality verified including sticky headers, column toggle, and data display
+
 - **2025-10-30**: Practices Page UI/UX Refinements
   - **Layout Improvements**:
     - Table now fills remaining vertical screen space using flexbox layout (`h-screen` + `min-h-0`)
