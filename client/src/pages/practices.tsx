@@ -45,8 +45,8 @@ export default function Practices() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="w-full px-6 py-6 space-y-6">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="w-full px-6 py-6 space-y-6 flex-shrink-0">
         <div>
           <h1 className="text-3xl font-semibold text-foreground mb-2">
             Practice Management
@@ -89,19 +89,21 @@ export default function Practices() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Practice Table */}
-        <Card>
-          <CardHeader>
+      {/* Practice Table */}
+      <div className="flex-1 px-6 pb-6 overflow-hidden">
+        <Card className="h-full flex flex-col">
+          <CardHeader className="flex-shrink-0">
             <CardTitle className="text-lg">Practices</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 flex-1 overflow-hidden">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading practices...
               </div>
             ) : (
-              <div className="max-h-[600px] overflow-auto">
+              <div className="h-full overflow-auto">
                 <PracticeTable
                   practices={Array.isArray(practices) ? practices : []}
                   onPracticeClick={(id) => {

@@ -34,18 +34,18 @@ export function PracticeTable({
   return (
     <div className="border rounded-md">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 bg-background z-10">
           <TableRow>
-            <TableHead className="font-medium">Practice ID</TableHead>
-            <TableHead className="font-medium">Practice Name</TableHead>
-            <TableHead className="font-medium">Portfolio</TableHead>
-            <TableHead className="font-medium text-right">Stipend Cap (Till PP26)</TableHead>
-            <TableHead className="font-medium text-right">Stipend Paid</TableHead>
-            <TableHead className="font-medium text-right">Stipend Committed</TableHead>
-            <TableHead className="font-medium text-right">Available (till PP26)</TableHead>
-            <TableHead className="font-medium text-right">Available per PP</TableHead>
-            <TableHead className="font-medium text-right">Unapproved Stipend</TableHead>
-            <TableHead className="font-medium text-right">Utilization %</TableHead>
+            <TableHead className="font-medium bg-background">Practice ID</TableHead>
+            <TableHead className="font-medium bg-background">Practice Name</TableHead>
+            <TableHead className="font-medium bg-background">Portfolio</TableHead>
+            <TableHead className="font-medium text-right bg-background">Stipend Cap (Till PP26)</TableHead>
+            <TableHead className="font-medium text-right bg-background">Stipend Paid</TableHead>
+            <TableHead className="font-medium text-right bg-background">Stipend Committed</TableHead>
+            <TableHead className="font-medium text-right bg-background">Available (till PP26)</TableHead>
+            <TableHead className="font-medium text-right bg-background">Available per Pay Period</TableHead>
+            <TableHead className="font-medium text-right bg-background">Stipend Requested</TableHead>
+            <TableHead className="font-medium text-right bg-background">Utilization %</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
