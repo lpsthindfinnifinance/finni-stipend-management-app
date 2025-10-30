@@ -4,20 +4,34 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-30**: Practices Page UI/UX Refinements
+  - **Layout Improvements**:
+    - Table now fills remaining vertical screen space using flexbox layout (`h-screen` + `min-h-0`)
+    - Frozen/sticky column headers remain visible while scrolling through 101 practices
+    - Only table body scrolls, not entire page (document scroll stays at 0)
+  - **Column Label Updates**:
+    - "Available per PP" → "Available per Pay Period" (more user-friendly)
+    - "Unapproved Stipend" → "Stipend Requested" (clearer terminology)
+  - **Technical Implementation**:
+    - Outer container: `h-screen flex flex-col overflow-hidden`
+    - Table headers: `sticky top-0 bg-background z-10`
+    - Flex children use `min-h-0` to allow proper shrinking
+    - E2E test verified all behaviors work correctly
+
 - **2025-10-30**: Practices Page Enhanced with New Metrics
   - **Table Improvements**:
     - Removed expand/collapse tree arrows for cleaner interface
     - Increased table width to full width for better visibility
     - Added 3 new columns displaying key financial metrics
   - **New Columns**:
-    - **Available per PP**: Available balance divided by remaining pay periods
-    - **Unapproved Stipend**: Sum of pending requests (pending_psm, pending_lead_psm, pending_finance)
+    - **Available per Pay Period**: Available balance divided by remaining pay periods
+    - **Stipend Requested**: Sum of pending requests (pending_psm, pending_lead_psm, pending_finance)
     - **Utilization %**: (Stipend Paid + Committed) / Stipend Cap × 100
   - **Backend Enhancements**:
     - Added `getUnapprovedStipend()` storage method for calculating pending requests
     - Updated GET /api/practices endpoint with new calculated fields
     - Fixed type conversion bug: stipendCap now properly returned as number instead of string
-  - **Total Columns (10)**: Practice ID, Practice Name, Portfolio, Stipend Cap (Till PP26), Stipend Paid, Stipend Committed, Available (till PP26), Available per PP, Unapproved Stipend, Utilization %
+  - **Total Columns (10)**: Practice ID, Practice Name, Portfolio, Stipend Cap (Till PP26), Stipend Paid, Stipend Committed, Available (till PP26), Available per Pay Period, Stipend Requested, Utilization %
   - **Data Integrity**: Utilization % correctly displays overspend scenarios (>100%), division by zero protection for availablePerPP
 
 - **2025-10-30**: Dashboard Revamp with Standardized Financial Terminology
