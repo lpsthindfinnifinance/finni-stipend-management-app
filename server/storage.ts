@@ -478,15 +478,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStipendPaid(practiceId: string): Promise<number> {
+    // Sum all 'paid' transactions from the ledger (these are negative, so we take absolute value for display)
     const result = await db
       .select({
-        total: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`,
+        total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
       })
-      .from(stipendRequests)
+      .from(practiceLedger)
       .where(
         and(
-          eq(stipendRequests.practiceId, practiceId),
-          eq(stipendRequests.status, 'approved')
+          eq(practiceLedger.practiceId, practiceId),
+          eq(practiceLedger.transactionType, 'paid')
         )
       );
     
@@ -494,15 +495,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStipendCommitted(practiceId: string): Promise<number> {
+    // Sum all 'committed' transactions from the ledger (these are negative, so we take absolute value for display)
     const result = await db
       .select({
-        total: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`,
+        total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
       })
-      .from(stipendRequests)
+      .from(practiceLedger)
       .where(
         and(
-          eq(stipendRequests.practiceId, practiceId),
-          inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+          eq(practiceLedger.practiceId, practiceId),
+          eq(practiceLedger.transactionType, 'committed')
         )
       );
     

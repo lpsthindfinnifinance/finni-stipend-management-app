@@ -15,10 +15,11 @@ Finni Health is a comprehensive stipend management system designed for 60+ ABA p
   - **Backend Updates**:
     - GET `/api/practices/:id/balance` now includes: allocatedIn, allocatedOut, availablePerPP
   - **CRITICAL Ledger Bug Fixes**:
-    - Database Fix: Negated existing paid/committed ledger entries (2 records updated)
-    - Code Fix: New paid/committed transactions now created with negative amounts
-    - Running Balance Fix: Changed calculation order to process oldest-to-newest
-    - Result: Ledger now correctly shows paid/committed as negative (reducing balance)
+    - **Database Fix**: Negated existing paid/committed ledger entries (2 records updated)
+    - **Code Fix**: New paid/committed transactions now created with negative amounts
+    - **Running Balance Fix**: Changed calculation order to process oldest-to-newest
+    - **Dashboard/Practices Fix**: Changed getStipendPaid() and getStipendCommitted() to query from practice_ledger (negative amounts) instead of stipend_requests (positive amounts), using ABS() for display
+    - **Result**: Ledger and all dashboards now correctly show paid/committed reducing balance, not adding to it
   - **E2E Testing**: Verified KPI cards, allocation data, ledger math, and color coding
 
 - **2025-10-30**: Practices Page - Allocation Column Positioning & Label Update
