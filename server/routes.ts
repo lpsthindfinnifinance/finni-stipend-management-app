@@ -187,12 +187,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enrich with balance data and latest metrics
       const enrichedPractices = await Promise.all(
         practices.map(async (practice) => {
-          const [balance, stipendPaid, stipendCommitted, metrics, unapprovedStipend] = await Promise.all([
+          const [balance, stipendPaid, stipendCommitted, metrics, unapprovedStipend, allocatedIn, allocatedOut] = await Promise.all([
             storage.getPracticeBalance(practice.id),
             storage.getStipendPaid(practice.id),
             storage.getStipendCommitted(practice.id),
             currentPeriod ? storage.getCurrentMetrics(practice.id, currentPeriod.id) : Promise.resolve(undefined),
             storage.getUnapprovedStipend(practice.id),
+            storage.getAllocatedIn(practice.id),
+            storage.getAllocatedOut(practice.id),
           ]);
           
           const stipendCap = metrics?.stipendCapAvgFinal ? parseFloat(metrics.stipendCapAvgFinal) : 0;
@@ -209,6 +211,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             availablePerPP,
             unapprovedStipend,
             utilizationPercent,
+            allocatedIn,
+            allocatedOut,
           };
         })
       );

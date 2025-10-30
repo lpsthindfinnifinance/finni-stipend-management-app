@@ -76,6 +76,8 @@ export interface IStorage {
   getStipendPaid(practiceId: string): Promise<number>;
   getStipendCommitted(practiceId: string): Promise<number>;
   getUnapprovedStipend(practiceId: string): Promise<number>;
+  getAllocatedIn(practiceId: string): Promise<number>;
+  getAllocatedOut(practiceId: string): Promise<number>;
   
   // Stipend request operations
   getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]>;
@@ -518,6 +520,40 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(stipendRequests.practiceId, practiceId),
           inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+        )
+      );
+    
+    return Number(result[0]?.total ?? 0);
+  }
+
+  async getAllocatedIn(practiceId: string): Promise<number> {
+    // Sum all allocation_in transactions from the ledger
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(CAST(${practiceLedger.amount} AS DECIMAL)), 0)`,
+      })
+      .from(practiceLedger)
+      .where(
+        and(
+          eq(practiceLedger.practiceId, practiceId),
+          eq(practiceLedger.transactionType, 'allocation_in')
+        )
+      );
+    
+    return Number(result[0]?.total ?? 0);
+  }
+
+  async getAllocatedOut(practiceId: string): Promise<number> {
+    // Sum all allocation_out transactions from the ledger (these are negative, so we'll take absolute value)
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
+      })
+      .from(practiceLedger)
+      .where(
+        and(
+          eq(practiceLedger.practiceId, practiceId),
+          eq(practiceLedger.transactionType, 'allocation_out')
         )
       );
     
