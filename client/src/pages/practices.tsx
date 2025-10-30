@@ -46,7 +46,7 @@ export default function Practices() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="w-full px-6 py-6 space-y-6">
         <div>
           <h1 className="text-3xl font-semibold text-foreground mb-2">
             Practice Management
@@ -107,7 +107,6 @@ export default function Practices() {
                   onPracticeClick={(id) => {
                     window.location.href = `/practices/${id}`;
                   }}
-                  expandable
                 />
               </div>
             )}

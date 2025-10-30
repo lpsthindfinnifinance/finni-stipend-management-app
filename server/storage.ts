@@ -75,6 +75,7 @@ export interface IStorage {
   getPracticeBalance(practiceId: string): Promise<number>;
   getStipendPaid(practiceId: string): Promise<number>;
   getStipendCommitted(practiceId: string): Promise<number>;
+  getUnapprovedStipend(practiceId: string): Promise<number>;
   
   // Stipend request operations
   getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]>;
@@ -491,6 +492,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStipendCommitted(practiceId: string): Promise<number> {
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`,
+      })
+      .from(stipendRequests)
+      .where(
+        and(
+          eq(stipendRequests.practiceId, practiceId),
+          inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+        )
+      );
+    
+    return Number(result[0]?.total ?? 0);
+  }
+
+  async getUnapprovedStipend(practiceId: string): Promise<number> {
+    // Unapproved stipend = sum of all pending requests (not yet approved)
     const result = await db
       .select({
         total: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`,
