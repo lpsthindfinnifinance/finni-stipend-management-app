@@ -1023,21 +1023,12 @@ export class DatabaseStorage implements IStorage {
           totalCap += parseFloat(metrics[0].stipendCapAvgFinal);
         }
 
-        // Calculate Stipend Paid and Committed from ledger entries
-        const ledgerEntries = await db.select()
-          .from(practiceLedger)
-          .where(eq(practiceLedger.practiceId, practice.id));
+        // Use storage methods to calculate paid and committed
+        const paid = await this.getStipendPaid(practice.id);
+        const committed = await this.getStipendCommitted(practice.id);
         
-        for (const entry of ledgerEntries) {
-          const amount = parseFloat(entry.amount);
-          if (entry.transactionType === 'paid') {
-            // Paid entries are negative (debits), so take absolute value
-            stipendPaid += Math.abs(amount);
-          } else if (entry.transactionType === 'committed') {
-            // Committed entries are also negative (debits), so take absolute value
-            stipendCommitted += Math.abs(amount);
-          }
-        }
+        stipendPaid += paid;
+        stipendCommitted += committed;
       }
 
       // Calculate derived metrics
