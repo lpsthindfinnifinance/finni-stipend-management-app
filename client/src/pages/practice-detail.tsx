@@ -17,6 +17,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
 import { useParams, useLocation } from "wouter";
 import { Progress } from "@/components/ui/progress";
+import type { StipendRequest } from "@shared/schema";
 
 export default function PracticeDetail() {
   const { toast } = useToast();
@@ -53,11 +54,22 @@ export default function PracticeDetail() {
     enabled: isAuthenticated && !!practiceId,
   });
 
+  const { data: pendingRequests, isLoading: pendingRequestsLoading } = useQuery<StipendRequest[]>({
+    queryKey: ["/api/practices", practiceId, "pending-requests"],
+    enabled: isAuthenticated && !!practiceId,
+  });
+
   if (authLoading || !isAuthenticated) {
     return null;
   }
 
-  const isLoading = practiceLoading || balanceLoading || ledgerLoading;
+  const isLoading = practiceLoading || balanceLoading || ledgerLoading || pendingRequestsLoading;
+
+  // Calculate total pending amount
+  const totalPendingAmount = (pendingRequests || []).reduce(
+    (sum: number, req) => sum + parseFloat(req.amount),
+    0
+  );
 
   // Color code based on actual amount sign: negative = red (debit), positive = green (credit)
   const getTransactionColor = (rawAmount: any) => {
@@ -193,7 +205,7 @@ export default function PracticeDetail() {
                 </CardContent>
               </Card>
 
-              {/* Available Balance (stacked) */}
+              {/* Available Balance (stacked) - Per PP emphasized */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -201,17 +213,19 @@ export default function PracticeDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Per Pay Period - Primary/Emphasized */}
                   <div>
-                    <div className="text-lg font-mono font-semibold text-green-600 dark:text-green-400">
-                      {formatCurrency((balance as any)?.currentBalance || 0)}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Till PP26</p>
-                  </div>
-                  <div>
-                    <div className="text-lg font-mono font-semibold">
+                    <div className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
                       {formatCurrency((balance as any)?.availablePerPP || 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">Per Pay Period</p>
+                  </div>
+                  {/* Till PP26 - Secondary/Smaller */}
+                  <div>
+                    <div className="text-sm font-mono font-semibold text-muted-foreground">
+                      {formatCurrency((balance as any)?.currentBalance || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Till PP26</p>
                   </div>
                 </CardContent>
               </Card>
@@ -236,7 +250,72 @@ export default function PracticeDetail() {
                   </p>
                 </CardContent>
               </Card>
+
+              {/* Pending Requests */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Pending Requests
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-mono font-bold text-orange-600 dark:text-orange-400" data-testid="text-pending-amount">
+                    {formatCurrency(totalPendingAmount)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {(pendingRequests || []).length} request{(pendingRequests || []).length !== 1 ? 's' : ''}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Pending Requests Table */}
+            {(pendingRequests || []).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Pending Stipend Requests</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Requests awaiting approval
+                  </p>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-medium">Request ID</TableHead>
+                          <TableHead className="font-medium">Submitted</TableHead>
+                          <TableHead className="font-medium">Type</TableHead>
+                          <TableHead className="font-medium text-right">Amount</TableHead>
+                          <TableHead className="font-medium">Approval Stage</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(pendingRequests || []).map((request) => (
+                          <TableRow key={request.id} data-testid={`row-pending-request-${request.id}`}>
+                            <TableCell className="font-mono text-sm">
+                              #{request.id}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(request.createdAt)}
+                            </TableCell>
+                            <TableCell className="text-sm capitalize">
+                              {request.stipendType.replace(/_/g, ' ')}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-orange-600 dark:text-orange-400">
+                              {formatCurrency(request.amount)}
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge status={request.status} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Ledger Table */}
             <Card>

@@ -81,6 +81,7 @@ export interface IStorage {
   
   // Stipend request operations
   getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]>;
+  getPendingStipendRequestsForPractice(practiceId: string): Promise<StipendRequest[]>;
   getStipendRequestById(id: number): Promise<any | undefined>;
   createStipendRequest(request: InsertStipendRequest): Promise<StipendRequest>;
   updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest>;
@@ -586,6 +587,20 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await query.orderBy(desc(stipendRequests.createdAt));
+  }
+
+  async getPendingStipendRequestsForPractice(practiceId: string): Promise<StipendRequest[]> {
+    // Get all pending requests for a specific practice
+    return await db
+      .select()
+      .from(stipendRequests)
+      .where(
+        and(
+          eq(stipendRequests.practiceId, practiceId),
+          inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+        )
+      )
+      .orderBy(desc(stipendRequests.createdAt));
   }
 
   async getStipendRequestById(id: number): Promise<any | undefined> {

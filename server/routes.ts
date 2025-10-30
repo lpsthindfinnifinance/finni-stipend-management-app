@@ -340,6 +340,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/practices/:id/pending-requests', isAuthenticated, async (req, res) => {
+    try {
+      const pendingRequests = await storage.getPendingStipendRequestsForPractice(req.params.id);
+      res.json(pendingRequests);
+    } catch (error) {
+      console.error("Error fetching pending requests:", error);
+      res.status(500).json({ message: "Failed to fetch pending requests" });
+    }
+  });
+
   // ============================================================================
   // STIPEND REQUEST ROUTES
   // ============================================================================
