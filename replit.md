@@ -3,6 +3,34 @@
 ## Overview
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
+## Recent Changes
+- **2025-10-30**: Practices Page Enhanced with New Metrics
+  - **Table Improvements**:
+    - Removed expand/collapse tree arrows for cleaner interface
+    - Increased table width to full width for better visibility
+    - Added 3 new columns displaying key financial metrics
+  - **New Columns**:
+    - **Available per PP**: Available balance divided by remaining pay periods
+    - **Unapproved Stipend**: Sum of pending requests (pending_psm, pending_lead_psm, pending_finance)
+    - **Utilization %**: (Stipend Paid + Committed) / Stipend Cap × 100
+  - **Backend Enhancements**:
+    - Added `getUnapprovedStipend()` storage method for calculating pending requests
+    - Updated GET /api/practices endpoint with new calculated fields
+    - Fixed type conversion bug: stipendCap now properly returned as number instead of string
+  - **Total Columns (10)**: Practice ID, Practice Name, Portfolio, Stipend Cap (Till PP26), Stipend Paid, Stipend Committed, Available (till PP26), Available per PP, Unapproved Stipend, Utilization %
+  - **Data Integrity**: Utilization % correctly displays overspend scenarios (>100%), division by zero protection for availablePerPP
+
+- **2025-10-30**: Dashboard Revamp with Standardized Financial Terminology
+  - **6 New KPI Cards**: Replaced previous 4 cards with comprehensive metrics:
+    - Total Portfolio Cap (till PP26): Sum of all stipend caps across portfolios
+    - Stipend Paid (YTD): Total paid from PP1 to current period, calculated from ledger
+    - Stipend Committed: Approved for future periods (not yet paid)
+    - Available Balance (till PP26): Cap - Paid - Committed
+    - Available Balance (per PP): Available / remaining pay periods
+    - Pending Approvals: Count of requests requiring user's action
+  - **Enhanced Portfolio Cards**: Display 5 financial metrics per portfolio with color-coded utilization bars
+  - **Backend Optimization**: Ledger-based calculations for accuracy with Math.abs() for debit entries
+
 ## User Preferences
 - I prefer simple language and clear explanations.
 - I want iterative development with frequent updates and feedback loops.
