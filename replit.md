@@ -4,6 +4,14 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-30**: Practices Page - Allocation Column Positioning & Label Update
+  - **UI Refinements**:
+    - Checkbox label: "Show Allocation Columns" → "Show Allocation" (more concise)
+    - Repositioned allocation columns to appear immediately after "Stipend Cap (Till PP26)"
+    - New column order (when allocations shown): Practice ID → Practice Name → Portfolio → Stipend Cap → **Allocated-in → Allocated-out** → Stipend Paid → Committed → Available → Available per PP → Requested → Utilized %
+    - Groups cap-related metrics together for better financial analysis workflow
+  - **E2E Testing**: Verified column positioning, toggle functionality, and sticky header behavior with reordered columns
+
 - **2025-10-30**: Practices Page - Fixed Sticky Headers & Added Allocation Columns
   - **Sticky Header Fix** (CRITICAL FIX):
     - ROOT CAUSE: Shadcn Table component wraps `<table>` in div with `overflow-auto`, breaking `position: sticky`
@@ -11,7 +19,7 @@ Finni Health is a comprehensive stipend management system designed for 60+ ABA p
     - Headers now properly freeze and remain visible when scrolling through 101 practices
     - Only table body scrolls, page stays fixed (document.scrollY === 0)
   - **New Allocation Columns** (Toggle-able):
-    - Added "Show Allocation Columns" checkbox above table
+    - Added "Show Allocation" checkbox above table
     - "Allocated-in": Sum of allocation_in transactions (funds received, displayed in blue)
     - "Allocated-out": Sum of allocation_out transactions (funds given, displayed in purple)
     - Backend: Added `getAllocatedIn()` and `getAllocatedOut()` storage methods
