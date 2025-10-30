@@ -56,10 +56,10 @@ export default function Dashboard() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {summaryLoading ? (
             <>
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Card key={i}>
                   <CardHeader className="pb-3">
                     <Skeleton className="h-4 w-24 mb-2" />
@@ -70,13 +70,14 @@ export default function Dashboard() {
             </>
           ) : (
             <>
+              {/* Total Portfolio Cap (till PP26) */}
               <Card>
-                <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Total Portfolio Cap
                   </CardTitle>
-                  <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
-                    <TrendingUp className="h-4 w-4 text-primary" />
+                  <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -89,59 +90,104 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
+              {/* Stipend Paid (till current PP) */}
               <Card>
-                <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    This Period Allocated
+                    Stipend Paid
                   </CardTitle>
-                  <div className="h-8 w-8 rounded-md bg-blue-500/10 flex items-center justify-center">
-                    <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-mono font-semibold text-blue-600 dark:text-blue-400" data-testid="text-allocated">
-                    {formatCurrency(summary?.allocated || 0)}
+                  <div className="text-2xl font-mono font-semibold" data-testid="text-stipend-paid">
+                    {formatCurrency(summary?.stipendPaid || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {summary?.utilizationPercent?.toFixed(1) || 0}% utilization
+                    {summary?.totalCap > 0 
+                      ? `${((summary.stipendPaid / summary.totalCap) * 100).toFixed(1)}% of cap`
+                      : '0.0% of cap'}
                   </p>
                 </CardContent>
               </Card>
 
+              {/* Stipend Committed */}
               <Card>
-                <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Pending Approvals
+                    Stipend Committed
                   </CardTitle>
-                  <div className="h-8 w-8 rounded-md bg-yellow-500/10 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                  <div className="h-10 w-10 rounded-md bg-purple-500/10 flex items-center justify-center shrink-0">
+                    <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-semibold" data-testid="text-pending">
+                  <div className="text-2xl font-mono font-semibold" data-testid="text-stipend-committed">
+                    {formatCurrency(summary?.stipendCommitted || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    For upcoming pay periods
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Available Balance (till PP26) */}
+              <Card>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Available Balance
+                  </CardTitle>
+                  <div className="h-10 w-10 rounded-md bg-green-500/10 flex items-center justify-center shrink-0">
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-mono font-semibold text-green-600 dark:text-green-400" data-testid="text-available-balance">
+                    {formatCurrency(summary?.availableBalanceTillPP26 || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Remaining to allocate
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Available Balance (per Pay Period) */}
+              <Card>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Available Balance (per PP)
+                  </CardTitle>
+                  <div className="h-10 w-10 rounded-md bg-teal-500/10 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-mono font-semibold text-teal-600 dark:text-teal-400" data-testid="text-available-per-pp">
+                    {formatCurrency(summary?.availableBalancePerPP || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {26 - (summary?.currentPeriodNumber || 21)} periods remaining
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Pending Approvals */}
+              <Card>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Pending Approvals
+                  </CardTitle>
+                  <div className="h-10 w-10 rounded-md bg-yellow-500/10 flex items-center justify-center shrink-0">
+                    <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-semibold" data-testid="text-pending-approvals">
                     {summary?.pendingApprovals || 0}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     Require your action
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Available Balance
-                  </CardTitle>
-                  <div className="h-8 w-8 rounded-md bg-green-500/10 flex items-center justify-center">
-                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-mono font-semibold text-green-600 dark:text-green-400" data-testid="text-available">
-                    {formatCurrency(summary?.available || 0)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Remaining to allocate
                   </p>
                 </CardContent>
               </Card>

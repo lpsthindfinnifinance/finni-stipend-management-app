@@ -827,6 +827,10 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async getDashboardSummary(userId: string, role: string, portfolioId?: string): Promise<any> {
+    // Get current pay period
+    const currentPeriod = await this.getCurrentPayPeriod();
+    const currentPeriodNumber = currentPeriod?.id || 21;
+
     // Get practices based on role
     let practicesList: Practice[] = [];
     if (role === "PSM" && portfolioId) {
@@ -835,29 +839,81 @@ export class DatabaseStorage implements IStorage {
       practicesList = await db.select().from(practices);
     }
 
-    // Calculate total available balance from ledger
-    let totalAvailable = 0;
+    // Calculate metrics
+    let totalStipendCap = 0;
+    let totalStipendPaid = 0;
+    let totalStipendCommitted = 0;
+
     for (const practice of practicesList) {
-      const balance = await this.getPracticeBalance(practice.id);
-      totalAvailable += balance;
+      // Get stipend cap from current period metrics
+      const metrics = await db.select()
+        .from(practiceMetrics)
+        .where(
+          and(
+            eq(practiceMetrics.clinicName, practice.id),
+            eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)
+          )
+        )
+        .limit(1);
+      
+      if (metrics[0]?.stipendCapAvgFinal) {
+        totalStipendCap += parseFloat(metrics[0].stipendCapAvgFinal);
+      }
+
+      // Calculate Stipend Paid and Committed from ledger entries
+      // Paid = ledger entries with transactionType "paid" (these are negative debits, so take absolute value)
+      // Committed = ledger entries with transactionType "committed" (also negative debits)
+      const ledgerEntries = await db.select()
+        .from(practiceLedger)
+        .where(eq(practiceLedger.practiceId, practice.id));
+      
+      for (const entry of ledgerEntries) {
+        const amount = parseFloat(entry.amount);
+        if (entry.transactionType === 'paid') {
+          // Paid entries are negative (debits), so take absolute value
+          totalStipendPaid += Math.abs(amount);
+        } else if (entry.transactionType === 'committed') {
+          // Committed entries are also negative (debits), so take absolute value
+          totalStipendCommitted += Math.abs(amount);
+        }
+      }
     }
 
-    // Get pending approvals count (requests pending for this user's approval level)
+    // Calculate Available Balance
+    const availableBalanceTillPP26 = totalStipendCap - totalStipendPaid - totalStipendCommitted;
+    const remainingPeriods = Math.max(26 - currentPeriodNumber, 1);
+    const availableBalancePerPP = availableBalanceTillPP26 / remainingPeriods;
+
+    // Get pending approvals count (requests NOT fully approved)
     let pendingCount = 0;
-    if (role === "PSM") {
+    if (role === "PSM" && portfolioId) {
       const pending = await db.select().from(stipendRequests)
-        .where(eq(stipendRequests.status, 'pending_psm'));
+        .leftJoin(practices, eq(stipendRequests.practiceId, practices.id))
+        .where(
+          and(
+            eq(practices.portfolioId, portfolioId),
+            or(
+              eq(stipendRequests.status, 'pending_psm'),
+              eq(stipendRequests.status, 'pending_lead_psm'),
+              eq(stipendRequests.status, 'pending_finance')
+            )
+          )
+        );
       pendingCount = pending.length;
     } else if (role === "Lead PSM") {
       const pending = await db.select().from(stipendRequests)
-        .where(eq(stipendRequests.status, 'pending_lead_psm'));
+        .where(
+          or(
+            eq(stipendRequests.status, 'pending_lead_psm'),
+            eq(stipendRequests.status, 'pending_finance')
+          )
+        );
       pendingCount = pending.length;
     } else if (role === "Finance") {
       const pending = await db.select().from(stipendRequests)
         .where(eq(stipendRequests.status, 'pending_finance'));
       pendingCount = pending.length;
     } else if (role === "Admin") {
-      // Admin can approve at any level, so show all pending requests
       const pending = await db.select().from(stipendRequests)
         .where(or(
           eq(stipendRequests.status, 'pending_psm'),
@@ -868,16 +924,20 @@ export class DatabaseStorage implements IStorage {
     }
 
     return {
-      totalCap: totalAvailable,
-      allocated: 0, // Will be sum of approved but not yet disbursed stipends
-      available: totalAvailable,
+      totalCap: totalStipendCap,
+      stipendPaid: totalStipendPaid,
+      stipendCommitted: totalStipendCommitted,
+      availableBalanceTillPP26: availableBalanceTillPP26,
+      availableBalancePerPP: availableBalancePerPP,
       pendingApprovals: pendingCount,
-      utilizationPercent: 0,
+      currentPeriodNumber: currentPeriodNumber,
     };
   }
 
   async getPortfolioSummaries(): Promise<any[]> {
     const portfolioList = await this.getPortfolios();
+    const currentPeriod = await this.getCurrentPayPeriod();
+    const currentPeriodNumber = currentPeriod?.id || 21;
     
     const summaries = [];
     for (const portfolio of portfolioList) {
@@ -886,14 +946,51 @@ export class DatabaseStorage implements IStorage {
         .from(practices)
         .where(eq(practices.portfolioId, portfolio.id));
       
-      // Calculate total balance from ledger for all practices
-      let totalBalance = 0;
+      // Calculate portfolio metrics
+      let totalCap = 0;
+      let stipendPaid = 0;
+      let stipendCommitted = 0;
+
       for (const practice of portfolioPractices) {
-        const balance = await this.getPracticeBalance(practice.id);
-        totalBalance += balance;
+        // Get stipend cap from current period metrics
+        const metrics = await db.select()
+          .from(practiceMetrics)
+          .where(
+            and(
+              eq(practiceMetrics.clinicName, practice.id),
+              eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)
+            )
+          )
+          .limit(1);
+        
+        if (metrics[0]?.stipendCapAvgFinal) {
+          totalCap += parseFloat(metrics[0].stipendCapAvgFinal);
+        }
+
+        // Calculate Stipend Paid and Committed from ledger entries
+        const ledgerEntries = await db.select()
+          .from(practiceLedger)
+          .where(eq(practiceLedger.practiceId, practice.id));
+        
+        for (const entry of ledgerEntries) {
+          const amount = parseFloat(entry.amount);
+          if (entry.transactionType === 'paid') {
+            // Paid entries are negative (debits), so take absolute value
+            stipendPaid += Math.abs(amount);
+          } else if (entry.transactionType === 'committed') {
+            // Committed entries are also negative (debits), so take absolute value
+            stipendCommitted += Math.abs(amount);
+          }
+        }
       }
+
+      // Calculate derived metrics
+      const remaining = totalCap - stipendPaid - stipendCommitted;
+      const remainingPeriods = Math.max(26 - currentPeriodNumber, 1);
+      const remainingPerPP = remaining / remainingPeriods;
+      const utilizationPercent = totalCap > 0 ? ((stipendPaid + stipendCommitted) / totalCap) * 100 : 0;
       
-      // Get PSM name by finding user assigned to this portfolio
+      // Get PSM name
       let psmName = null;
       const [psm] = await db.select().from(users)
         .where(eq(users.portfolioId, portfolio.id))
@@ -908,9 +1005,13 @@ export class DatabaseStorage implements IStorage {
         id: portfolio.id,
         name: portfolio.name,
         psmName,
-        totalCap: totalBalance,
-        allocated: 0,
-        remaining: totalBalance,
+        totalCap,
+        utilized: stipendPaid,
+        committed: stipendCommitted,
+        remaining,
+        remainingPerPP,
+        utilizationPercent,
+        practiceCount: portfolioPractices.length,
       });
     }
     
