@@ -4,6 +4,23 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-30**: Practice Detail Page - KPI Redesign & Ledger Bug Fixes
+  - **KPI Cards Redesign** (6 cards with new groupings):
+    - Stipend Cap (single) - label: "Till PP26"
+    - Allocations (stacked) - Allocated-in (blue) + Allocated-out (purple) in one card
+    - Stipend Paid (single) - unchanged
+    - Stipend Committed (single) - label changed: "Pending approval" → "Upcoming Pay Periods"
+    - Available Balance (stacked) - "Till PP26" (green) + "Per Pay Period" in one card
+    - % Utilized (single) - with progress bar, label: "Paid + Committed"
+  - **Backend Updates**:
+    - GET `/api/practices/:id/balance` now includes: allocatedIn, allocatedOut, availablePerPP
+  - **CRITICAL Ledger Bug Fixes**:
+    - Database Fix: Negated existing paid/committed ledger entries (2 records updated)
+    - Code Fix: New paid/committed transactions now created with negative amounts
+    - Running Balance Fix: Changed calculation order to process oldest-to-newest
+    - Result: Ledger now correctly shows paid/committed as negative (reducing balance)
+  - **E2E Testing**: Verified KPI cards, allocation data, ledger math, and color coding
+
 - **2025-10-30**: Practices Page - Allocation Column Positioning & Label Update
   - **UI Refinements**:
     - Checkbox label: "Show Allocation Columns" → "Show Allocation" (more concise)
