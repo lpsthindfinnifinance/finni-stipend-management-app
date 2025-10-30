@@ -195,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             storage.getUnapprovedStipend(practice.id),
           ]);
           
-          const stipendCap = metrics?.stipendCapAvgFinal ?? 0;
+          const stipendCap = metrics?.stipendCapAvgFinal ? parseFloat(metrics.stipendCapAvgFinal) : 0;
           const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.id, 1) : 1;
           const availablePerPP = balance / remainingPeriods;
           const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
