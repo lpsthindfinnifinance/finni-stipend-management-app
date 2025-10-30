@@ -45,7 +45,7 @@ export default function Practices() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden">
       <div className="w-full px-6 py-6 space-y-6 flex-shrink-0">
         <div>
           <h1 className="text-3xl font-semibold text-foreground mb-2">
@@ -92,12 +92,12 @@ export default function Practices() {
       </div>
 
       {/* Practice Table */}
-      <div className="flex-1 px-6 pb-6 overflow-hidden">
+      <div className="flex-1 px-6 pb-6 min-h-0">
         <Card className="h-full flex flex-col">
           <CardHeader className="flex-shrink-0">
             <CardTitle className="text-lg">Practices</CardTitle>
           </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-hidden">
+          <CardContent className="p-0 flex-1 min-h-0">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading practices...
