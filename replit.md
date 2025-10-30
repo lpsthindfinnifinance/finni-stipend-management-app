@@ -4,6 +4,29 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-30**: Practice Detail Page - Pending Requests Enhancements
+  - **Available Balance Card Redesign**:
+    - Made "Per Pay Period" the PRIMARY value (text-2xl, bold, green) appearing first/top
+    - Made "Till PP26" SECONDARY (text-sm, muted) appearing second/below
+    - Emphasizes per-period budget planning over total remaining
+  - **New Pending Requests KPI Card** (7th card):
+    - Shows total pending stipend request amount in orange
+    - Displays count of pending requests as subtitle
+    - Only includes requests with status: pending_psm, pending_lead_psm, pending_finance
+  - **New Pending Requests Table**:
+    - Positioned between KPI cards and Ledger History
+    - Only visible when pending requests exist
+    - Shows: Request ID, Submitted date, Type, Amount (orange), Approval Stage
+    - Provides visibility into approval pipeline
+  - **Backend Enhancements**:
+    - Added `getPendingStipendRequestsForPractice()` storage method
+    - Added GET `/api/practices/:id/pending-requests` endpoint
+    - Added method to IStorage interface for contract completeness
+  - **Type Safety Improvements**:
+    - Replaced `any` casts with proper `StipendRequest` type
+    - Enhanced type safety for pending requests query
+  - **E2E Testing**: Verified all new features work correctly with proper data display
+
 - **2025-10-30**: Practice Detail Page - KPI Redesign & Ledger Bug Fixes
   - **KPI Cards Redesign** (6 cards with new groupings):
     - Stipend Cap (single) - label: "Till PP26"
