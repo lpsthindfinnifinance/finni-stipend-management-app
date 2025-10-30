@@ -281,16 +281,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/practices/:id/balance', isAuthenticated, async (req, res) => {
     try {
       const currentPeriod = await storage.getCurrentPayPeriod();
-      const [balance, stipendPaid, stipendCommitted, metrics] = await Promise.all([
+      const [balance, stipendPaid, stipendCommitted, metrics, allocatedIn, allocatedOut] = await Promise.all([
         storage.getPracticeBalance(req.params.id),
         storage.getStipendPaid(req.params.id),
         storage.getStipendCommitted(req.params.id),
         currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.id) : Promise.resolve(undefined),
+        storage.getAllocatedIn(req.params.id),
+        storage.getAllocatedOut(req.params.id),
       ]);
       
       const stipendCap = Number(metrics?.stipendCapAvgFinal ?? 0);
       // Utilization = (Paid + Committed) / Cap, not Available / Cap
       const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
+      
+      // Calculate available per pay period
+      const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.id, 1) : 1;
+      const availablePerPP = balance / remainingPeriods;
       
       res.json({
         practiceId: req.params.id,
@@ -299,6 +305,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stipendPaid,
         stipendCommitted,
         utilizationPercent,
+        allocatedIn,
+        allocatedOut,
+        availablePerPP,
         available: balance, // Keep for backward compatibility
       });
     } catch (error) {
@@ -311,15 +320,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ledger = await storage.getPracticeLedger(req.params.id);
       
-      // Calculate running balance
+      // Reverse first to get oldest to newest order for correct running balance calculation
+      const reversedLedger = [...ledger].reverse();
+      
+      // Calculate running balance from oldest to newest
       let runningBalance = 0;
-      const ledgerWithBalance = ledger.map(entry => {
+      const ledgerWithBalance = reversedLedger.map(entry => {
         runningBalance += parseFloat(entry.amount);
         return {
           ...entry,
           runningBalance,
         };
-      }).reverse(); // Reverse to show oldest first
+      });
       
       res.json(ledgerWithBalance);
     } catch (error) {
@@ -444,11 +456,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newStatus = "approved";
         
         // Create ledger entry for approved request
+        // Amount should be negative for paid/committed as it reduces available balance
+        const transactionType = request.requestType === "one_time" ? "paid" : "committed";
+        const amount = `-${request.amount}`; // Make negative to reduce balance
+        
         await storage.createLedgerEntry({
           practiceId: request.practiceId,
           payPeriod: 1, // Current period - should be dynamic
-          transactionType: request.requestType === "one_time" ? "paid" : "committed",
-          amount: request.amount,
+          transactionType,
+          amount,
           description: `Stipend request #${requestId} approved`,
           relatedRequestId: requestId,
           relatedAllocationId: null,

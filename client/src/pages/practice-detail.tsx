@@ -118,7 +118,8 @@ export default function PracticeDetail() {
         ) : (
           <>
             {/* Balance Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {/* Stipend Cap */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -130,11 +131,35 @@ export default function PracticeDetail() {
                     {formatCurrency((balance as any)?.stipendCap || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Maximum allocation
+                    Till PP26
                   </p>
                 </CardContent>
               </Card>
 
+              {/* Allocated-in and Allocated-out (stacked) */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Allocations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <div className="text-lg font-mono font-semibold text-blue-600 dark:text-blue-400">
+                      {formatCurrency((balance as any)?.allocatedIn || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Allocated-in</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-mono font-semibold text-purple-600 dark:text-purple-400">
+                      {formatCurrency((balance as any)?.allocatedOut || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Allocated-out</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Stipend Paid */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -151,6 +176,7 @@ export default function PracticeDetail() {
                 </CardContent>
               </Card>
 
+              {/* Stipend Committed */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -162,31 +188,39 @@ export default function PracticeDetail() {
                     {formatCurrency((balance as any)?.stipendCommitted || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Pending approval
+                    Upcoming Pay Periods
                   </p>
                 </CardContent>
               </Card>
 
+              {/* Available Balance (stacked) */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Available Balance
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency((balance as any)?.currentBalance || 0)}
+                <CardContent className="space-y-3">
+                  <div>
+                    <div className="text-lg font-mono font-semibold text-green-600 dark:text-green-400">
+                      {formatCurrency((balance as any)?.currentBalance || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Till PP26</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Can be allocated
-                  </p>
+                  <div>
+                    <div className="text-lg font-mono font-semibold">
+                      {formatCurrency((balance as any)?.availablePerPP || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Per Pay Period</p>
+                  </div>
                 </CardContent>
               </Card>
 
+              {/* % Utilized */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Utilization
+                    % Utilized
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
