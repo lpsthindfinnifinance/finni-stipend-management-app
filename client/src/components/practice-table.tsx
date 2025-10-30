@@ -48,7 +48,7 @@ export function PracticeTable({
           data-testid="checkbox-show-allocations"
         />
         <Label htmlFor="show-allocations" className="text-sm cursor-pointer">
-          Show Allocation Columns
+          Show Allocation
         </Label>
       </div>
 
@@ -61,18 +61,18 @@ export function PracticeTable({
               <TableHead className="font-medium bg-background">Practice Name</TableHead>
               <TableHead className="font-medium bg-background">Portfolio</TableHead>
               <TableHead className="font-medium text-right bg-background">Stipend Cap (Till PP26)</TableHead>
-              <TableHead className="font-medium text-right bg-background">Stipend Paid</TableHead>
-              <TableHead className="font-medium text-right bg-background">Stipend Committed</TableHead>
-              <TableHead className="font-medium text-right bg-background">Available (till PP26)</TableHead>
-              <TableHead className="font-medium text-right bg-background">Available per Pay Period</TableHead>
-              <TableHead className="font-medium text-right bg-background">Stipend Requested</TableHead>
-              <TableHead className="font-medium text-right bg-background">Utilized %</TableHead>
               {showAllocations && (
                 <>
                   <TableHead className="font-medium text-right bg-background">Allocated-in</TableHead>
                   <TableHead className="font-medium text-right bg-background">Allocated-out</TableHead>
                 </>
               )}
+              <TableHead className="font-medium text-right bg-background">Stipend Paid</TableHead>
+              <TableHead className="font-medium text-right bg-background">Stipend Committed</TableHead>
+              <TableHead className="font-medium text-right bg-background">Available (till PP26)</TableHead>
+              <TableHead className="font-medium text-right bg-background">Available per Pay Period</TableHead>
+              <TableHead className="font-medium text-right bg-background">Stipend Requested</TableHead>
+              <TableHead className="font-medium text-right bg-background">Utilized %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -111,6 +111,20 @@ export function PracticeTable({
                       ? formatCurrency(practice.stipendCap)
                       : "—"}
                   </TableCell>
+                  {showAllocations && (
+                    <>
+                      <TableCell className="text-right font-mono text-blue-600 dark:text-blue-400">
+                        {practice.allocatedIn !== undefined
+                          ? formatCurrency(practice.allocatedIn)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-purple-600 dark:text-purple-400">
+                        {practice.allocatedOut !== undefined
+                          ? formatCurrency(practice.allocatedOut)
+                          : "—"}
+                      </TableCell>
+                    </>
+                  )}
                   <TableCell className="text-right font-mono">
                     {practice.stipendPaid !== undefined
                       ? formatCurrency(practice.stipendPaid)
@@ -141,20 +155,6 @@ export function PracticeTable({
                       ? `${practice.utilizationPercent.toFixed(1)}%`
                       : "—"}
                   </TableCell>
-                  {showAllocations && (
-                    <>
-                      <TableCell className="text-right font-mono text-blue-600 dark:text-blue-400">
-                        {practice.allocatedIn !== undefined
-                          ? formatCurrency(practice.allocatedIn)
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-purple-600 dark:text-purple-400">
-                        {practice.allocatedOut !== undefined
-                          ? formatCurrency(practice.allocatedOut)
-                          : "—"}
-                      </TableCell>
-                    </>
-                  )}
                 </TableRow>
               ))
             )}
