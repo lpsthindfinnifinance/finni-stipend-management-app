@@ -218,9 +218,7 @@ export const stipendRequests = pgTable("stipend_requests", {
   requestType: varchar("request_type").notNull(), // one_time, recurring
   recurringEndPeriod: integer("recurring_end_period"), // Only for recurring, max 26 (PP26 2025)
   justification: text("justification").notNull(),
-  status: varchar("status").notNull().default("pending_psm"), // pending_psm, pending_lead_psm, pending_finance, approved, rejected
-  psmApprovedAt: timestamp("psm_approved_at"),
-  psmApprovedBy: varchar("psm_approved_by"),
+  status: varchar("status").notNull().default("pending_lead_psm"), // pending_lead_psm, pending_finance, approved, rejected
   leadPsmApprovedAt: timestamp("lead_psm_approved_at"),
   leadPsmApprovedBy: varchar("lead_psm_approved_by"),
   financeApprovedAt: timestamp("finance_approved_at"),
@@ -228,7 +226,6 @@ export const stipendRequests = pgTable("stipend_requests", {
   rejectedAt: timestamp("rejected_at"),
   rejectedBy: varchar("rejected_by"),
   rejectionReason: text("rejection_reason"),
-  psmComment: text("psm_comment"), // Comment when PSM approves/rejects
   leadPsmComment: text("lead_psm_comment"), // Comment when Lead PSM approves/rejects
   financeComment: text("finance_comment"), // Comment when Finance approves/rejects
   createdAt: timestamp("created_at").defaultNow(),
@@ -238,8 +235,6 @@ export const stipendRequests = pgTable("stipend_requests", {
 export const insertStipendRequestSchema = createInsertSchema(stipendRequests).omit({
   id: true,
   status: true,
-  psmApprovedAt: true,
-  psmApprovedBy: true,
   leadPsmApprovedAt: true,
   leadPsmApprovedBy: true,
   financeApprovedAt: true,
@@ -260,11 +255,6 @@ export type StipendRequest = typeof stipendRequests.$inferSelect;
 // Extended type for request details with related entities
 export type StipendRequestWithDetails = StipendRequest & {
   requestor: {
-    id: string;
-    name: string;
-    email: string | null;
-  } | null;
-  psmApprover: {
     id: string;
     name: string;
     email: string | null;
