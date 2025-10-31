@@ -252,6 +252,34 @@ export const insertStipendRequestSchema = createInsertSchema(stipendRequests).om
 export type InsertStipendRequest = z.infer<typeof insertStipendRequestSchema>;
 export type StipendRequest = typeof stipendRequests.$inferSelect;
 
+// Extended type for request details with related entities
+export type StipendRequestWithDetails = StipendRequest & {
+  requestor: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null;
+  psmApprover: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null;
+  leadPsmApprover: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null;
+  financeApprover: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null;
+  practice: {
+    id: string;
+    clinicName: string;
+  } | null;
+};
+
 // ============================================================================
 // INTER-PSM ALLOCATION TABLE
 // ============================================================================

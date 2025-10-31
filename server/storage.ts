@@ -25,6 +25,7 @@ import {
   type InsertPracticeLedger,
   type StipendRequest,
   type InsertStipendRequest,
+  type StipendRequestWithDetails,
   type InterPsmAllocation,
   type InsertInterPsmAllocation,
   type PayPeriod,
@@ -82,7 +83,7 @@ export interface IStorage {
   // Stipend request operations
   getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]>;
   getPendingStipendRequestsForPractice(practiceId: string): Promise<StipendRequest[]>;
-  getStipendRequestById(id: number): Promise<any | undefined>;
+  getStipendRequestById(id: number): Promise<StipendRequestWithDetails | undefined>;
   createStipendRequest(request: InsertStipendRequest): Promise<StipendRequest>;
   updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest>;
   
@@ -603,7 +604,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(stipendRequests.createdAt));
   }
 
-  async getStipendRequestById(id: number): Promise<any | undefined> {
+  async getStipendRequestById(id: number): Promise<StipendRequestWithDetails | undefined> {
     const [request] = await db.select().from(stipendRequests).where(eq(stipendRequests.id, id));
     
     if (!request) {
@@ -614,7 +615,7 @@ export class DatabaseStorage implements IStorage {
     const [requestor] = await db
       .select({
         id: users.id,
-        name: users.name,
+        name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
         email: users.email,
       })
       .from(users)
@@ -626,7 +627,7 @@ export class DatabaseStorage implements IStorage {
       const [approver] = await db
         .select({
           id: users.id,
-          name: users.name,
+          name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
           email: users.email,
         })
         .from(users)
@@ -640,7 +641,7 @@ export class DatabaseStorage implements IStorage {
       const [approver] = await db
         .select({
           id: users.id,
-          name: users.name,
+          name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
           email: users.email,
         })
         .from(users)
@@ -654,7 +655,7 @@ export class DatabaseStorage implements IStorage {
       const [approver] = await db
         .select({
           id: users.id,
-          name: users.name,
+          name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
           email: users.email,
         })
         .from(users)
@@ -666,7 +667,7 @@ export class DatabaseStorage implements IStorage {
     const [practice] = await db
       .select({
         id: practices.id,
-        clinicName: practices.clinicName,
+        clinicName: practices.name,
       })
       .from(practices)
       .where(eq(practices.id, request.practiceId));

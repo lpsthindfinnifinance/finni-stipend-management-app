@@ -7,13 +7,14 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
 import { useParams, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import type { StipendRequestWithDetails } from "@shared/schema";
 
 export default function StipendRequestDetail() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
 
-  const { data: request, isLoading } = useQuery({
+  const { data: request, isLoading } = useQuery<StipendRequestWithDetails>({
     queryKey: ["/api/stipend-requests", id],
     enabled: isAuthenticated && !!id,
   });
@@ -38,7 +39,7 @@ export default function StipendRequestDetail() {
       <div className="p-8">
         <div className="text-center">
           <p className="text-muted-foreground">Request not found</p>
-          <Button onClick={() => setLocation("/")} className="mt-4">
+          <Button onClick={() => setLocation("/")} className="mt-4" data-testid="button-return-dashboard">
             Return to Dashboard
           </Button>
         </div>
