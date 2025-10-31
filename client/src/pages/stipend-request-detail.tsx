@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2, Clock, XCircle } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
 import { useParams, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -205,7 +205,7 @@ export default function StipendRequestDetail() {
                       Approved by {request.psmApprover?.name || "Unknown"}
                     </p>
                     <p data-testid="text-psm-date">
-                      on {formatDate(request.psmApprovedAt)}
+                      on {formatDateTime(request.psmApprovedAt)}
                     </p>
                     {request.psmComment && (
                       <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-psm-comment">
@@ -244,7 +244,7 @@ export default function StipendRequestDetail() {
                       Approved by {request.leadPsmApprover?.name || "Unknown"}
                     </p>
                     <p data-testid="text-lead-psm-date">
-                      on {formatDate(request.leadPsmApprovedAt)}
+                      on {formatDateTime(request.leadPsmApprovedAt)}
                     </p>
                     {request.leadPsmComment && (
                       <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-lead-psm-comment">
@@ -283,7 +283,7 @@ export default function StipendRequestDetail() {
                       Approved by {request.financeApprover?.name || "Unknown"}
                     </p>
                     <p data-testid="text-finance-date">
-                      on {formatDate(request.financeApprovedAt)}
+                      on {formatDateTime(request.financeApprovedAt)}
                     </p>
                     {request.financeComment && (
                       <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-finance-comment">

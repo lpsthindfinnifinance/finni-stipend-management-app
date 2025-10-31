@@ -4,13 +4,19 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
-- **2025-10-31**: Enhanced Approval System with Comments & Clickable Table Rows
+- **2025-10-31**: Enhanced Approval System with Comments, Timestamps & Clickable Table Rows
   - **Approval Comments Feature**:
     - Added three new fields to `stipend_requests` table: `psmComment`, `leadPsmComment`, `financeComment`
     - Backend approval endpoint now accepts optional `comment` parameter
     - `updateStipendRequestStatus()` saves comments based on approval stage (PSM/Lead PSM/Finance)
     - Comments displayed on Request Detail page in approval timeline for each completed stage
     - Comments shown in subtle muted background boxes below approver info
+  - **Approval Timestamp Tracking** (Bug Fix):
+    - Fixed critical bug where PSM and Lead PSM approval timestamps/usernames weren't being saved
+    - Removed incorrect `status.includes("approved")` check that prevented PSM/Lead PSM data recording
+    - Now properly saves approval data at each stage: PSM → Lead PSM → Finance
+    - Timestamps stored in UTC, displayed in user's local timezone with time
+    - Changed from `formatDate()` to `formatDateTime()` to show both date and time
   - **Clickable Table Rows**:
     - **Pending Requests Table**: Entire row now clickable (not just request ID link)
     - **Ledger History Table**: Rows with `relatedRequestId` now fully clickable
@@ -22,7 +28,10 @@ Finni Health is a comprehensive stipend management system designed for 60+ ABA p
     - Conditional clickability based on `relatedRequestId` existence in ledger
     - Proper data-testid attributes for both clickable and non-clickable rows
     - Type-safe comment handling with proper null checks in UI
+    - Database stores timestamps in UTC (PostgreSQL default)
+    - JavaScript/Browser automatically converts to user's local timezone for display
   - **E2E Testing**: Verified clickable rows navigate correctly, approval timeline displays all stages with comments
+  - **Note**: Existing requests approved before this fix will not have PSM/Lead PSM data retroactively
 
 ## User Preferences
 - I prefer simple language and clear explanations.
