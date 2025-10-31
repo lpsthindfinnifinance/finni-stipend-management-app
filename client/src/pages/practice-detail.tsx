@@ -352,25 +352,45 @@ export default function PracticeDetail() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(ledger as any[]).map((entry: any, index: number) => (
-                        <TableRow key={index} data-testid={`row-ledger-${index}`}>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {formatDate(entry.createdAt)}
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={entry.transactionType} />
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {entry.description}
-                          </TableCell>
-                          <TableCell className={`text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
-                            {getTransactionSign(entry.amount)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-semibold">
-                            {formatCurrency(entry.runningBalance)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {(ledger as any[]).map((entry: any, index: number) => {
+                        // Extract request ID from description for paid/committed transactions
+                        const requestIdMatch = entry.description?.match(/#(\d+)/);
+                        const requestId = requestIdMatch ? requestIdMatch[1] : null;
+                        
+                        return (
+                          <TableRow key={index} data-testid={`row-ledger-${index}`}>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(entry.createdAt)}
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge status={entry.transactionType} />
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {entry.relatedRequestId && requestId ? (
+                                <>
+                                  {entry.description?.split(`#${requestId}`)[0]}
+                                  <Link 
+                                    href={`/requests/${entry.relatedRequestId}`}
+                                    className="text-primary hover:underline font-mono"
+                                    data-testid={`link-ledger-request-${entry.relatedRequestId}`}
+                                  >
+                                    #{requestId}
+                                  </Link>
+                                  {entry.description?.split(`#${requestId}`)[1]}
+                                </>
+                              ) : (
+                                entry.description
+                              )}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
+                              {getTransactionSign(entry.amount)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              {formatCurrency(entry.runningBalance)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   </div>
