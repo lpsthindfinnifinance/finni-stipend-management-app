@@ -28,6 +28,8 @@ export default function NewRequest() {
   const [amount, setAmount] = useState("");
   const [requestType, setRequestType] = useState("one_time");
   const [stipendType, setStipendType] = useState("lease_stipend");
+  const [stipendDescription, setStipendDescription] = useState("");
+  const [staffEmails, setStaffEmails] = useState("");
   const [recurringEndPeriod, setRecurringEndPeriod] = useState<string | undefined>(undefined);
   const [justification, setJustification] = useState("");
 
@@ -69,6 +71,8 @@ export default function NewRequest() {
       setPracticeOpen(false);
       setAmount("");
       setStipendType("lease_stipend");
+      setStipendDescription("");
+      setStaffEmails("");
       setRequestType("one_time");
       setRecurringEndPeriod(undefined);
       setJustification("");
@@ -130,6 +134,8 @@ export default function NewRequest() {
       requestorId: user?.id,
       amount,
       stipendType,
+      stipendDescription: stipendDescription || null,
+      staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails || null : null,
       requestType,
       recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
       justification,
@@ -246,6 +252,35 @@ export default function NewRequest() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stipendDescription">Stipend Description</Label>
+                  <Input
+                    id="stipendDescription"
+                    type="text"
+                    placeholder="Brief description of the stipend..."
+                    value={stipendDescription}
+                    onChange={(e) => setStipendDescription(e.target.value)}
+                    data-testid="input-stipend-description"
+                  />
+                </div>
+
+                {stipendType === "staff_cost_reimbursement" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="staffEmails">Staff Email IDs</Label>
+                    <Input
+                      id="staffEmails"
+                      type="text"
+                      placeholder="Enter email IDs separated by commas..."
+                      value={staffEmails}
+                      onChange={(e) => setStaffEmails(e.target.value)}
+                      data-testid="input-staff-emails"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter email addresses separated by commas (e.g., john@example.com, jane@example.com)
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Request Type *</Label>
