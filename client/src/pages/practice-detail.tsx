@@ -292,15 +292,14 @@ export default function PracticeDetail() {
                       </TableHeader>
                       <TableBody>
                         {(pendingRequests || []).map((request) => (
-                          <TableRow key={request.id} data-testid={`row-pending-request-${request.id}`}>
+                          <TableRow 
+                            key={request.id} 
+                            data-testid={`row-pending-request-${request.id}`}
+                            className="cursor-pointer hover-elevate"
+                            onClick={() => window.location.href = `/requests/${request.id}`}
+                          >
                             <TableCell className="font-mono text-sm">
-                              <Link 
-                                href={`/requests/${request.id}`}
-                                className="text-primary hover:underline"
-                                data-testid={`link-request-${request.id}`}
-                              >
-                                #{request.id}
-                              </Link>
+                              #{request.id}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDate(request.createdAt)}
@@ -353,12 +352,15 @@ export default function PracticeDetail() {
                     </TableHeader>
                     <TableBody>
                       {(ledger as any[]).map((entry: any, index: number) => {
-                        // Extract request ID from description for paid/committed transactions
-                        const requestIdMatch = entry.description?.match(/#(\d+)/);
-                        const requestId = requestIdMatch ? requestIdMatch[1] : null;
+                        const isClickable = !!entry.relatedRequestId;
                         
                         return (
-                          <TableRow key={index} data-testid={`row-ledger-${index}`}>
+                          <TableRow 
+                            key={index} 
+                            data-testid={isClickable ? `row-ledger-request-${entry.relatedRequestId}` : `row-ledger-${index}`}
+                            className={isClickable ? "cursor-pointer hover-elevate" : ""}
+                            onClick={isClickable ? () => window.location.href = `/requests/${entry.relatedRequestId}` : undefined}
+                          >
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDate(entry.createdAt)}
                             </TableCell>
@@ -366,21 +368,7 @@ export default function PracticeDetail() {
                               <StatusBadge status={entry.transactionType} />
                             </TableCell>
                             <TableCell className="text-sm">
-                              {entry.relatedRequestId && requestId ? (
-                                <>
-                                  {entry.description?.split(`#${requestId}`)[0]}
-                                  <Link 
-                                    href={`/requests/${entry.relatedRequestId}`}
-                                    className="text-primary hover:underline font-mono"
-                                    data-testid={`link-ledger-request-${entry.relatedRequestId}`}
-                                  >
-                                    #{requestId}
-                                  </Link>
-                                  {entry.description?.split(`#${requestId}`)[1]}
-                                </>
-                              ) : (
-                                entry.description
-                              )}
+                              {entry.description}
                             </TableCell>
                             <TableCell className={`text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
                               {getTransactionSign(entry.amount)}
