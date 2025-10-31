@@ -690,25 +690,26 @@ export class DatabaseStorage implements IStorage {
   async updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest> {
     const updateData: any = { status, updatedAt: new Date() };
     
-    if (status.includes("approved")) {
-      if (status === "pending_lead_psm") {
-        updateData.psmApprovedAt = new Date();
-        updateData.psmApprovedBy = userId;
-        if (notes) {
-          updateData.psmComment = notes;
-        }
-      } else if (status === "pending_finance") {
-        updateData.leadPsmApprovedAt = new Date();
-        updateData.leadPsmApprovedBy = userId;
-        if (notes) {
-          updateData.leadPsmComment = notes;
-        }
-      } else if (status === "approved") {
-        updateData.financeApprovedAt = new Date();
-        updateData.financeApprovedBy = userId;
-        if (notes) {
-          updateData.financeComment = notes;
-        }
+    if (status === "pending_lead_psm") {
+      // PSM approved, moving to Lead PSM review
+      updateData.psmApprovedAt = new Date();
+      updateData.psmApprovedBy = userId;
+      if (notes) {
+        updateData.psmComment = notes;
+      }
+    } else if (status === "pending_finance") {
+      // Lead PSM approved, moving to Finance review
+      updateData.leadPsmApprovedAt = new Date();
+      updateData.leadPsmApprovedBy = userId;
+      if (notes) {
+        updateData.leadPsmComment = notes;
+      }
+    } else if (status === "approved") {
+      // Finance approved, request is fully approved
+      updateData.financeApprovedAt = new Date();
+      updateData.financeApprovedBy = userId;
+      if (notes) {
+        updateData.financeComment = notes;
       }
     } else if (status === "rejected") {
       updateData.rejectedAt = new Date();
