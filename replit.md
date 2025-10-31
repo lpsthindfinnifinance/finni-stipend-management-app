@@ -4,6 +4,25 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-31**: Removed PSM Approval Step from Workflow
+  - **Workflow Simplification**: Changed approval workflow from 3-level (PSM → Lead PSM → Finance) to 2-level (Lead PSM → Finance)
+  - **Database Schema Changes**:
+    - Dropped `psmApprovedAt`, `psmApprovedBy`, and `psmComment` columns from `stipend_requests` table
+    - Changed default status from "pending_psm" to "pending_lead_psm"
+    - Updated all existing pending requests to new default status
+  - **Backend Updates**:
+    - Removed PSM approval logic from `updateStipendRequestStatus()` in server/storage.ts
+    - Removed "pending_psm" status from all backend queries and filters
+    - Updated dashboard pending counts to exclude PSM approval step
+  - **Frontend Updates**:
+    - Removed PSM approval UI from Approvals page (client/src/pages/approvals.tsx)
+    - Removed PSM approval step from Request Detail approval timeline (client/src/pages/stipend-request-detail.tsx)
+    - Updated `canApprove()` function to remove PSM role check
+  - **UI Enhancements**:
+    - Removed 'Description' column from Ledger History table for cleaner display
+    - Added 'Stipend Description' column to Pending Stipend Requests table for better context
+  - **Rationale**: PSMs should not approve their own requests; Lead PSM approval provides sufficient oversight
+
 - **2025-10-31**: Enhanced Stipend Request Tracking with Descriptions and Staff Emails
   - **Stipend Description Field**:
     - Added `stipendDescription` field (varchar 500) to all stipend requests
@@ -76,7 +95,7 @@ The application follows a client-server architecture. The frontend is built with
 
 ### Feature Specifications
 - **Dashboard**: Displays key performance indicators (KPIs) like Total Portfolio Cap, Stipend Paid (YTD), Stipend Committed, Available Balance, and Pending Approvals. Portfolio cards show financial metrics (Cap, Utilized, Committed, Remaining) with color-coded utilization bars.
-- **Stipend Request Workflow**: Multi-level approval process (PSM → Lead PSM → Finance), with status tracking and automatic ledger entry creation upon final approval.
+- **Stipend Request Workflow**: Two-level approval process (Lead PSM → Finance), with status tracking and automatic ledger entry creation upon final approval.
 - **Inter-PSM Allocation System**: Enables PSMs to transfer stipends between practices within their portfolios, with automatic ledger adjustments.
 - **Practice-Level Ledger Tracking**: Records all financial transactions including opening balances, remeasurement adjustments, paid stipends, committed stipends, and inter-PSM allocations.
 - **Stipend Cap Calculation**: Automatically calculated based on `0.6 * Gross Margin % + 0.4 * Collections %` during BigQuery data imports.
