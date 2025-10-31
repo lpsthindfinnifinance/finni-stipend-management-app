@@ -1,23 +1,154 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, XCircle, CheckCircle } from "lucide-react";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
 import { useParams, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import type { StipendRequestWithDetails } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 export default function StipendRequestDetail() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [approvalComment, setApprovalComment] = useState("");
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
   const { data: request, isLoading } = useQuery<StipendRequestWithDetails>({
     queryKey: ["/api/stipend-requests", id],
     enabled: isAuthenticated && !!id,
   });
+
+  const approveMutation = useMutation({
+    mutationFn: async ({ comment }: { comment?: string }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/approve`, { comment });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Request approved successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      setIsApproveDialogOpen(false);
+      setApprovalComment("");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({ reason }: { reason: string }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/reject`, { reason });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Request rejected",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      setIsRejectDialogOpen(false);
+      setRejectionReason("");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canApprove = () => {
+    if (!request) return false;
+    if (role === "Lead PSM" && request.status === "pending_lead_psm") return true;
+    if ((role === "Finance" || role === "Admin") && request.status === "pending_finance") return true;
+    if (role === "Admin") return true;
+    return false;
+  };
+
+  const handleApprove = () => {
+    setIsApproveDialogOpen(true);
+  };
+
+  const confirmApprove = () => {
+    if (approvalComment.trim() && approvalComment.trim().length < 5) {
+      toast({
+        title: "Validation Error",
+        description: "Comment must be at least 5 characters if provided",
+        variant: "destructive",
+      });
+      return;
+    }
+    approveMutation.mutate({
+      comment: approvalComment.trim() || undefined,
+    });
+  };
+
+  const handleReject = () => {
+    setIsRejectDialogOpen(true);
+  };
+
+  const confirmReject = () => {
+    if (!rejectionReason.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide a rejection reason",
+        variant: "destructive",
+      });
+      return;
+    }
+    rejectMutation.mutate({
+      reason: rejectionReason,
+    });
+  };
 
   if (authLoading || !isAuthenticated) {
     return null;
@@ -101,8 +232,30 @@ export default function StipendRequestDetail() {
             Submitted on {formatDate(request.createdAt)}
           </p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
           <StatusBadge status={request.status} />
+          {canApprove() && request.status !== "approved" && request.status !== "rejected" && (
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+                data-testid="button-approve"
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Approve
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={rejectMutation.isPending}
+                data-testid="button-reject"
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                Reject
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -296,6 +449,101 @@ export default function StipendRequestDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Approve Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent data-testid="dialog-approve">
+          <DialogHeader>
+            <DialogTitle>Approve Request</DialogTitle>
+            <DialogDescription>
+              You are about to approve this stipend request. You can optionally add a comment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="approval-comment">Comment (optional)</Label>
+              <Textarea
+                id="approval-comment"
+                placeholder="Add a comment..."
+                value={approvalComment}
+                onChange={(e) => setApprovalComment(e.target.value)}
+                data-testid="textarea-approval-comment"
+              />
+              {approvalComment.trim() && approvalComment.trim().length < 5 && (
+                <p className="text-sm text-destructive">
+                  Comment must be at least 5 characters
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsApproveDialogOpen(false);
+                setApprovalComment("");
+              }}
+              data-testid="button-cancel-approve"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmApprove}
+              disabled={
+                approveMutation.isPending ||
+                (approvalComment.trim().length > 0 && approvalComment.trim().length < 5)
+              }
+              data-testid="button-confirm-approve"
+            >
+              {approveMutation.isPending ? "Approving..." : "Approve"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent data-testid="dialog-reject">
+          <DialogHeader>
+            <DialogTitle>Reject Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this stipend request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason">Rejection Reason *</Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="Explain why this request is being rejected..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                data-testid="textarea-rejection-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRejectDialogOpen(false);
+                setRejectionReason("");
+              }}
+              data-testid="button-cancel-reject"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmReject}
+              disabled={!rejectionReason.trim() || rejectMutation.isPending}
+              data-testid="button-confirm-reject"
+            >
+              {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
