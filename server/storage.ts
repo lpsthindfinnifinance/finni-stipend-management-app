@@ -456,8 +456,24 @@ export class DatabaseStorage implements IStorage {
   
   async getPracticeLedger(practiceId: string): Promise<any[]> {
     return await db
-      .select()
+      .select({
+        id: practiceLedger.id,
+        practiceId: practiceLedger.practiceId,
+        payPeriod: practiceLedger.payPeriod,
+        transactionType: practiceLedger.transactionType,
+        amount: practiceLedger.amount,
+        description: practiceLedger.description,
+        relatedRequestId: practiceLedger.relatedRequestId,
+        relatedAllocationId: practiceLedger.relatedAllocationId,
+        createdAt: practiceLedger.createdAt,
+        stipendType: stipendRequests.stipendType,
+        stipendDescription: stipendRequests.stipendDescription,
+      })
       .from(practiceLedger)
+      .leftJoin(
+        stipendRequests,
+        eq(practiceLedger.relatedRequestId, stipendRequests.id)
+      )
       .where(eq(practiceLedger.practiceId, practiceId))
       .orderBy(desc(practiceLedger.createdAt));
   }

@@ -346,6 +346,8 @@ export default function PracticeDetail() {
                         <TableHead className="font-medium">Date</TableHead>
                         <TableHead className="font-medium">Type</TableHead>
                         <TableHead className="font-medium">Description</TableHead>
+                        <TableHead className="font-medium">Stipend Type</TableHead>
+                        <TableHead className="font-medium">Stipend Description</TableHead>
                         <TableHead className="font-medium text-right">Amount</TableHead>
                         <TableHead className="font-medium text-right">Running Balance</TableHead>
                       </TableRow>
@@ -369,6 +371,16 @@ export default function PracticeDetail() {
                             </TableCell>
                             <TableCell className="text-sm">
                               {entry.description}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {entry.stipendType ? (
+                                <StatusBadge status={entry.stipendType} />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {entry.stipendDescription || <span className="text-muted-foreground">—</span>}
                             </TableCell>
                             <TableCell className={`text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
                               {getTransactionSign(entry.amount)}
