@@ -200,13 +200,19 @@ export default function StipendRequestDetail() {
                   </Badge>
                 </div>
                 {request.psmApprovedAt && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground space-y-1">
                     <p data-testid="text-psm-approver">
                       Approved by {request.psmApprover?.name || "Unknown"}
                     </p>
                     <p data-testid="text-psm-date">
                       on {formatDate(request.psmApprovedAt)}
                     </p>
+                    {request.psmComment && (
+                      <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-psm-comment">
+                        <span className="font-medium">Comment: </span>
+                        {request.psmComment}
+                      </div>
+                    )}
                   </div>
                 )}
                 {!request.psmApprovedAt && request.status === "pending_psm" && (
@@ -233,13 +239,19 @@ export default function StipendRequestDetail() {
                   </Badge>
                 </div>
                 {request.leadPsmApprovedAt && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground space-y-1">
                     <p data-testid="text-lead-psm-approver">
                       Approved by {request.leadPsmApprover?.name || "Unknown"}
                     </p>
                     <p data-testid="text-lead-psm-date">
                       on {formatDate(request.leadPsmApprovedAt)}
                     </p>
+                    {request.leadPsmComment && (
+                      <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-lead-psm-comment">
+                        <span className="font-medium">Comment: </span>
+                        {request.leadPsmComment}
+                      </div>
+                    )}
                   </div>
                 )}
                 {!request.leadPsmApprovedAt && request.status === "pending_lead_psm" && (
@@ -266,13 +278,19 @@ export default function StipendRequestDetail() {
                   </Badge>
                 </div>
                 {request.financeApprovedAt && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground space-y-1">
                     <p data-testid="text-finance-approver">
                       Approved by {request.financeApprover?.name || "Unknown"}
                     </p>
                     <p data-testid="text-finance-date">
                       on {formatDate(request.financeApprovedAt)}
                     </p>
+                    {request.financeComment && (
+                      <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-finance-comment">
+                        <span className="font-medium">Comment: </span>
+                        {request.financeComment}
+                      </div>
+                    )}
                   </div>
                 )}
                 {!request.financeApprovedAt && request.status === "pending_finance" && (

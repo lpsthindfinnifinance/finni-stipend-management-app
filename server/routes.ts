@@ -461,6 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      const { comment } = req.body; // Get optional comment from request body
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -499,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Cannot approve this request" });
       }
 
-      const updated = await storage.updateStipendRequestStatus(requestId, newStatus, userId);
+      const updated = await storage.updateStipendRequestStatus(requestId, newStatus, userId, comment);
       
       // Send Slack notification
       await sendSlackNotification(

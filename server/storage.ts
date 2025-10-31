@@ -694,12 +694,21 @@ export class DatabaseStorage implements IStorage {
       if (status === "pending_lead_psm") {
         updateData.psmApprovedAt = new Date();
         updateData.psmApprovedBy = userId;
+        if (notes) {
+          updateData.psmComment = notes;
+        }
       } else if (status === "pending_finance") {
         updateData.leadPsmApprovedAt = new Date();
         updateData.leadPsmApprovedBy = userId;
+        if (notes) {
+          updateData.leadPsmComment = notes;
+        }
       } else if (status === "approved") {
         updateData.financeApprovedAt = new Date();
         updateData.financeApprovedBy = userId;
+        if (notes) {
+          updateData.financeComment = notes;
+        }
       }
     } else if (status === "rejected") {
       updateData.rejectedAt = new Date();
