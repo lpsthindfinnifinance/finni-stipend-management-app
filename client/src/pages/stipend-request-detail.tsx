@@ -144,6 +144,22 @@ export default function StipendRequestDetail() {
               </Badge>
             </div>
 
+            <div data-testid="section-stipend-description">
+              <p className="text-sm text-muted-foreground">Stipend Description</p>
+              <p className="text-sm" data-testid="text-stipend-description">
+                {request.stipendDescription || "—"}
+              </p>
+            </div>
+
+            {request.staffEmails && (
+              <div data-testid="section-staff-emails">
+                <p className="text-sm text-muted-foreground">Staff Emails</p>
+                <p className="text-sm" data-testid="text-staff-emails">
+                  {request.staffEmails}
+                </p>
+              </div>
+            )}
+
             <div data-testid="section-request-type">
               <p className="text-sm text-muted-foreground">Request Type</p>
               <Badge variant="outline" className="capitalize" data-testid="badge-request-type">
