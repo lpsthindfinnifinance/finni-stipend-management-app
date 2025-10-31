@@ -408,9 +408,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get pending requests based on role
-      let status = "pending_psm";
+      let status: string | undefined;
       if (user.role === "Lead PSM") status = "pending_lead_psm";
-      if (user.role === "Finance") status = "pending_finance";
+      else if (user.role === "Finance") status = "pending_finance";
+      else if (user.role === "Admin") status = "pending_lead_psm"; // Admins can see Lead PSM pending requests
+      
+      // PSM role users cannot approve requests, so return empty array
+      if (!status) {
+        return res.json([]);
+      }
 
       const requests = await storage.getStipendRequests({ status });
       res.json(requests);
