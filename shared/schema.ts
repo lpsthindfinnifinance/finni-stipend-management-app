@@ -226,6 +226,9 @@ export const stipendRequests = pgTable("stipend_requests", {
   rejectedAt: timestamp("rejected_at"),
   rejectedBy: varchar("rejected_by"),
   rejectionReason: text("rejection_reason"),
+  psmComment: text("psm_comment"), // Comment when PSM approves/rejects
+  leadPsmComment: text("lead_psm_comment"), // Comment when Lead PSM approves/rejects
+  financeComment: text("finance_comment"), // Comment when Finance approves/rejects
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
