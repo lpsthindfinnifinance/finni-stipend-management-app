@@ -539,7 +539,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(stipendRequests.practiceId, practiceId),
-          inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+          inArray(stipendRequests.status, ['pending_lead_psm', 'pending_finance'])
         )
       );
     
@@ -614,7 +614,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(stipendRequests.practiceId, practiceId),
-          inArray(stipendRequests.status, ['pending_psm', 'pending_lead_psm', 'pending_finance'])
+          inArray(stipendRequests.status, ['pending_lead_psm', 'pending_finance'])
         )
       )
       .orderBy(desc(stipendRequests.createdAt));
@@ -636,20 +636,6 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .where(eq(users.id, request.requestorId));
-
-    // Get PSM approver information
-    let psmApprover = null;
-    if (request.psmApprovedBy) {
-      const [approver] = await db
-        .select({
-          id: users.id,
-          name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-          email: users.email,
-        })
-        .from(users)
-        .where(eq(users.id, request.psmApprovedBy));
-      psmApprover = approver;
-    }
 
     // Get Lead PSM approver information
     let leadPsmApprover = null;
@@ -691,7 +677,6 @@ export class DatabaseStorage implements IStorage {
     return {
       ...request,
       requestor,
-      psmApprover,
       leadPsmApprover,
       financeApprover,
       practice,
@@ -706,14 +691,7 @@ export class DatabaseStorage implements IStorage {
   async updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest> {
     const updateData: any = { status, updatedAt: new Date() };
     
-    if (status === "pending_lead_psm") {
-      // PSM approved, moving to Lead PSM review
-      updateData.psmApprovedAt = new Date();
-      updateData.psmApprovedBy = userId;
-      if (notes) {
-        updateData.psmComment = notes;
-      }
-    } else if (status === "pending_finance") {
+    if (status === "pending_finance") {
       // Lead PSM approved, moving to Finance review
       updateData.leadPsmApprovedAt = new Date();
       updateData.leadPsmApprovedBy = userId;
@@ -1064,7 +1042,6 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(practices.portfolioId, portfolioId),
             or(
-              eq(stipendRequests.status, 'pending_psm'),
               eq(stipendRequests.status, 'pending_lead_psm'),
               eq(stipendRequests.status, 'pending_finance')
             )
@@ -1087,7 +1064,6 @@ export class DatabaseStorage implements IStorage {
     } else if (role === "Admin") {
       const pending = await db.select().from(stipendRequests)
         .where(or(
-          eq(stipendRequests.status, 'pending_psm'),
           eq(stipendRequests.status, 'pending_lead_psm'),
           eq(stipendRequests.status, 'pending_finance')
         ));
