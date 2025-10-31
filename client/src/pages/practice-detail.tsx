@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, Link } from "wouter";
 import { Progress } from "@/components/ui/progress";
 import type { StipendRequest } from "@shared/schema";
 
@@ -294,7 +294,13 @@ export default function PracticeDetail() {
                         {(pendingRequests || []).map((request) => (
                           <TableRow key={request.id} data-testid={`row-pending-request-${request.id}`}>
                             <TableCell className="font-mono text-sm">
-                              #{request.id}
+                              <Link 
+                                href={`/requests/${request.id}`}
+                                className="text-primary hover:underline"
+                                data-testid={`link-request-${request.id}`}
+                              >
+                                #{request.id}
+                              </Link>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDate(request.createdAt)}
