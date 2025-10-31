@@ -76,6 +76,28 @@ Finni Health is a comprehensive stipend management system designed for 60+ ABA p
   - **E2E Testing**: Verified clickable rows navigate correctly, approval timeline displays all stages with comments
   - **Note**: Existing requests approved before this fix will not have PSM/Lead PSM data retroactively
 
+- **2025-10-31**: Request Detail Page Approval Actions
+  - **Approve/Reject Buttons on Detail Page**:
+    - Added Approve and Reject buttons to request detail page header
+    - Buttons appear next to status badge when user has approval permissions
+    - Same approval dialogs as Approvals page (with optional comments, 5-char minimum)
+    - Buttons only visible for pending requests (not approved or rejected)
+  - **Permission Logic**:
+    - Lead PSM: Can approve requests with status "pending_lead_psm"
+    - Finance/Admin: Can approve requests with status "pending_finance"
+    - Admin: Can approve at any stage
+    - Uses same `canApprove()` logic as Approvals page for consistency
+  - **User Experience**:
+    - Users can click pending request row on Approvals page to navigate to detail
+    - On detail page, users can immediately approve or reject without returning to Approvals
+    - Action buttons stop event propagation to prevent row click when clicking buttons on Approvals page
+    - Successful approval/rejection shows toast notification and invalidates all request queries
+  - **Technical Implementation**:
+    - Reused approval/rejection mutation logic from Approvals page
+    - Same dialog components with comment/reason validation
+    - Buttons in header: `data-testid="button-approve"` and `data-testid="button-reject"`
+    - Dialogs: `data-testid="dialog-approve"` and `data-testid="dialog-reject"`
+
 ## User Preferences
 - I prefer simple language and clear explanations.
 - I want iterative development with frequent updates and feedback loops.
