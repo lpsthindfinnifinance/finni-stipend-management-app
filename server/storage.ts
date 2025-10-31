@@ -605,7 +605,80 @@ export class DatabaseStorage implements IStorage {
 
   async getStipendRequestById(id: number): Promise<any | undefined> {
     const [request] = await db.select().from(stipendRequests).where(eq(stipendRequests.id, id));
-    return request;
+    
+    if (!request) {
+      return undefined;
+    }
+
+    // Get requestor information
+    const [requestor] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      })
+      .from(users)
+      .where(eq(users.id, request.requestorId));
+
+    // Get PSM approver information
+    let psmApprover = null;
+    if (request.psmApprovedBy) {
+      const [approver] = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, request.psmApprovedBy));
+      psmApprover = approver;
+    }
+
+    // Get Lead PSM approver information
+    let leadPsmApprover = null;
+    if (request.leadPsmApprovedBy) {
+      const [approver] = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, request.leadPsmApprovedBy));
+      leadPsmApprover = approver;
+    }
+
+    // Get Finance approver information
+    let financeApprover = null;
+    if (request.financeApprovedBy) {
+      const [approver] = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, request.financeApprovedBy));
+      financeApprover = approver;
+    }
+
+    // Get practice information
+    const [practice] = await db
+      .select({
+        id: practices.id,
+        clinicName: practices.clinicName,
+      })
+      .from(practices)
+      .where(eq(practices.id, request.practiceId));
+
+    return {
+      ...request,
+      requestor,
+      psmApprover,
+      leadPsmApprover,
+      financeApprover,
+      practice,
+    };
   }
 
   async createStipendRequest(request: InsertStipendRequest): Promise<StipendRequest> {

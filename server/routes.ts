@@ -440,6 +440,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/stipend-requests/:id', isAuthenticated, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const request = await storage.getStipendRequestById(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+      
+      res.json(request);
+    } catch (error) {
+      console.error("Error fetching request details:", error);
+      res.status(500).json({ message: "Failed to fetch request details" });
+    }
+  });
+
   app.post('/api/stipend-requests/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
