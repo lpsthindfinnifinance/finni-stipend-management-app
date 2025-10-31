@@ -9,8 +9,10 @@ Finni Health is a comprehensive stipend management system designed for 60+ ABA p
     - Added three new fields to `stipend_requests` table: `psmComment`, `leadPsmComment`, `financeComment`
     - Backend approval endpoint now accepts optional `comment` parameter
     - `updateStipendRequestStatus()` saves comments based on approval stage (PSM/Lead PSM/Finance)
-    - Comments displayed on Request Detail page in approval timeline for each completed stage
-    - Comments shown in subtle muted background boxes below approver info
+    - **Approvals Page**: Added approval dialog with comment field (optional, minimum 5 characters if provided)
+    - **Request Detail Page**: Comments displayed in approval timeline for each completed stage in muted background boxes
+    - Real-time validation: Comment field shows error and disables approval button if less than 5 characters
+    - Comments are optional - approvers can skip or add context to their decisions
   - **Approval Timestamp Tracking** (Bug Fix):
     - Fixed critical bug where PSM and Lead PSM approval timestamps/usernames weren't being saved
     - Removed incorrect `status.includes("approved")` check that prevented PSM/Lead PSM data recording

@@ -36,6 +36,8 @@ export default function Approvals() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [approvalComment, setApprovalComment] = useState("");
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -50,24 +52,24 @@ export default function Approvals() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const { data: pendingRequests, isLoading: pendingLoading } = useQuery({
+  const { data: pendingRequests, isLoading: pendingLoading } = useQuery<any[]>({
     queryKey: ["/api/stipend-requests/pending"],
     enabled: isAuthenticated,
   });
 
-  const { data: approvedRequests, isLoading: approvedLoading } = useQuery({
+  const { data: approvedRequests, isLoading: approvedLoading } = useQuery<any[]>({
     queryKey: ["/api/stipend-requests/approved"],
     enabled: isAuthenticated,
   });
 
-  const { data: rejectedRequests, isLoading: rejectedLoading } = useQuery({
+  const { data: rejectedRequests, isLoading: rejectedLoading } = useQuery<any[]>({
     queryKey: ["/api/stipend-requests/rejected"],
     enabled: isAuthenticated,
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      return await apiRequest("POST", `/api/stipend-requests/${requestId}/approve`, {});
+    mutationFn: async ({ requestId, comment }: { requestId: number; comment?: string }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${requestId}/approve`, { comment });
     },
     onSuccess: () => {
       toast({
@@ -75,6 +77,9 @@ export default function Approvals() {
         description: "Request approved successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      setIsApproveDialogOpen(false);
+      setSelectedRequest(null);
+      setApprovalComment("");
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -131,7 +136,23 @@ export default function Approvals() {
   });
 
   const handleApprove = (request: any) => {
-    approveMutation.mutate(request.id);
+    setSelectedRequest(request);
+    setIsApproveDialogOpen(true);
+  };
+
+  const confirmApprove = () => {
+    if (approvalComment.trim() && approvalComment.trim().length < 5) {
+      toast({
+        title: "Validation Error",
+        description: "Comment must be at least 5 characters if provided",
+        variant: "destructive",
+      });
+      return;
+    }
+    approveMutation.mutate({
+      requestId: selectedRequest.id,
+      comment: approvalComment.trim() || undefined,
+    });
   };
 
   const handleReject = (request: any) => {
@@ -319,6 +340,56 @@ export default function Approvals() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Approve Dialog */}
+        <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Approve Request</DialogTitle>
+              <DialogDescription>
+                You can add an optional comment to document your approval decision.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="approval-comment">Approval Comment (Optional)</Label>
+                <Textarea
+                  id="approval-comment"
+                  placeholder="Add a comment about your approval decision... (minimum 5 characters if provided)"
+                  value={approvalComment}
+                  onChange={(e) => setApprovalComment(e.target.value)}
+                  rows={4}
+                  data-testid="textarea-approval-comment"
+                />
+                {approvalComment.trim() && approvalComment.trim().length < 5 && (
+                  <p className="text-sm text-destructive">
+                    Comment must be at least 5 characters
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApproveDialogOpen(false);
+                  setApprovalComment("");
+                }}
+                data-testid="button-cancel-approve"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={confirmApprove}
+                disabled={approveMutation.isPending || (approvalComment.trim().length > 0 && approvalComment.trim().length < 5)}
+                data-testid="button-confirm-approve"
+              >
+                Approve Request
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Reject Dialog */}
         <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
