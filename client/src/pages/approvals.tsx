@@ -180,7 +180,6 @@ export default function Approvals() {
   }
 
   const canApprove = (request: any) => {
-    if (role === "PSM" && request.status === "pending_psm") return true;
     if (role === "Lead PSM" && request.status === "pending_lead_psm") return true;
     if ((role === "Finance" || role === "Admin") && request.status === "pending_finance") return true;
     // Admin can approve at any level
@@ -198,6 +197,7 @@ export default function Approvals() {
           <TableHead className="font-medium">Requestor</TableHead>
           <TableHead className="font-medium text-right">Amount</TableHead>
           <TableHead className="font-medium">Type</TableHead>
+          <TableHead className="font-medium">Stipend Description</TableHead>
           <TableHead className="font-medium">Status</TableHead>
           <TableHead className="font-medium">Submitted</TableHead>
           {showActions && <TableHead className="font-medium text-right">Actions</TableHead>}
@@ -206,7 +206,7 @@ export default function Approvals() {
       <TableBody>
         {requests?.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={showActions ? 8 : 7} className="text-center py-8 text-muted-foreground">
+            <TableCell colSpan={showActions ? 9 : 8} className="text-center py-8 text-muted-foreground">
               No requests found
             </TableCell>
           </TableRow>
@@ -221,6 +221,9 @@ export default function Approvals() {
               </TableCell>
               <TableCell>
                 <StatusBadge status={request.requestType} />
+              </TableCell>
+              <TableCell className="text-sm">
+                {request.stipendDescription || <span className="text-muted-foreground">—</span>}
               </TableCell>
               <TableCell>
                 <StatusBadge status={request.status} />

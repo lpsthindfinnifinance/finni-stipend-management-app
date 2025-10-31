@@ -54,9 +54,6 @@ export default function StipendRequestDetail() {
       return <XCircle className="h-5 w-5 text-red-600" />;
     }
     
-    if (stage === "psm" && request.psmApprovedAt) {
-      return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-    }
     if (stage === "lead_psm" && request.leadPsmApprovedAt) {
       return <CheckCircle2 className="h-5 w-5 text-green-600" />;
     }
@@ -74,9 +71,6 @@ export default function StipendRequestDetail() {
       return "Rejected";
     }
     
-    if (stage === "psm") {
-      return request.psmApprovedAt ? "Approved" : status === "pending_psm" ? "Pending" : "Not Started";
-    }
     if (stage === "lead_psm") {
       return request.leadPsmApprovedAt ? "Approved" : status === "pending_lead_psm" ? "Pending" : "Not Started";
     }
@@ -184,45 +178,6 @@ export default function StipendRequestDetail() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* PSM Approval */}
-            <div className="flex gap-4" data-testid="section-psm-approval">
-              <div className="flex-shrink-0 mt-1">
-                {getApprovalIcon("psm")}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-medium">PSM Approval</p>
-                  <Badge 
-                    variant={request.psmApprovedAt ? "default" : "secondary"}
-                    data-testid="badge-psm-status"
-                  >
-                    {getApprovalStatus("psm")}
-                  </Badge>
-                </div>
-                {request.psmApprovedAt && (
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p data-testid="text-psm-approver">
-                      Approved by {request.psmApprover?.name || "Unknown"}
-                    </p>
-                    <p data-testid="text-psm-date">
-                      on {formatDateTime(request.psmApprovedAt)}
-                    </p>
-                    {request.psmComment && (
-                      <div className="mt-2 p-2 bg-muted rounded text-sm" data-testid="text-psm-comment">
-                        <span className="font-medium">Comment: </span>
-                        {request.psmComment}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {!request.psmApprovedAt && request.status === "pending_psm" && (
-                  <p className="text-sm text-muted-foreground">
-                    Awaiting approval
-                  </p>
-                )}
-              </div>
-            </div>
-
             {/* Lead PSM Approval */}
             <div className="flex gap-4" data-testid="section-lead-psm-approval">
               <div className="flex-shrink-0 mt-1">
