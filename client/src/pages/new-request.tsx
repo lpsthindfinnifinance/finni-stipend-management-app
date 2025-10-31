@@ -119,6 +119,24 @@ export default function NewRequest() {
       return;
     }
 
+    if (!stipendDescription || stipendDescription.trim().length < 5) {
+      toast({
+        title: "Validation Error",
+        description: "Stipend description must be at least 5 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (stipendType === "staff_cost_reimbursement" && (!staffEmails || staffEmails.trim().length < 5)) {
+      toast({
+        title: "Validation Error",
+        description: "Staff emails must be at least 5 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const numAmount = parseFloat(amount);
     if (practiceBalance && numAmount > practiceBalance.available) {
       toast({
@@ -134,8 +152,8 @@ export default function NewRequest() {
       requestorId: user?.id,
       amount,
       stipendType,
-      stipendDescription: stipendDescription || null,
-      staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails || null : null,
+      stipendDescription: stipendDescription.trim(),
+      staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails.trim() : null,
       requestType,
       recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
       justification,

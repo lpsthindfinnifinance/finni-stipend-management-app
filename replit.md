@@ -4,6 +4,28 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-10-31**: Enhanced Stipend Request Tracking with Descriptions and Staff Emails
+  - **Stipend Description Field**:
+    - Added `stipendDescription` field (varchar 500) to all stipend requests
+    - Form field appears below Stipend Type selection in New Request form
+    - Required field with minimum 5 characters, maximum 500 characters
+    - Displayed in Ledger History table for better transaction context
+  - **Staff Emails Field** (Conditional):
+    - Added `staffEmails` field (varchar 500) to stipend_requests table
+    - Only appears when "Staff Cost Reimbursement Item" stipend type is selected
+    - Required when visible, minimum 5 characters
+    - Tracks staff email addresses for cost reimbursement items
+  - **Practice Ledger Enhancement**:
+    - Added "Stipend Type" and "Stipend Description" columns to Practice Detail ledger history table
+    - Backend `getPracticeLedger()` now left joins with `stipend_requests` table
+    - Shows stipend type as a badge and description in dedicated columns
+    - Non-stipend transactions (opening balance, remeasurement, etc.) show "—" placeholder
+  - **Technical Implementation**:
+    - Database schema updated with two new nullable varchar(500) fields
+    - Backend JOIN retrieves stipendType and stipendDescription when available
+    - Frontend conditionally renders Staff Emails field based on stipend type selection
+    - StatusBadge component used for stipend type display in ledger table
+
 - **2025-10-31**: Enhanced Approval System with Comments, Timestamps & Clickable Table Rows
   - **Approval Comments Feature**:
     - Added three new fields to `stipend_requests` table: `psmComment`, `leadPsmComment`, `financeComment`
