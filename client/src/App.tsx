@@ -15,6 +15,7 @@ import Practices from "@/pages/practices";
 import PracticeDetail from "@/pages/practice-detail";
 import NewRequest from "@/pages/new-request";
 import Requests from "@/pages/requests";
+import StipendRequestDetail from "@/pages/stipend-request-detail";
 import Approvals from "@/pages/approvals";
 import Allocations from "@/pages/allocations";
 import NewAllocation from "@/pages/new-allocation";
@@ -37,6 +38,7 @@ function Router() {
           <Route path="/practices" component={Practices} />
           <Route path="/practices/:id" component={PracticeDetail} />
           <Route path="/requests/new" component={NewRequest} />
+          <Route path="/requests/:id" component={StipendRequestDetail} />
           <Route path="/requests" component={Requests} />
           <Route path="/approvals" component={Approvals} />
           <Route path="/allocations" component={Allocations} />
