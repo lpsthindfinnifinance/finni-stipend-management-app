@@ -3,6 +3,27 @@
 ## Overview
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
+## Recent Changes
+- **2025-10-31**: Enhanced Approval System with Comments & Clickable Table Rows
+  - **Approval Comments Feature**:
+    - Added three new fields to `stipend_requests` table: `psmComment`, `leadPsmComment`, `financeComment`
+    - Backend approval endpoint now accepts optional `comment` parameter
+    - `updateStipendRequestStatus()` saves comments based on approval stage (PSM/Lead PSM/Finance)
+    - Comments displayed on Request Detail page in approval timeline for each completed stage
+    - Comments shown in subtle muted background boxes below approver info
+  - **Clickable Table Rows**:
+    - **Pending Requests Table**: Entire row now clickable (not just request ID link)
+    - **Ledger History Table**: Rows with `relatedRequestId` now fully clickable
+    - Removed individual links from cells - navigation happens via row click
+    - Added `cursor-pointer` and `hover-elevate` classes for visual affordance
+    - Simplified description rendering (no more regex parsing and link splitting)
+  - **Technical Implementation**:
+    - Row onClick uses `window.location.href` for navigation
+    - Conditional clickability based on `relatedRequestId` existence in ledger
+    - Proper data-testid attributes for both clickable and non-clickable rows
+    - Type-safe comment handling with proper null checks in UI
+  - **E2E Testing**: Verified clickable rows navigate correctly, approval timeline displays all stages with comments
+
 ## User Preferences
 - I prefer simple language and clear explanations.
 - I want iterative development with frequent updates and feedback loops.
