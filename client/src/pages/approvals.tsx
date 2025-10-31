@@ -212,7 +212,12 @@ export default function Approvals() {
           </TableRow>
         ) : (
           requests?.map((request: any) => (
-            <TableRow key={request.id} data-testid={`row-request-${request.id}`}>
+            <TableRow 
+              key={request.id} 
+              data-testid={`row-request-${request.id}`}
+              className="cursor-pointer hover-elevate"
+              onClick={() => window.location.href = `/requests/${request.id}`}
+            >
               <TableCell className="font-mono">{request.id}</TableCell>
               <TableCell>{request.practiceName || request.practiceId}</TableCell>
               <TableCell>{request.requestorName || request.requestorId}</TableCell>
@@ -238,7 +243,10 @@ export default function Approvals() {
                       <Button
                         size="sm"
                         variant="default"
-                        onClick={() => handleApprove(request)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApprove(request);
+                        }}
                         disabled={approveMutation.isPending}
                         data-testid={`button-approve-${request.id}`}
                       >
@@ -248,7 +256,10 @@ export default function Approvals() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => handleReject(request)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReject(request);
+                        }}
                         disabled={rejectMutation.isPending}
                         data-testid={`button-reject-${request.id}`}
                       >
