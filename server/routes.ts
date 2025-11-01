@@ -488,20 +488,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (request.status === "pending_finance" && user.role === "Finance") {
         newStatus = "approved";
         
-        // Create ledger entry for approved request
+        // Get current pay period
+        const currentPeriod = await storage.getCurrentPayPeriod();
+        const currentPeriodNumber = currentPeriod?.id || 1;
+        
+        // Create ledger entries for approved request
         // Amount should be negative for paid/committed as it reduces available balance
-        const transactionType = request.requestType === "one_time" ? "paid" : "committed";
         const amount = `-${request.amount}`; // Make negative to reduce balance
         
-        await storage.createLedgerEntry({
-          practiceId: request.practiceId,
-          payPeriod: 1, // Current period - should be dynamic
-          transactionType,
-          amount,
-          description: `Stipend request #${requestId} approved`,
-          relatedRequestId: requestId,
-          relatedAllocationId: null,
-        });
+        if (request.requestType === "one_time") {
+          // One-time request: Create single "paid" entry
+          await storage.createLedgerEntry({
+            practiceId: request.practiceId,
+            payPeriod: currentPeriodNumber,
+            transactionType: "paid",
+            amount,
+            description: `Stipend request #${requestId} approved`,
+            relatedRequestId: requestId,
+            relatedAllocationId: null,
+          });
+        } else if (request.requestType === "recurring") {
+          // Recurring request: Create entries for all periods from effective to end
+          const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
+          const endPeriod = request.recurringEndPeriod || 26;
+          
+          for (let period = effectivePeriod; period <= endPeriod; period++) {
+            // Current period or before = "paid", future periods = "committed"
+            const transactionType = period <= currentPeriodNumber ? "paid" : "committed";
+            
+            await storage.createLedgerEntry({
+              practiceId: request.practiceId,
+              payPeriod: period,
+              transactionType,
+              amount,
+              description: `Recurring stipend request #${requestId} (PP${period})`,
+              relatedRequestId: requestId,
+              relatedAllocationId: null,
+            });
+          }
+        }
       } else {
         return res.status(403).json({ message: "Cannot approve this request" });
       }
