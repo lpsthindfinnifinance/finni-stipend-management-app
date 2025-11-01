@@ -286,6 +286,7 @@ export default function PracticeDetail() {
                           <TableHead className="font-medium">Request ID</TableHead>
                           <TableHead className="font-medium">Submitted</TableHead>
                           <TableHead className="font-medium">Type</TableHead>
+                          <TableHead className="font-medium">Pay Period</TableHead>
                           <TableHead className="font-medium text-right">Amount</TableHead>
                           <TableHead className="font-medium">Approval Stage</TableHead>
                         </TableRow>
@@ -306,6 +307,14 @@ export default function PracticeDetail() {
                             </TableCell>
                             <TableCell className="text-sm capitalize">
                               {request.stipendType.replace(/_/g, ' ')}
+                            </TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {request.requestType === "recurring" && request.effectivePayPeriod && request.recurringEndPeriod
+                                ? `PP${request.effectivePayPeriod}-PP${request.recurringEndPeriod}`
+                                : request.effectivePayPeriod
+                                ? `PP${request.effectivePayPeriod}`
+                                : <span className="text-muted-foreground">—</span>
+                              }
                             </TableCell>
                             <TableCell className="text-right font-mono font-semibold text-orange-600 dark:text-orange-400">
                               {formatCurrency(request.amount)}
