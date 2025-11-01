@@ -30,6 +30,7 @@ export default function NewRequest() {
   const [stipendType, setStipendType] = useState("lease_stipend");
   const [stipendDescription, setStipendDescription] = useState("");
   const [staffEmails, setStaffEmails] = useState("");
+  const [effectivePayPeriod, setEffectivePayPeriod] = useState<string | undefined>(undefined);
   const [recurringEndPeriod, setRecurringEndPeriod] = useState<string | undefined>(undefined);
   const [justification, setJustification] = useState("");
 
@@ -155,6 +156,7 @@ export default function NewRequest() {
       stipendDescription: stipendDescription.trim(),
       staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails.trim() : null,
       requestType,
+      effectivePayPeriod: requestType === "recurring" && effectivePayPeriod ? parseInt(effectivePayPeriod) : null,
       recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
       justification,
     });
@@ -319,21 +321,44 @@ export default function NewRequest() {
                 </div>
 
                 {requestType === "recurring" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="endPeriod">End Pay Period *</Label>
-                    <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
-                      <SelectTrigger id="endPeriod" data-testid="select-end-period">
-                        <SelectValue placeholder="Select end period" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
-                          <SelectItem key={period} value={period.toString()}>
-                            Pay Period {period}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="effectivePeriod">Effective Pay Period *</Label>
+                      <Select value={effectivePayPeriod} onValueChange={setEffectivePayPeriod}>
+                        <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
+                          <SelectValue placeholder="Select effective period" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
+                            <SelectItem key={period} value={period.toString()}>
+                              Pay Period {period}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        The pay period when this stipend becomes effective
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endPeriod">End Pay Period *</Label>
+                      <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
+                        <SelectTrigger id="endPeriod" data-testid="select-end-period">
+                          <SelectValue placeholder="Select end period" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
+                            <SelectItem key={period} value={period.toString()}>
+                              Pay Period {period}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        The last pay period for this recurring stipend
+                      </p>
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2">
