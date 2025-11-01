@@ -436,6 +436,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/stipend-requests/all-approved', isAuthenticated, async (req, res) => {
+    try {
+      const requests = await storage.getStipendRequests({ status: "approved" });
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching all approved requests:", error);
+      res.status(500).json({ message: "Failed to fetch all approved requests" });
+    }
+  });
+
   app.get('/api/stipend-requests/rejected', isAuthenticated, async (req, res) => {
     try {
       const requests = await storage.getStipendRequests({ status: "rejected" });

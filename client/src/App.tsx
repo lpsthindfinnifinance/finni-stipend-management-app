@@ -21,6 +21,7 @@ import Allocations from "@/pages/allocations";
 import NewAllocation from "@/pages/new-allocation";
 import Reports from "@/pages/reports";
 import PayPeriods from "@/pages/pay-periods";
+import FinanceOps from "@/pages/finance-ops";
 import NegativeEarnings from "@/pages/negative-earnings";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -45,6 +46,7 @@ function Router() {
           <Route path="/allocations/new" component={NewAllocation} />
           <Route path="/reports" component={Reports} />
           <Route path="/pay-periods" component={PayPeriods} />
+          <Route path="/finance-ops" component={FinanceOps} />
           <Route path="/negative-earnings" component={NegativeEarnings} />
           <Route path="/settings" component={Settings} />
         </>

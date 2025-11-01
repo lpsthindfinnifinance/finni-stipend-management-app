@@ -75,8 +75,8 @@ export function AppSidebar() {
       roles: ["PSM", "Lead PSM", "Finance", "Admin"],
     },
     {
-      title: "Pay Periods",
-      url: "/pay-periods",
+      title: "Finance Ops",
+      url: "/finance-ops",
       icon: Calendar,
       roles: ["Finance", "Admin"],
     },
