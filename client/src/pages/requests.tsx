@@ -89,6 +89,7 @@ export default function Requests() {
                     <TableHead className="font-medium">Practice</TableHead>
                     <TableHead className="font-medium text-right">Amount</TableHead>
                     <TableHead className="font-medium">Type</TableHead>
+                    <TableHead className="font-medium">Pay Period</TableHead>
                     <TableHead className="font-medium">Status</TableHead>
                     <TableHead className="font-medium">Submitted</TableHead>
                   </TableRow>
@@ -96,7 +97,7 @@ export default function Requests() {
                 <TableBody>
                   {!requests || requests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No requests found
                       </TableCell>
                     </TableRow>
@@ -110,6 +111,14 @@ export default function Requests() {
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={request.requestType} />
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {request.requestType === "recurring" && request.effectivePayPeriod && request.recurringEndPeriod
+                            ? `PP${request.effectivePayPeriod}-PP${request.recurringEndPeriod}`
+                            : request.effectivePayPeriod
+                            ? `PP${request.effectivePayPeriod}`
+                            : <span className="text-muted-foreground">—</span>
+                          }
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={request.status} />
