@@ -224,6 +224,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Specific routes MUST come before parameterized routes
+  app.get('/api/practices/all', isAuthenticated, async (req, res) => {
+    try {
+      const practices = await storage.getPractices({});
+      res.json(practices);
+    } catch (error) {
+      console.error("Error fetching all practices:", error);
+      res.status(500).json({ message: "Failed to fetch practices" });
+    }
+  });
+
   app.get('/api/practices/my', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
