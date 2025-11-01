@@ -243,12 +243,29 @@ export const insertStipendRequestSchema = createInsertSchema(stipendRequests).om
   rejectedAt: true,
   rejectedBy: true,
   rejectionReason: true,
+  leadPsmComment: true,
+  financeComment: true,
   createdAt: true,
   updatedAt: true,
-} as any).extend({
-  justification: z.string().min(50, "Justification must be at least 50 characters"),
-  amount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
-});
+} as any).refine(
+  (data) => {
+    if (typeof data.amount === 'string') {
+      const numAmount = parseFloat(data.amount);
+      return !isNaN(numAmount) && numAmount > 0;
+    }
+    return data.amount > 0;
+  },
+  { message: "Amount must be greater than 0", path: ["amount"] }
+).refine(
+  (data) => data.justification && data.justification.length >= 50,
+  { message: "Justification must be at least 50 characters", path: ["justification"] }
+).refine(
+  (data) => data.effectivePayPeriod >= 1 && data.effectivePayPeriod <= 26,
+  { message: "Pay period must be between 1 and 26", path: ["effectivePayPeriod"] }
+).refine(
+  (data) => data.stipendDescription && data.stipendDescription.trim().length >= 5,
+  { message: "Stipend description must be at least 5 characters", path: ["stipendDescription"] }
+);
 
 export type InsertStipendRequest = z.infer<typeof insertStipendRequestSchema>;
 export type StipendRequest = typeof stipendRequests.$inferSelect;

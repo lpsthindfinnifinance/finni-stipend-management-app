@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   insertStipendRequestSchema,
+  InsertStipendRequest,
   insertPortfolioSchema,
   updatePortfolioSchema,
   insertPracticeSchema,
@@ -376,11 +377,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const request = await storage.createStipendRequest(req.body);
+      // Use validated data (type assertion needed due to Zod refine chain)
+      const validatedData = validationResult.data as any;
+      const request = await storage.createStipendRequest(validatedData);
       
       // Send Slack notification
       await sendSlackNotification(
-        `New stipend request submitted: $${req.body.amount} for practice ${req.body.practiceId}`
+        `New stipend request submitted: $${validatedData.amount} for practice ${validatedData.practiceId}`
       );
       
       res.json(request);
