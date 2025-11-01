@@ -4,6 +4,40 @@
 Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
 
 ## Recent Changes
+- **2025-11-01**: Finance Ops Page with Comprehensive Stipend Tracking
+  - **New Finance Ops Page** (replaces Pay Periods in navigation):
+    - Path: `/finance-ops` (Finance and Admin roles only)
+    - Two-tab interface: "Pay Periods" and "All Stipends"
+    - Consolidated Pay Periods functionality with comprehensive stipend tracking
+  - **Pay Periods Tab**:
+    - Displays current pay period information with remeasurement status
+    - BigQuery CSV import functionality with file upload dialog
+    - Download CSV template button
+    - All pay periods table (PP1-PP26) with current period highlighting
+    - "Set Current" button for changing active pay period
+  - **All Stipends Tab**:
+    - Comprehensive table showing all approved stipend requests across all practices
+    - **Filter Options**:
+      - Pay Period filter (PP1-PP26 or "All Periods")
+      - Practice filter (all practices or specific clinic)
+    - **Table Columns**: Request ID, Practice (name + ID), Amount, Stipend Type (badge), Description, Request Type (one-time/recurring badge), Period Range (for recurring), Status, Approved By (Finance approver + date)
+    - **CSV Export**: Downloads all filtered stipend requests with complete details (request ID, practice, amount, type, description, request type, periods, status, approvers with timestamps, justification)
+    - **Clickable Rows**: Click any stipend row to navigate to its detail page
+  - **Backend API Endpoints**:
+    - `GET /api/practices/all` - Returns all practices for filter dropdown (fixed route ordering: specific routes before parameterized routes)
+    - `GET /api/stipend-requests/all-approved` - Returns all approved stipends with full details
+  - **Frontend Updates**:
+    - Created `client/src/pages/finance-ops.tsx` with tabbed interface using Shadcn Tabs
+    - Updated `client/src/App.tsx` to add `/finance-ops` route
+    - Sidebar already configured with "Finance Ops" navigation item (Finance/Admin only)
+  - **Technical Implementation**:
+    - Uses React Query for data fetching and caching
+    - Filter state managed with React useState
+    - CSV export generates properly escaped CSV with all required fields
+    - Hover effects on clickable rows (hover-elevate class)
+    - Proper data-testid attributes for all interactive elements
+  - **Rationale**: Centralizes finance operations and provides comprehensive view of all stipend activity across all practices and portfolios
+
 - **2025-10-31**: Removed PSM Approval Step from Workflow
   - **Workflow Simplification**: Changed approval workflow from 3-level (PSM → Lead PSM → Finance) to 2-level (Lead PSM → Finance)
   - **Database Schema Changes**:
