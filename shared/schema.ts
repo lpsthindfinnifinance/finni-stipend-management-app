@@ -216,7 +216,7 @@ export const stipendRequests = pgTable("stipend_requests", {
   stipendDescription: text("stipend_description"), // Description of the stipend
   staffEmails: text("staff_emails"), // Email IDs of staff (for staff_cost_reimbursement only)
   requestType: varchar("request_type").notNull(), // one_time, recurring
-  effectivePayPeriod: integer("effective_pay_period"), // Starting pay period for recurring stipends
+  effectivePayPeriod: integer("effective_pay_period").notNull(), // Pay period when stipend takes effect (required for all requests)
   recurringEndPeriod: integer("recurring_end_period"), // Only for recurring, max 26 (PP26 2025)
   justification: text("justification").notNull(),
   status: varchar("status").notNull().default("pending_lead_psm"), // pending_lead_psm, pending_finance, approved, rejected
