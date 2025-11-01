@@ -197,6 +197,7 @@ export default function Approvals() {
           <TableHead className="font-medium">Requestor</TableHead>
           <TableHead className="font-medium text-right">Amount</TableHead>
           <TableHead className="font-medium">Type</TableHead>
+          <TableHead className="font-medium">Pay Period</TableHead>
           <TableHead className="font-medium">Stipend Description</TableHead>
           <TableHead className="font-medium">Status</TableHead>
           <TableHead className="font-medium">Submitted</TableHead>
@@ -206,7 +207,7 @@ export default function Approvals() {
       <TableBody>
         {requests?.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={showActions ? 9 : 8} className="text-center py-8 text-muted-foreground">
+            <TableCell colSpan={showActions ? 10 : 9} className="text-center py-8 text-muted-foreground">
               No requests found
             </TableCell>
           </TableRow>
@@ -226,6 +227,14 @@ export default function Approvals() {
               </TableCell>
               <TableCell>
                 <StatusBadge status={request.requestType} />
+              </TableCell>
+              <TableCell className="text-sm font-medium">
+                {request.requestType === "recurring" && request.effectivePayPeriod && request.recurringEndPeriod
+                  ? `PP${request.effectivePayPeriod}-PP${request.recurringEndPeriod}`
+                  : request.effectivePayPeriod
+                  ? `PP${request.effectivePayPeriod}`
+                  : <span className="text-muted-foreground">—</span>
+                }
               </TableCell>
               <TableCell className="text-sm">
                 {request.stipendDescription || <span className="text-muted-foreground">—</span>}
