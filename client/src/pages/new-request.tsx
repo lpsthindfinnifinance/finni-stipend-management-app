@@ -102,7 +102,7 @@ export default function NewRequest() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!practiceId || !amount || !justification) {
+    if (!practiceId || !amount || !justification || !effectivePayPeriod) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -138,6 +138,15 @@ export default function NewRequest() {
       return;
     }
 
+    if (requestType === "recurring" && !recurringEndPeriod) {
+      toast({
+        title: "Validation Error",
+        description: "Please select an end pay period for recurring stipends",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const numAmount = parseFloat(amount);
     if (practiceBalance && numAmount > practiceBalance.available) {
       toast({
@@ -156,7 +165,7 @@ export default function NewRequest() {
       stipendDescription: stipendDescription.trim(),
       staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails.trim() : null,
       requestType,
-      effectivePayPeriod: requestType === "recurring" && effectivePayPeriod ? parseInt(effectivePayPeriod) : null,
+      effectivePayPeriod: parseInt(effectivePayPeriod),
       recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
       justification,
     });
@@ -320,45 +329,49 @@ export default function NewRequest() {
                   </RadioGroup>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="effectivePeriod">
+                    {requestType === "recurring" ? "Start Pay Period *" : "Pay Period *"}
+                  </Label>
+                  <Select value={effectivePayPeriod} onValueChange={setEffectivePayPeriod}>
+                    <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
+                      <SelectValue placeholder="Select pay period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
+                        <SelectItem key={period} value={period.toString()}>
+                          Pay Period {period}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {requestType === "recurring" 
+                      ? "The pay period when this recurring stipend starts"
+                      : "The pay period when this stipend will be paid"
+                    }
+                  </p>
+                </div>
+
                 {requestType === "recurring" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="effectivePeriod">Effective Pay Period *</Label>
-                      <Select value={effectivePayPeriod} onValueChange={setEffectivePayPeriod}>
-                        <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
-                          <SelectValue placeholder="Select effective period" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
-                            <SelectItem key={period} value={period.toString()}>
-                              Pay Period {period}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        The pay period when this stipend becomes effective
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="endPeriod">End Pay Period *</Label>
-                      <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
-                        <SelectTrigger id="endPeriod" data-testid="select-end-period">
-                          <SelectValue placeholder="Select end period" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
-                            <SelectItem key={period} value={period.toString()}>
-                              Pay Period {period}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        The last pay period for this recurring stipend
-                      </p>
-                    </div>
-                  </>
+                  <div className="space-y-2">
+                    <Label htmlFor="endPeriod">End Pay Period *</Label>
+                    <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
+                      <SelectTrigger id="endPeriod" data-testid="select-end-period">
+                        <SelectValue placeholder="Select end period" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
+                          <SelectItem key={period} value={period.toString()}>
+                            Pay Period {period}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      The last pay period for this recurring stipend
+                    </p>
+                  </div>
                 )}
 
                 <div className="space-y-2">
