@@ -1,136 +1,7 @@
 # Finni Health - Stipend Management System
 
 ## Overview
-Finni Health is a comprehensive stipend management system designed for 60+ ABA practices across five portfolios (G1-G5). Its primary purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system aims to centralize stipend management, enhance financial transparency, and support efficient allocation of funds across practices within the Finni Health network.
-
-## Recent Changes
-- **2025-11-01**: Finance Ops Page with Comprehensive Stipend Tracking
-  - **New Finance Ops Page** (replaces Pay Periods in navigation):
-    - Path: `/finance-ops` (Finance and Admin roles only)
-    - Two-tab interface: "Pay Periods" and "All Stipends"
-    - Consolidated Pay Periods functionality with comprehensive stipend tracking
-  - **Pay Periods Tab**:
-    - Displays current pay period information with remeasurement status
-    - BigQuery CSV import functionality with file upload dialog
-    - Download CSV template button
-    - All pay periods table (PP1-PP26) with current period highlighting
-    - "Set Current" button for changing active pay period
-  - **All Stipends Tab**:
-    - Comprehensive table showing all approved stipend requests across all practices
-    - **Filter Options**:
-      - Pay Period filter (PP1-PP26 or "All Periods")
-      - Practice filter (all practices or specific clinic)
-    - **Table Columns**: Request ID, Practice (name + ID), Amount, Stipend Type (badge), Description, Request Type (one-time/recurring badge), Period Range (for recurring), Status, Approved By (Finance approver + date)
-    - **CSV Export**: Downloads all filtered stipend requests with complete details (request ID, practice, amount, type, description, request type, periods, status, approvers with timestamps, justification)
-    - **Clickable Rows**: Click any stipend row to navigate to its detail page
-  - **Backend API Endpoints**:
-    - `GET /api/practices/all` - Returns all practices for filter dropdown (fixed route ordering: specific routes before parameterized routes)
-    - `GET /api/stipend-requests/all-approved` - Returns all approved stipends with full details
-  - **Frontend Updates**:
-    - Created `client/src/pages/finance-ops.tsx` with tabbed interface using Shadcn Tabs
-    - Updated `client/src/App.tsx` to add `/finance-ops` route
-    - Sidebar already configured with "Finance Ops" navigation item (Finance/Admin only)
-  - **Technical Implementation**:
-    - Uses React Query for data fetching and caching
-    - Filter state managed with React useState
-    - CSV export generates properly escaped CSV with all required fields
-    - Hover effects on clickable rows (hover-elevate class)
-    - Proper data-testid attributes for all interactive elements
-  - **Rationale**: Centralizes finance operations and provides comprehensive view of all stipend activity across all practices and portfolios
-
-- **2025-10-31**: Removed PSM Approval Step from Workflow
-  - **Workflow Simplification**: Changed approval workflow from 3-level (PSM → Lead PSM → Finance) to 2-level (Lead PSM → Finance)
-  - **Database Schema Changes**:
-    - Dropped `psmApprovedAt`, `psmApprovedBy`, and `psmComment` columns from `stipend_requests` table
-    - Changed default status from "pending_psm" to "pending_lead_psm"
-    - Updated all existing pending requests to new default status
-  - **Backend Updates**:
-    - Removed PSM approval logic from `updateStipendRequestStatus()` in server/storage.ts
-    - Removed "pending_psm" status from all backend queries and filters
-    - Updated dashboard pending counts to exclude PSM approval step
-  - **Frontend Updates**:
-    - Removed PSM approval UI from Approvals page (client/src/pages/approvals.tsx)
-    - Removed PSM approval step from Request Detail approval timeline (client/src/pages/stipend-request-detail.tsx)
-    - Updated `canApprove()` function to remove PSM role check
-  - **UI Enhancements**:
-    - Removed 'Description' column from Ledger History table for cleaner display
-    - Added 'Stipend Description' column to Pending Stipend Requests table for better context
-  - **Rationale**: PSMs should not approve their own requests; Lead PSM approval provides sufficient oversight
-
-- **2025-10-31**: Enhanced Stipend Request Tracking with Descriptions and Staff Emails
-  - **Stipend Description Field**:
-    - Added `stipendDescription` field (varchar 500) to all stipend requests
-    - Form field appears below Stipend Type selection in New Request form
-    - Required field with minimum 5 characters, maximum 500 characters
-    - Displayed in Ledger History table for better transaction context
-  - **Staff Emails Field** (Conditional):
-    - Added `staffEmails` field (varchar 500) to stipend_requests table
-    - Only appears when "Staff Cost Reimbursement Item" stipend type is selected
-    - Required when visible, minimum 5 characters
-    - Tracks staff email addresses for cost reimbursement items
-  - **Practice Ledger Enhancement**:
-    - Added "Stipend Type" and "Stipend Description" columns to Practice Detail ledger history table
-    - Backend `getPracticeLedger()` now left joins with `stipend_requests` table
-    - Shows stipend type as a badge and description in dedicated columns
-    - Non-stipend transactions (opening balance, remeasurement, etc.) show "—" placeholder
-  - **Technical Implementation**:
-    - Database schema updated with two new nullable varchar(500) fields
-    - Backend JOIN retrieves stipendType and stipendDescription when available
-    - Frontend conditionally renders Staff Emails field based on stipend type selection
-    - StatusBadge component used for stipend type display in ledger table
-
-- **2025-10-31**: Enhanced Approval System with Comments, Timestamps & Clickable Table Rows
-  - **Approval Comments Feature**:
-    - Added three new fields to `stipend_requests` table: `psmComment`, `leadPsmComment`, `financeComment`
-    - Backend approval endpoint now accepts optional `comment` parameter
-    - `updateStipendRequestStatus()` saves comments based on approval stage (PSM/Lead PSM/Finance)
-    - **Approvals Page**: Added approval dialog with comment field (optional, minimum 5 characters if provided)
-    - **Request Detail Page**: Comments displayed in approval timeline for each completed stage in muted background boxes
-    - Real-time validation: Comment field shows error and disables approval button if less than 5 characters
-    - Comments are optional - approvers can skip or add context to their decisions
-  - **Approval Timestamp Tracking** (Bug Fix):
-    - Fixed critical bug where PSM and Lead PSM approval timestamps/usernames weren't being saved
-    - Removed incorrect `status.includes("approved")` check that prevented PSM/Lead PSM data recording
-    - Now properly saves approval data at each stage: PSM → Lead PSM → Finance
-    - Timestamps stored in UTC, displayed in user's local timezone with time
-    - Changed from `formatDate()` to `formatDateTime()` to show both date and time
-  - **Clickable Table Rows**:
-    - **Pending Requests Table**: Entire row now clickable (not just request ID link)
-    - **Ledger History Table**: Rows with `relatedRequestId` now fully clickable
-    - Removed individual links from cells - navigation happens via row click
-    - Added `cursor-pointer` and `hover-elevate` classes for visual affordance
-    - Simplified description rendering (no more regex parsing and link splitting)
-  - **Technical Implementation**:
-    - Row onClick uses `window.location.href` for navigation
-    - Conditional clickability based on `relatedRequestId` existence in ledger
-    - Proper data-testid attributes for both clickable and non-clickable rows
-    - Type-safe comment handling with proper null checks in UI
-    - Database stores timestamps in UTC (PostgreSQL default)
-    - JavaScript/Browser automatically converts to user's local timezone for display
-  - **E2E Testing**: Verified clickable rows navigate correctly, approval timeline displays all stages with comments
-  - **Note**: Existing requests approved before this fix will not have PSM/Lead PSM data retroactively
-
-- **2025-10-31**: Request Detail Page Approval Actions
-  - **Approve/Reject Buttons on Detail Page**:
-    - Added Approve and Reject buttons to request detail page header
-    - Buttons appear next to status badge when user has approval permissions
-    - Same approval dialogs as Approvals page (with optional comments, 5-char minimum)
-    - Buttons only visible for pending requests (not approved or rejected)
-  - **Permission Logic**:
-    - Lead PSM: Can approve requests with status "pending_lead_psm"
-    - Finance/Admin: Can approve requests with status "pending_finance"
-    - Admin: Can approve at any stage
-    - Uses same `canApprove()` logic as Approvals page for consistency
-  - **User Experience**:
-    - Users can click pending request row on Approvals page to navigate to detail
-    - On detail page, users can immediately approve or reject without returning to Approvals
-    - Action buttons stop event propagation to prevent row click when clicking buttons on Approvals page
-    - Successful approval/rejection shows toast notification and invalidates all request queries
-  - **Technical Implementation**:
-    - Reused approval/rejection mutation logic from Approvals page
-    - Same dialog components with comment/reason validation
-    - Buttons in header: `data-testid="button-approve"` and `data-testid="button-reject"`
-    - Dialogs: `data-testid="dialog-approve"` and `data-testid="dialog-reject"`
+Finni Health is a stipend management system for 60+ ABA practices across five portfolios. Its core purpose is to streamline multi-level approval workflows for stipend requests, track practice-level ledgers, and provide real-time portfolio analytics. The system centralizes stipend management, enhances financial transparency, and supports efficient fund allocation within the Finni Health network. The project aims to improve operational efficiency and financial oversight for stipend-related activities.
 
 ## User Preferences
 - I prefer simple language and clear explanations.
@@ -144,31 +15,35 @@ Finni Health is a comprehensive stipend management system designed for 60+ ABA p
 ## System Architecture
 
 ### UI/UX Decisions
-The system utilizes the Carbon Design System patterns, implemented with Shadcn UI components. Typography employs IBM Plex Sans for general text and IBM Plex Mono for financial figures. A blue/gray color palette is optimized for financial dashboards, and layouts use max-width containers with responsive grid designs, adhering to a consistent 4px-based spacing system.
+The system uses Carbon Design System patterns, implemented with Shadcn UI components. Typography is IBM Plex Sans for text and IBM Plex Mono for financial figures. A blue/gray color palette is used for dashboards, with responsive grid designs and a 4px-based spacing system.
 
 ### Technical Implementations
-The application follows a client-server architecture. The frontend is built with React, leveraging React Query for data fetching and cache invalidation. The backend is implemented with Node.js, using PostgreSQL as the primary database. Drizzle-ORM is used for database interactions, with drizzle-zod for schema validation. Role-based access control is enforced at both the frontend and API levels. Authentication is handled via Replit Auth (OpenID Connect) with custom role assignments stored in the `users` table. Slack webhooks are integrated for approval notifications.
+The application uses a client-server architecture. The frontend is React with React Query for data fetching. The backend is Node.js with PostgreSQL as the database, using Drizzle-ORM and drizzle-zod for schema validation. Role-based access control is enforced, and authentication uses Replit Auth (OpenID Connect) with custom roles. Slack webhooks are integrated for notifications.
 
 ### Feature Specifications
-- **Dashboard**: Displays key performance indicators (KPIs) like Total Portfolio Cap, Stipend Paid (YTD), Stipend Committed, Available Balance, and Pending Approvals. Portfolio cards show financial metrics (Cap, Utilized, Committed, Remaining) with color-coded utilization bars.
-- **Stipend Request Workflow**: Two-level approval process (Lead PSM → Finance), with status tracking and automatic ledger entry creation upon final approval.
-- **Inter-PSM Allocation System**: Enables PSMs to transfer stipends between practices within their portfolios, with automatic ledger adjustments.
-- **Practice-Level Ledger Tracking**: Records all financial transactions including opening balances, remeasurement adjustments, paid stipends, committed stipends, and inter-PSM allocations.
-- **Stipend Cap Calculation**: Automatically calculated based on `0.6 * Gross Margin % + 0.4 * Collections %` during BigQuery data imports.
-- **Pay Period Management**: Manages 14-day pay periods, triggering BigQuery data imports, remeasurement calculations, and automatic ledger entries.
-- **Negative Earnings Cap System**: Tracks negative earnings caps, allows PSMs to request additional caps, and requires Finance approval.
-- **Settings Page (Admin/Finance)**: Provides CRUD interfaces for managing Portfolios, Practices, and Users, including role and portfolio assignments. Includes safe-delete validation and CSV template download for BigQuery data.
+- **Dashboard**: Displays KPIs such as Total Portfolio Cap, Stipend Paid (YTD), Stipend Committed, Available Balance, and Pending Approvals, with portfolio-specific financial metrics.
+- **Stipend Request Workflow**: A two-level approval process (Lead PSM → Finance) with status tracking and automatic ledger entry creation.
+- **Inter-PSM Allocation System**: Allows PSMs to transfer stipends between practices within their portfolios, with automatic ledger adjustments.
+- **Practice-Level Ledger Tracking**: Records all financial transactions including opening balances, remeasurement adjustments, paid/committed stipends, and inter-PSM allocations.
+- **Stipend Cap Calculation**: Automatically calculated based on `0.6 * Gross Margin % + 0.4 * Collections %` via BigQuery data imports.
+- **Pay Period Management**: Manages 14-day pay periods, triggering BigQuery data imports, remeasurement calculations, and automatic ledger entries. All stipend requests are tied to specific pay periods.
+- **Negative Earnings Cap System**: Tracks negative earnings caps and facilitates requests for additional caps requiring Finance approval.
+- **Settings Page (Admin/Finance)**: Provides CRUD operations for Portfolios, Practices, and Users, including role/portfolio assignments, safe-delete validation, and CSV template downloads for BigQuery data.
+- **Finance Ops Page**: A centralized page for Finance and Admin roles with "Pay Periods" and "All Stipends" tabs. The "Pay Periods" tab displays current pay period information, BigQuery CSV import functionality, and a table of all pay periods. The "All Stipends" tab provides a comprehensive, filterable, and exportable table of all approved stipends.
+- **Enhanced Stipend Request Details**: Stipend requests include a required `stipendDescription` field and a conditional `staffEmails` field for "Staff Cost Reimbursement" types. Ledger history tables display "Stipend Type" and "Stipend Description."
+- **Approval System Enhancements**: Approval actions now include optional comments, and all approval stages (Lead PSM, Finance) properly record timestamps and approvers. Table rows are clickable to navigate to detail pages.
+- **Request Detail Page Actions**: Approve/Reject buttons are available directly on the request detail page for users with appropriate permissions, using the same logic as the main Approvals page.
 
 ### System Design Choices
-- **Database Schema**: Core tables include `users`, `portfolios`, `practices`, `practice_metrics`, `practice_ledger`, `stipend_requests`, `inter_psm_allocations`, `pay_periods`, `practice_reassignments`, and `negative_earnings_cap_requests`. Relationships are defined to link practices to portfolios, metrics, and ledger entries.
-- **API Endpoints**: A comprehensive set of RESTful APIs for user authentication, dashboard data, portfolio and practice management, stipend requests, approvals, allocations, pay period management, and system settings. All protected endpoints enforce role-based access control.
-- **Security**: Session-based authentication with PostgreSQL storage and robust role-based access control are implemented across the application. Numeric balance validation prevents overdrafts.
+- **Database Schema**: Key tables include `users`, `portfolios`, `practices`, `practice_metrics`, `practice_ledger`, `stipend_requests`, `inter_psm_allocations`, `pay_periods`, `practice_reassignments`, and `negative_earnings_cap_requests`.
+- **API Endpoints**: RESTful APIs support all application functions, secured with role-based access control.
+- **Security**: Session-based authentication with PostgreSQL storage and robust role-based access control, including numeric balance validation.
 
 ## External Dependencies
-- **PostgreSQL**: Primary database for all application data.
-- **Replit Auth**: Used for user authentication (OpenID Connect).
-- **Slack Webhooks**: For sending approval notifications.
-- **BigQuery**: Source for practice metrics and stipend cap data (currently integrated via CSV imports).
-- **Shadcn UI**: Frontend component library for building the user interface.
-- **Drizzle-ORM**: TypeScript ORM for interacting with PostgreSQL.
-- **React Query**: For data fetching, caching, and state management on the frontend.
+- **PostgreSQL**: Primary database.
+- **Replit Auth**: User authentication (OpenID Connect).
+- **Slack Webhooks**: Approval notifications.
+- **BigQuery**: Source for practice metrics and stipend cap data (via CSV imports).
+- **Shadcn UI**: Frontend component library.
+- **Drizzle-ORM**: TypeScript ORM for PostgreSQL.
+- **React Query**: Frontend data fetching and state management.
