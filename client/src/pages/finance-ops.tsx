@@ -538,10 +538,13 @@ export default function FinanceOps() {
                                 {req.requestType === "one_time" ? "One-time" : "Recurring"}
                               </Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-sm font-medium">
                               {req.requestType === "recurring" && req.effectivePayPeriod && req.recurringEndPeriod
                                 ? `PP${req.effectivePayPeriod}-PP${req.recurringEndPeriod}`
-                                : "—"}
+                                : req.effectivePayPeriod
+                                ? `PP${req.effectivePayPeriod}`
+                                : <span className="text-muted-foreground">—</span>
+                              }
                             </TableCell>
                             <TableCell>
                               <Badge
