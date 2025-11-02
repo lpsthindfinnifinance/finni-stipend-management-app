@@ -144,6 +144,40 @@ export default function StipendRequestDetail() {
     },
   });
 
+  const markPeriodPaidMutation = useMutation({
+    mutationFn: async ({ payPeriod }: { payPeriod: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/mark-period-paid`, { payPeriod });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Period marked as paid successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark period as paid",
+        variant: "destructive",
+      });
+    },
+  });
+
   const canApprove = () => {
     if (!request) return false;
     if (role === "Lead PSM" && request.status === "pending_lead_psm") return true;
@@ -435,16 +469,28 @@ export default function StipendRequestDetail() {
                         </td>
                         <td className="p-4 align-middle text-center">
                           {period.status === 'committed' && (role === 'Finance' || role === 'Admin') && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => cancelPeriodMutation.mutate({ payPeriod: period.payPeriod })}
-                              disabled={cancelPeriodMutation.isPending}
-                              data-testid={`button-cancel-${period.payPeriod}`}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Cancel
-                            </Button>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => markPeriodPaidMutation.mutate({ payPeriod: period.payPeriod })}
+                                disabled={markPeriodPaidMutation.isPending}
+                                data-testid={`button-mark-paid-${period.payPeriod}`}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Mark as Paid
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => cancelPeriodMutation.mutate({ payPeriod: period.payPeriod })}
+                                disabled={cancelPeriodMutation.isPending}
+                                data-testid={`button-cancel-${period.payPeriod}`}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
                           )}
                         </td>
                       </tr>
