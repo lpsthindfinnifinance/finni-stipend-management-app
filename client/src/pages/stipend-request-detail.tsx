@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, Clock, XCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, XCircle, CheckCircle, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
 import { useParams, useLocation } from "wouter";
@@ -37,6 +37,11 @@ export default function StipendRequestDetail() {
 
   const { data: request, isLoading } = useQuery<StipendRequestWithDetails>({
     queryKey: ["/api/stipend-requests", id],
+    enabled: isAuthenticated && !!id,
+  });
+
+  const { data: payPeriodBreakdown, isLoading: isLoadingBreakdown } = useQuery<any[]>({
+    queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"],
     enabled: isAuthenticated && !!id,
   });
 
@@ -101,6 +106,38 @@ export default function StipendRequestDetail() {
       toast({
         title: "Error",
         description: error.message || "Failed to reject request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelPeriodMutation = useMutation({
+    mutationFn: async ({ payPeriod }: { payPeriod: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/cancel-period`, { payPeriod });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Committed period cancelled successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel committed period",
         variant: "destructive",
       });
     },
@@ -339,6 +376,77 @@ export default function StipendRequestDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pay Period Breakdown Card */}
+      {request && (request.requestType === 'recurring' || payPeriodBreakdown) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Pay Period Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingBreakdown ? (
+              <div className="text-center py-4 text-muted-foreground">
+                Loading breakdown...
+              </div>
+            ) : !payPeriodBreakdown || payPeriodBreakdown.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No pay period breakdown available
+              </div>
+            ) : (
+              <div className="max-h-[400px] overflow-auto relative">
+                <table className="w-full caption-bottom text-sm">
+                  <thead className="[&_tr]:border-b">
+                    <tr className="border-b">
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Pay Period</th>
+                      <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Amount</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Status</th>
+                      <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&_tr:last-child]:border-0">
+                    {payPeriodBreakdown.map((period: any) => (
+                      <tr 
+                        key={period.payPeriod} 
+                        className="border-b transition-colors"
+                        data-testid={`row-period-${period.payPeriod}`}
+                      >
+                        <td className="p-4 align-middle font-medium">
+                          PP{period.payPeriod}
+                        </td>
+                        <td className="p-4 align-middle text-right font-mono font-semibold">
+                          {formatCurrency(period.amount)}
+                        </td>
+                        <td className="p-4 align-middle">
+                          <Badge 
+                            variant={period.status === 'paid' ? 'default' : period.status === 'committed' ? 'secondary' : 'outline'}
+                            data-testid={`badge-status-${period.payPeriod}`}
+                          >
+                            {period.status === 'paid' ? 'Paid' : period.status === 'committed' ? 'Committed' : 'Pending'}
+                          </Badge>
+                        </td>
+                        <td className="p-4 align-middle text-center">
+                          {period.status === 'committed' && (role === 'Finance' || role === 'Admin') && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => cancelPeriodMutation.mutate({ payPeriod: period.payPeriod })}
+                              disabled={cancelPeriodMutation.isPending}
+                              data-testid={`button-cancel-${period.payPeriod}`}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Cancel
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Approval Timeline Card */}
       <Card>
