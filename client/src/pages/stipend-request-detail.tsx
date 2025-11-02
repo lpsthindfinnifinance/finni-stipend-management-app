@@ -34,6 +34,7 @@ export default function StipendRequestDetail() {
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: request, isLoading } = useQuery<StipendRequestWithDetails>({
     queryKey: ["/api/stipend-requests", id],
@@ -178,6 +179,39 @@ export default function StipendRequestDetail() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", `/api/stipend-requests/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Request deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      setIsDeleteDialogOpen(false);
+      setLocation("/");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete request",
+        variant: "destructive",
+      });
+    },
+  });
+
   const canApprove = () => {
     if (!request) return false;
     if (role === "Lead PSM" && request.status === "pending_lead_psm") return true;
@@ -186,8 +220,22 @@ export default function StipendRequestDetail() {
     return false;
   };
 
+  const canDelete = () => {
+    if (!request) return false;
+    const allowedStatuses = ['pending_psm', 'pending_lead_psm'];
+    return allowedStatuses.includes(request.status);
+  };
+
   const handleApprove = () => {
     setIsApproveDialogOpen(true);
+  };
+
+  const handleDelete = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    deleteMutation.mutate();
   };
 
   const confirmApprove = () => {
@@ -327,6 +375,17 @@ export default function StipendRequestDetail() {
                 Reject
               </Button>
             </div>
+          )}
+          {canDelete() && (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              data-testid="button-delete"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
           )}
         </div>
       </div>
@@ -703,6 +762,35 @@ export default function StipendRequestDetail() {
               data-testid="button-confirm-reject"
             >
               {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent data-testid="dialog-delete">
+          <DialogHeader>
+            <DialogTitle>Delete Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this stipend request? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              data-testid="button-cancel-delete"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

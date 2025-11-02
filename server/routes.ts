@@ -660,6 +660,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/stipend-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get the stipend request
+      const request = await storage.getStipendRequestById(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      // Only the requestor can delete their own request
+      if (request.requestorId !== userId) {
+        return res.status(403).json({ message: "You can only delete your own requests" });
+      }
+
+      // Can only delete if status is pending_psm or pending_lead_psm
+      const allowedStatuses = ['pending_psm', 'pending_lead_psm'];
+      if (!allowedStatuses.includes(request.status)) {
+        return res.status(403).json({ 
+          message: "Can only delete requests that haven't been approved by Lead PSM yet" 
+        });
+      }
+
+      const result = await storage.deleteStipendRequest(requestId);
+      
+      if (!result.success) {
+        return res.status(500).json({ message: result.message || "Failed to delete request" });
+      }
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `Stipend request #${requestId} deleted by ${user.firstName} ${user.lastName}`
+      );
+
+      res.json({ success: true, message: "Request deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting stipend request:", error);
+      res.status(500).json({ message: "Failed to delete request" });
+    }
+  });
+
   // ============================================================================
   // NEGATIVE EARNINGS CAP ROUTES
   // ============================================================================
