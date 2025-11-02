@@ -130,7 +130,7 @@ export default function PracticeDetail() {
         ) : (
           <>
             {/* Balance Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {/* Stipend Cap */}
               <Card>
                 <CardHeader className="pb-3">
@@ -171,37 +171,30 @@ export default function PracticeDetail() {
                 </CardContent>
               </Card>
 
-              {/* Stipend Paid */}
+              {/* Stipend Paid and Committed (stacked) */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Stipend Paid
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-mono font-bold">
-                    {formatCurrency((balance as any)?.stipendPaid || 0)}
+                <CardContent className="space-y-3">
+                  {/* Stipend Paid */}
+                  <div>
+                    <div className="text-2xl font-mono font-bold">
+                      {formatCurrency((balance as any)?.stipendPaid || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Approved & disbursed
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Approved & disbursed
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Stipend Committed */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Stipend Committed
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-mono font-bold">
-                    {formatCurrency((balance as any)?.stipendCommitted || 0)}
+                  {/* Stipend Committed */}
+                  <div>
+                    <div className="text-lg font-mono font-semibold text-muted-foreground">
+                      {formatCurrency((balance as any)?.stipendCommitted || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Upcoming Pay Periods</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Upcoming Pay Periods
-                  </p>
                 </CardContent>
               </Card>
 
@@ -350,14 +343,15 @@ export default function PracticeDetail() {
                 ) : (
                   <div className="max-h-[600px] overflow-auto">
                     <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead className="font-medium">Date</TableHead>
-                        <TableHead className="font-medium">Type</TableHead>
-                        <TableHead className="font-medium">Stipend Type</TableHead>
-                        <TableHead className="font-medium">Stipend Description</TableHead>
-                        <TableHead className="font-medium text-right">Amount</TableHead>
-                        <TableHead className="font-medium text-right">Running Balance</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-background">Date</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-background">Type</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-background">Pay Period</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-background">Stipend Type</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-background">Stipend Description</TableHead>
+                        <TableHead className="font-medium text-right sticky top-0 bg-background">Amount</TableHead>
+                        <TableHead className="font-medium text-right sticky top-0 bg-background">Running Balance</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -376,6 +370,9 @@ export default function PracticeDetail() {
                             </TableCell>
                             <TableCell>
                               <StatusBadge status={entry.transactionType} />
+                            </TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {entry.payPeriod ? `PP${entry.payPeriod}` : <span className="text-muted-foreground">—</span>}
                             </TableCell>
                             <TableCell className="text-sm">
                               {entry.stipendType ? (
