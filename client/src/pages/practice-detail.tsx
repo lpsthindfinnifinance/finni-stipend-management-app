@@ -341,60 +341,60 @@ export default function PracticeDetail() {
                     No transactions found
                   </div>
                 ) : (
-                  <div className="max-h-[600px] overflow-auto relative border-t">
-                    <Table>
-                    <TableHeader className="[&_tr]:border-b">
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Date</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Type</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Pay Period</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Stipend Type</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Stipend Description</TableHead>
-                        <TableHead className="font-medium text-right sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Amount</TableHead>
-                        <TableHead className="font-medium text-right sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Running Balance</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(ledger as any[]).map((entry: any, index: number) => {
-                        const isClickable = !!entry.relatedRequestId;
-                        
-                        return (
-                          <TableRow 
-                            key={index} 
-                            data-testid={isClickable ? `row-ledger-request-${entry.relatedRequestId}` : `row-ledger-${index}`}
-                            className={isClickable ? "cursor-pointer hover-elevate" : ""}
-                            onClick={isClickable ? () => window.location.href = `/requests/${entry.relatedRequestId}` : undefined}
-                          >
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatDate(entry.createdAt)}
-                            </TableCell>
-                            <TableCell>
-                              <StatusBadge status={entry.transactionType} />
-                            </TableCell>
-                            <TableCell className="text-sm font-medium">
-                              {entry.payPeriod ? `PP${entry.payPeriod}` : <span className="text-muted-foreground">—</span>}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {entry.stipendType ? (
-                                <StatusBadge status={entry.stipendType} />
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {entry.stipendDescription || <span className="text-muted-foreground">—</span>}
-                            </TableCell>
-                            <TableCell className={`text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
-                              {getTransactionSign(entry.amount)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-semibold">
-                              {formatCurrency(entry.runningBalance)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                  <div className="max-h-[600px] overflow-auto relative">
+                    <table className="w-full caption-bottom text-sm">
+                      <thead className="[&_tr]:border-b">
+                        <tr className="border-b">
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Date</th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Type</th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Pay Period</th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Stipend Type</th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Stipend Description</th>
+                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Amount</th>
+                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Running Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="[&_tr:last-child]:border-0">
+                        {(ledger as any[]).map((entry: any, index: number) => {
+                          const isClickable = !!entry.relatedRequestId;
+                          
+                          return (
+                            <tr 
+                              key={index} 
+                              data-testid={isClickable ? `row-ledger-request-${entry.relatedRequestId}` : `row-ledger-${index}`}
+                              className={`border-b transition-colors ${isClickable ? "cursor-pointer hover-elevate" : ""}`}
+                              onClick={isClickable ? () => window.location.href = `/requests/${entry.relatedRequestId}` : undefined}
+                            >
+                              <td className="p-4 align-middle text-sm text-muted-foreground">
+                                {formatDate(entry.createdAt)}
+                              </td>
+                              <td className="p-4 align-middle">
+                                <StatusBadge status={entry.transactionType} />
+                              </td>
+                              <td className="p-4 align-middle text-sm font-medium">
+                                {entry.payPeriod ? `PP${entry.payPeriod}` : <span className="text-muted-foreground">—</span>}
+                              </td>
+                              <td className="p-4 align-middle text-sm">
+                                {entry.stipendType ? (
+                                  <StatusBadge status={entry.stipendType} />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="p-4 align-middle text-sm">
+                                {entry.stipendDescription || <span className="text-muted-foreground">—</span>}
+                              </td>
+                              <td className={`p-4 align-middle text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
+                                {getTransactionSign(entry.amount)}
+                              </td>
+                              <td className="p-4 align-middle text-right font-mono font-semibold">
+                                {formatCurrency(entry.runningBalance)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>
