@@ -24,7 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 export default function StipendRequestDetail() {
-  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -189,6 +189,8 @@ export default function StipendRequestDetail() {
         description: "Request deleted successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       setIsDeleteDialogOpen(false);
       setLocation("/");
     },
@@ -221,7 +223,10 @@ export default function StipendRequestDetail() {
   };
 
   const canDelete = () => {
-    if (!request) return false;
+    if (!request || !user) return false;
+    // Only the requestor can delete their own request
+    if (request.requestorId !== user.id) return false;
+    // Can only delete if status is pending_psm or pending_lead_psm
     const allowedStatuses = ['pending_psm', 'pending_lead_psm'];
     return allowedStatuses.includes(request.status);
   };
