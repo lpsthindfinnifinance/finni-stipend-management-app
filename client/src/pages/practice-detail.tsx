@@ -341,17 +341,17 @@ export default function PracticeDetail() {
                     No transactions found
                   </div>
                 ) : (
-                  <div className="max-h-[600px] overflow-auto">
+                  <div className="max-h-[600px] overflow-auto relative border-t">
                     <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                      <TableRow>
-                        <TableHead className="font-medium sticky top-0 bg-background">Date</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-background">Type</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-background">Pay Period</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-background">Stipend Type</TableHead>
-                        <TableHead className="font-medium sticky top-0 bg-background">Stipend Description</TableHead>
-                        <TableHead className="font-medium text-right sticky top-0 bg-background">Amount</TableHead>
-                        <TableHead className="font-medium text-right sticky top-0 bg-background">Running Balance</TableHead>
+                    <TableHeader className="[&_tr]:border-b">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Date</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Type</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Pay Period</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Stipend Type</TableHead>
+                        <TableHead className="font-medium sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Stipend Description</TableHead>
+                        <TableHead className="font-medium text-right sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Amount</TableHead>
+                        <TableHead className="font-medium text-right sticky top-0 bg-card z-50 shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border">Running Balance</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
