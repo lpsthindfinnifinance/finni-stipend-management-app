@@ -89,6 +89,7 @@ export interface IStorage {
   getPayPeriodBreakdown(requestId: number): Promise<any[]>;
   cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void>;
   markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void>;
+  deleteStipendRequest(requestId: number): Promise<{ success: boolean; message?: string }>;
   
   // Inter-PSM allocation operations
   getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<InterPsmAllocation[]>;
@@ -852,6 +853,30 @@ export class DatabaseStorage implements IStorage {
         description: updatedDescription,
       })
       .where(eq(practiceLedger.id, ledgerEntry.id));
+  }
+
+  async deleteStipendRequest(requestId: number): Promise<{ success: boolean; message?: string }> {
+    try {
+      // First, delete any related ledger entries
+      await db
+        .delete(practiceLedger)
+        .where(eq(practiceLedger.relatedRequestId, requestId));
+
+      // Then delete the stipend request itself
+      const result = await db
+        .delete(stipendRequests)
+        .where(eq(stipendRequests.id, requestId))
+        .returning();
+
+      if (result.length === 0) {
+        return { success: false, message: "Request not found" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting stipend request:", error);
+      return { success: false, message: "Failed to delete request" };
+    }
   }
 
   // ============================================================================
