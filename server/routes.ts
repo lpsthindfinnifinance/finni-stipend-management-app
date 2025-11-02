@@ -522,10 +522,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const amount = `-${request.amount}`; // Make negative to reduce balance
         
         if (request.requestType === "one_time") {
-          // One-time request: Create single "committed" entry
+          // One-time request: Create single "committed" entry for the effective pay period
+          const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
           await storage.createLedgerEntry({
             practiceId: request.practiceId,
-            payPeriod: currentPeriodNumber,
+            payPeriod: effectivePeriod,
             transactionType: "committed",
             amount,
             description: `Stipend request #${requestId} approved`,
