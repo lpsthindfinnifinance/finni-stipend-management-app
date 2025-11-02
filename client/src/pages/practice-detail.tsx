@@ -100,6 +100,81 @@ export default function PracticeDetail() {
     return formatCurrency(0);
   };
 
+  const exportLedgerToCSV = () => {
+    if (!ledger || (ledger as any[]).length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no ledger entries to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // CSV Headers
+    const headers = [
+      "Date",
+      "Type",
+      "Pay Period",
+      "Stipend Type",
+      "Stipend Description",
+      "Amount",
+      "Running Balance",
+    ];
+
+    // Convert ledger data to CSV rows
+    const rows = (ledger as any[]).map((entry: any) => {
+      const amount = Number(entry.amount ?? 0);
+      const runningBalance = Number(entry.runningBalance ?? 0);
+
+      return [
+        formatDate(entry.createdAt),
+        entry.transactionType?.replace(/_/g, ' ') || '',
+        entry.payPeriod ? `PP${entry.payPeriod}` : '',
+        entry.stipendType?.replace(/_/g, ' ') || '',
+        entry.stipendDescription || '',
+        amount.toFixed(2), // Raw numeric value with 2 decimal places
+        runningBalance.toFixed(2), // Raw numeric value with 2 decimal places
+      ];
+    });
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => 
+        row.map(cell => {
+          // Escape cells containing commas, quotes, or newlines
+          const cellStr = String(cell);
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const practiceName = (practice as any)?.name || 'practice';
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `${practiceName}_ledger_${timestamp}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Successful",
+      description: `Ledger exported to ${filename}`,
+    });
+  };
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -329,7 +404,12 @@ export default function PracticeDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Ledger History</CardTitle>
-                  <Button variant="outline" size="sm" data-testid="button-export-ledger">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={exportLedgerToCSV}
+                    data-testid="button-export-ledger"
+                  >
                     <FileText className="h-4 w-4 mr-2" />
                     Export
                   </Button>
