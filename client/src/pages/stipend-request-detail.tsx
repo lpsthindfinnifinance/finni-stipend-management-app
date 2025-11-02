@@ -156,7 +156,7 @@ export default function StipendRequestDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
