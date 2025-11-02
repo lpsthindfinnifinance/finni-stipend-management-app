@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Download, Filter } from "lucide-react";
+import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Download, Filter, DollarSign } from "lucide-react";
 import { formatDate, formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -511,6 +511,7 @@ export default function FinanceOps() {
                           <TableHead>Periods</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Approved By</TableHead>
+                          <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -566,6 +567,17 @@ export default function FinanceOps() {
                                   {req.financeApprovedAt ? formatDate(req.financeApprovedAt) : ""}
                                 </div>
                               </div>
+                            </TableCell>
+                            <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.location.href = `/requests/${req.id}`}
+                                data-testid={`button-manage-payments-${req.id}`}
+                              >
+                                <DollarSign className="h-3 w-3 mr-1" />
+                                Manage Payments
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
