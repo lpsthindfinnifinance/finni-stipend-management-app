@@ -86,6 +86,8 @@ export interface IStorage {
   getStipendRequestById(id: number): Promise<StipendRequestWithDetails | undefined>;
   createStipendRequest(request: InsertStipendRequest): Promise<StipendRequest>;
   updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest>;
+  getPayPeriodBreakdown(requestId: number): Promise<any[]>;
+  cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void>;
   
   // Inter-PSM allocation operations
   getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<InterPsmAllocation[]>;
@@ -719,6 +721,94 @@ export class DatabaseStorage implements IStorage {
       .where(eq(stipendRequests.id, id))
       .returning();
     return updated;
+  }
+
+  async getPayPeriodBreakdown(requestId: number): Promise<any[]> {
+    // Get the stipend request
+    const [request] = await db
+      .select()
+      .from(stipendRequests)
+      .where(eq(stipendRequests.id, requestId));
+
+    if (!request) {
+      return [];
+    }
+
+    const breakdown: any[] = [];
+    const startPeriod = request.effectivePayPeriod;
+    const endPeriod = request.requestType === 'recurring' && request.recurringEndPeriod
+      ? request.recurringEndPeriod
+      : startPeriod;
+
+    // Generate breakdown for each pay period
+    for (let period = startPeriod; period <= endPeriod; period++) {
+      // Check ledger for this period's entry
+      const ledgerEntries = await db
+        .select()
+        .from(practiceLedger)
+        .where(
+          and(
+            eq(practiceLedger.relatedRequestId, requestId),
+            eq(practiceLedger.payPeriod, period)
+          )
+        );
+
+      let status = 'pending'; // Default if no ledger entry found
+      let ledgerEntry = null;
+
+      if (ledgerEntries.length > 0) {
+        // Find the most recent relevant entry (paid takes precedence over committed)
+        const paidEntry = ledgerEntries.find(e => e.transactionType === 'paid');
+        const committedEntry = ledgerEntries.find(e => e.transactionType === 'committed');
+        
+        if (paidEntry) {
+          status = 'paid';
+          ledgerEntry = paidEntry;
+        } else if (committedEntry) {
+          status = 'committed';
+          ledgerEntry = committedEntry;
+        }
+      }
+
+      breakdown.push({
+        payPeriod: period,
+        amount: request.amount,
+        status: status,
+        ledgerEntryId: ledgerEntry?.id,
+      });
+    }
+
+    return breakdown;
+  }
+
+  async cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void> {
+    // Find the committed ledger entry for this request and pay period
+    const [ledgerEntry] = await db
+      .select()
+      .from(practiceLedger)
+      .where(
+        and(
+          eq(practiceLedger.relatedRequestId, requestId),
+          eq(practiceLedger.payPeriod, payPeriod),
+          eq(practiceLedger.transactionType, 'committed')
+        )
+      );
+
+    if (!ledgerEntry) {
+      throw new Error('No committed entry found for this pay period');
+    }
+
+    // Create a reversal entry (negative amount to cancel the commitment)
+    const reversalAmount = -Number(ledgerEntry.amount);
+    
+    await db.insert(practiceLedger).values({
+      practiceId: ledgerEntry.practiceId,
+      payPeriod: payPeriod,
+      transactionType: 'cancelled',
+      amount: reversalAmount.toString(),
+      description: `Cancelled stipend commitment for PP${payPeriod}`,
+      relatedRequestId: requestId,
+    });
   }
 
   // ============================================================================
