@@ -121,6 +121,7 @@ export default function StipendRequestDetail() {
         description: "Committed period cancelled successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
     },
     onError: (error: Error) => {

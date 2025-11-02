@@ -799,14 +799,15 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Create a reversal entry (negative amount to cancel the commitment)
+    // Use 'committed' type with negative amount to maintain proper transaction type
     const reversalAmount = -Number(ledgerEntry.amount);
     
     await db.insert(practiceLedger).values({
       practiceId: ledgerEntry.practiceId,
       payPeriod: payPeriod,
-      transactionType: 'cancelled',
+      transactionType: 'committed',
       amount: reversalAmount.toString(),
-      description: `Cancelled stipend commitment for PP${payPeriod}`,
+      description: `Cancelled: Stipend commitment reversal for PP${payPeriod} (Request #${requestId})`,
       relatedRequestId: requestId,
     });
   }

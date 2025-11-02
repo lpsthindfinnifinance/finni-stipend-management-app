@@ -600,7 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/stipend-requests/:id/cancel-period', isAuthenticated, async (req: any, res) => {
+  app.post('/api/stipend-requests/:id/cancel-period', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
@@ -608,11 +608,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
-      }
-
-      // Only Finance and Admin can cancel committed periods
-      if (user.role !== 'Finance' && user.role !== 'Admin') {
-        return res.status(403).json({ message: "Only Finance and Admin can cancel committed periods" });
       }
 
       const { payPeriod } = req.body;
