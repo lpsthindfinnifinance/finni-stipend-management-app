@@ -517,33 +517,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentPeriodNumber = currentPeriod?.id || 1;
         
         // Create ledger entries for approved request
-        // Amount should be negative for paid/committed as it reduces available balance
+        // Amount should be negative for committed as it reduces available balance
+        // All entries start as "committed" - Finance will manually mark them as "paid"
         const amount = `-${request.amount}`; // Make negative to reduce balance
         
         if (request.requestType === "one_time") {
-          // One-time request: Create single "paid" entry
+          // One-time request: Create single "committed" entry
           await storage.createLedgerEntry({
             practiceId: request.practiceId,
             payPeriod: currentPeriodNumber,
-            transactionType: "paid",
+            transactionType: "committed",
             amount,
             description: `Stipend request #${requestId} approved`,
             relatedRequestId: requestId,
             relatedAllocationId: null,
           });
         } else if (request.requestType === "recurring") {
-          // Recurring request: Create entries for all periods from effective to end
+          // Recurring request: Create "committed" entries for all periods from effective to end
           const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
           const endPeriod = request.recurringEndPeriod || 26;
           
           for (let period = effectivePeriod; period <= endPeriod; period++) {
-            // Current period or before = "paid", future periods = "committed"
-            const transactionType = period <= currentPeriodNumber ? "paid" : "committed";
-            
+            // All periods start as "committed" - Finance marks as "paid" when processed
             await storage.createLedgerEntry({
               practiceId: request.practiceId,
               payPeriod: period,
-              transactionType,
+              transactionType: "committed",
               amount,
               description: `Recurring stipend request #${requestId} (PP${period})`,
               relatedRequestId: requestId,
