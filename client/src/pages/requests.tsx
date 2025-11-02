@@ -1,24 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, type KeyboardEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Plus } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Requests() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -80,57 +74,72 @@ export default function Requests() {
               <div className="text-center py-8 text-muted-foreground">
                 Loading requests...
               </div>
+            ) : !requests || requests.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No requests found
+              </div>
             ) : (
-              <div className="max-h-[600px] overflow-auto">
-                <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-medium">Request ID</TableHead>
-                    <TableHead className="font-medium">Practice</TableHead>
-                    <TableHead className="font-medium text-right">Amount</TableHead>
-                    <TableHead className="font-medium">Type</TableHead>
-                    <TableHead className="font-medium">Pay Period</TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                    <TableHead className="font-medium">Submitted</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {!requests || requests.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No requests found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    requests.map((request: any) => (
-                      <TableRow key={request.id} data-testid={`row-my-request-${request.id}`}>
-                        <TableCell className="font-mono">{request.id}</TableCell>
-                        <TableCell>{request.practiceName || request.practiceId}</TableCell>
-                        <TableCell className="text-right font-mono font-semibold">
-                          {formatCurrency(request.amount)}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={request.requestType} />
-                        </TableCell>
-                        <TableCell className="text-sm font-medium">
-                          {request.requestType === "recurring" && request.effectivePayPeriod && request.recurringEndPeriod
-                            ? `PP${request.effectivePayPeriod}-PP${request.recurringEndPeriod}`
-                            : request.effectivePayPeriod
-                            ? `PP${request.effectivePayPeriod}`
-                            : <span className="text-muted-foreground">—</span>
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={request.status} />
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDateTime(request.createdAt)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <div className="max-h-[600px] overflow-auto relative">
+                <table className="w-full caption-bottom text-sm">
+                  <thead className="[&_tr]:border-b">
+                    <tr className="border-b">
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Request ID</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Practice</th>
+                      <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Amount</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Type</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Pay Period</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&_tr:last-child]:border-0">
+                    {requests.map((request: any) => {
+                      const handleRowClick = () => setLocation(`/requests/${request.id}`);
+                      const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleRowClick();
+                        }
+                      };
+
+                      return (
+                        <tr 
+                          key={request.id} 
+                          data-testid={`row-my-request-${request.id}`}
+                          className="border-b transition-colors cursor-pointer hover-elevate"
+                          onClick={handleRowClick}
+                          onKeyDown={handleKeyDown}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`View request ${request.id}`}
+                        >
+                          <td className="p-4 align-middle font-mono">{request.id}</td>
+                          <td className="p-4 align-middle">{request.practiceName || request.practiceId}</td>
+                          <td className="p-4 align-middle text-right font-mono font-semibold">
+                            {formatCurrency(request.amount)}
+                          </td>
+                          <td className="p-4 align-middle">
+                            <StatusBadge status={request.requestType} />
+                          </td>
+                          <td className="p-4 align-middle text-sm font-medium">
+                            {request.requestType === "recurring" && request.effectivePayPeriod && request.recurringEndPeriod
+                              ? `PP${request.effectivePayPeriod}-PP${request.recurringEndPeriod}`
+                              : request.effectivePayPeriod
+                              ? `PP${request.effectivePayPeriod}`
+                              : <span className="text-muted-foreground">—</span>
+                            }
+                          </td>
+                          <td className="p-4 align-middle">
+                            <StatusBadge status={request.status} />
+                          </td>
+                          <td className="p-4 align-middle text-sm text-muted-foreground">
+                            {formatDateTime(request.createdAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>
