@@ -419,10 +419,18 @@ export default function StipendRequestDetail() {
                         </td>
                         <td className="p-4 align-middle">
                           <Badge 
-                            variant={period.status === 'paid' ? 'default' : period.status === 'committed' ? 'secondary' : 'outline'}
+                            variant={
+                              period.status === 'paid' ? 'default' : 
+                              period.status === 'committed' ? 'secondary' : 
+                              period.status === 'cancelled' ? 'destructive' : 
+                              'outline'
+                            }
                             data-testid={`badge-status-${period.payPeriod}`}
                           >
-                            {period.status === 'paid' ? 'Paid' : period.status === 'committed' ? 'Committed' : 'Pending'}
+                            {period.status === 'paid' ? 'Paid' : 
+                             period.status === 'committed' ? 'Committed' : 
+                             period.status === 'cancelled' ? 'Cancelled' : 
+                             'Pending'}
                           </Badge>
                         </td>
                         <td className="p-4 align-middle text-center">

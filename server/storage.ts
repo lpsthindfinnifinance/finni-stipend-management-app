@@ -768,9 +768,11 @@ export class DatabaseStorage implements IStorage {
           // Sum all committed entries to account for cancellations (negative amounts)
           const committedSum = committedEntries.reduce((sum, entry) => sum + Number(entry.amount), 0);
           
-          // If sum is effectively zero (cancelled), status is pending; otherwise committed
+          // If sum is effectively zero but entries exist, it was cancelled
+          // If sum > 0, it's still committed
+          // If no entries, it's pending
           if (Math.abs(committedSum) < 0.01) {
-            status = 'pending';
+            status = 'cancelled';
           } else {
             status = 'committed';
             ledgerEntry = committedEntries[0]; // Use first entry for reference
