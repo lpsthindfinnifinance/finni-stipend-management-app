@@ -57,6 +57,11 @@ export default function NewRequest() {
     enabled: !!practiceId,
   });
 
+  const { data: currentPayPeriod } = useQuery<{ id: number }>({
+    queryKey: ["/api/pay-periods/current"],
+    enabled: isAuthenticated,
+  });
+
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/stipend-requests", data);
@@ -338,11 +343,17 @@ export default function NewRequest() {
                       <SelectValue placeholder="Select pay period" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
-                        <SelectItem key={period} value={period.toString()}>
-                          Pay Period {period}
-                        </SelectItem>
-                      ))}
+                      {!currentPayPeriod ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
+                      ) : Math.max(0, 26 - currentPayPeriod.id) === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
+                      ) : (
+                        Array.from({ length: Math.max(0, 26 - currentPayPeriod.id) }, (_, i) => currentPayPeriod.id + i + 1).map((period) => (
+                          <SelectItem key={period} value={period.toString()}>
+                            Pay Period {period}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
@@ -361,11 +372,17 @@ export default function NewRequest() {
                         <SelectValue placeholder="Select end period" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
-                          <SelectItem key={period} value={period.toString()}>
-                            Pay Period {period}
-                          </SelectItem>
-                        ))}
+                        {!currentPayPeriod ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
+                        ) : Math.max(0, 26 - currentPayPeriod.id) === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
+                        ) : (
+                          Array.from({ length: Math.max(0, 26 - currentPayPeriod.id) }, (_, i) => currentPayPeriod.id + i + 1).map((period) => (
+                            <SelectItem key={period} value={period.toString()}>
+                              Pay Period {period}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
