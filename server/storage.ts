@@ -88,6 +88,7 @@ export interface IStorage {
   updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest>;
   getPayPeriodBreakdown(requestId: number): Promise<any[]>;
   cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void>;
+  markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void>;
   
   // Inter-PSM allocation operations
   getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<InterPsmAllocation[]>;
@@ -820,6 +821,37 @@ export class DatabaseStorage implements IStorage {
       description: `Cancelled: Stipend commitment reversal for PP${payPeriod} (Request #${requestId})`,
       relatedRequestId: requestId,
     });
+  }
+
+  async markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void> {
+    // Find the committed ledger entry for this request and pay period
+    const [ledgerEntry] = await db
+      .select()
+      .from(practiceLedger)
+      .where(
+        and(
+          eq(practiceLedger.relatedRequestId, requestId),
+          eq(practiceLedger.payPeriod, payPeriod),
+          eq(practiceLedger.transactionType, 'committed')
+        )
+      );
+
+    if (!ledgerEntry) {
+      throw new Error('No committed entry found for this pay period');
+    }
+
+    // Update the transaction type from 'committed' to 'paid'
+    const updatedDescription = ledgerEntry.description 
+      ? ledgerEntry.description.replace('approved', 'paid').replace('(PP', 'paid (PP')
+      : `Stipend paid for PP${payPeriod} (Request #${requestId})`;
+    
+    await db
+      .update(practiceLedger)
+      .set({
+        transactionType: 'paid',
+        description: updatedDescription,
+      })
+      .where(eq(practiceLedger.id, ledgerEntry.id));
   }
 
   // ============================================================================

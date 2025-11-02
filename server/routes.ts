@@ -619,13 +619,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `Committed stipend for request #${requestId} cancelled for PP${payPeriod} by ${user.name}`
+        `Committed stipend for request #${requestId} cancelled for PP${payPeriod} by ${user.firstName} ${user.lastName}`
       );
 
       res.json({ success: true, message: `Cancelled committed period PP${payPeriod}` });
     } catch (error) {
       console.error("Error cancelling committed period:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to cancel committed period" });
+    }
+  });
+
+  app.post('/api/stipend-requests/:id/mark-period-paid', isAuthenticated, isFinance, async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { payPeriod } = req.body;
+      
+      if (!payPeriod || typeof payPeriod !== 'number') {
+        return res.status(400).json({ message: "Valid pay period is required" });
+      }
+
+      await storage.markPeriodAsPaid(requestId, payPeriod);
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `Stipend for request #${requestId} marked as paid for PP${payPeriod} by ${user.firstName} ${user.lastName}`
+      );
+
+      res.json({ success: true, message: `Marked period PP${payPeriod} as paid` });
+    } catch (error) {
+      console.error("Error marking period as paid:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to mark period as paid" });
     }
   });
 
