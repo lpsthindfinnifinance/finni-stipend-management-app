@@ -759,14 +759,22 @@ export class DatabaseStorage implements IStorage {
       if (ledgerEntries.length > 0) {
         // Find the most recent relevant entry (paid takes precedence over committed)
         const paidEntry = ledgerEntries.find(e => e.transactionType === 'paid');
-        const committedEntry = ledgerEntries.find(e => e.transactionType === 'committed');
+        const committedEntries = ledgerEntries.filter(e => e.transactionType === 'committed');
         
         if (paidEntry) {
           status = 'paid';
           ledgerEntry = paidEntry;
-        } else if (committedEntry) {
-          status = 'committed';
-          ledgerEntry = committedEntry;
+        } else if (committedEntries.length > 0) {
+          // Sum all committed entries to account for cancellations (negative amounts)
+          const committedSum = committedEntries.reduce((sum, entry) => sum + Number(entry.amount), 0);
+          
+          // If sum is effectively zero (cancelled), status is pending; otherwise committed
+          if (Math.abs(committedSum) < 0.01) {
+            status = 'pending';
+          } else {
+            status = 'committed';
+            ledgerEntry = committedEntries[0]; // Use first entry for reference
+          }
         }
       }
 
