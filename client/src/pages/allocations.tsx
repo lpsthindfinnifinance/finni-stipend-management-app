@@ -175,8 +175,8 @@ export default function Allocations() {
           </div>
         </div>
 
-        {/* Suspense Balance Card for Lead PSM */}
-        {role === "Lead PSM" && (
+        {/* Suspense Balance Card for PSM and Lead PSM */}
+        {(role === "PSM" || role === "Lead PSM") && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
