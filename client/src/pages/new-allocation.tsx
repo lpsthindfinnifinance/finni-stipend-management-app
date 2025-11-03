@@ -63,8 +63,8 @@ export default function NewAllocation() {
 
   // Fetch all practices in the same portfolio for recipient selection (practice-to-practice)
   const { data: portfolioPractices } = useQuery({
-    queryKey: ["/api/practices", { portfolio: user?.portfolioId }],
-    enabled: isAuthenticated && allocationType === "practice_to_practice" && !!user?.portfolioId,
+    queryKey: user?.portfolioId ? [`/api/practices?portfolio=${user.portfolioId}`] : ["/api/practices"],
+    enabled: isAuthenticated && allocationType === "practice_to_practice",
   });
 
   // Fetch all portfolios for recipient selection (inter-portfolio)
