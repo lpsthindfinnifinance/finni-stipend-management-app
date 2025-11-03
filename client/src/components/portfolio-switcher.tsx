@@ -50,11 +50,6 @@ export function PortfolioSwitcher() {
 
   if (!user) return null;
 
-  // Only show portfolio switcher for PSM and Lead PSM roles
-  if (user.role !== "PSM" && user.role !== "Lead PSM") {
-    return null;
-  }
-
   return (
     <div className="flex items-center gap-2">
       <Building2 className="w-4 h-4 text-muted-foreground" />
