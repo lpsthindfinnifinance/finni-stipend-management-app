@@ -1578,8 +1578,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
 
-      // Only Lead PSM, Finance, or Admin of the portfolio can view suspense
-      const isAuthorized = (user?.role === "Lead PSM" && user?.portfolioId === id) || 
+      // Only PSM, Lead PSM, Finance, or Admin of the portfolio can view suspense
+      const isAuthorized = ((user?.role === "PSM" || user?.role === "Lead PSM") && user?.portfolioId === id) || 
                           user?.role === "Finance" || 
                           user?.role === "Admin";
 
@@ -1595,18 +1595,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Allocate from suspense to practices (Lead PSM only)
+  // Allocate from suspense to practices (PSM and Lead PSM)
   app.post('/api/portfolios/:id/allocate-from-suspense', isAuthenticated, async (req: any, res) => {
     try {
       const { id: portfolioId } = req.params;
       const userId = req.user.claims.sub;
       const { recipientPractices } = req.body; // Array of { practiceId, amount }
 
-      // Validate user is Lead PSM of this portfolio
+      // Validate user is PSM or Lead PSM of this portfolio
       const user = await storage.getUser(userId);
-      if (user?.role !== "Lead PSM" || user?.portfolioId !== portfolioId) {
+      if ((user?.role !== "PSM" && user?.role !== "Lead PSM") || user?.portfolioId !== portfolioId) {
         return res.status(403).json({ 
-          message: "Only the Lead PSM of this portfolio can allocate from suspense" 
+          message: "Only the PSM or Lead PSM of this portfolio can allocate from suspense" 
         });
       }
 
