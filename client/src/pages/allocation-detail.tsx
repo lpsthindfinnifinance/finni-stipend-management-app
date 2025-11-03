@@ -157,7 +157,7 @@ export default function AllocationDetail() {
                     <TableRow key={practice.id} data-testid={`row-donor-practice-${practice.id}`}>
                       <TableCell className="font-mono">{practice.id}</TableCell>
                       <TableCell>{practice.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{allocation.donorPortfolio || allocation.donorPortfolioId || "N/A"}</TableCell>
+                      <TableCell className="text-muted-foreground">{practice.portfolioName || practice.portfolioId || "N/A"}</TableCell>
                       <TableCell className="text-right font-mono font-semibold">
                         {formatCurrency(practice.amount)}
                       </TableCell>
@@ -196,7 +196,7 @@ export default function AllocationDetail() {
                     <TableRow key={practice.id} data-testid={`row-recipient-practice-${practice.id}`}>
                       <TableCell className="font-mono">{practice.id}</TableCell>
                       <TableCell>{practice.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{allocation.recipientPortfolio || allocation.recipientPortfolioId || "N/A"}</TableCell>
+                      <TableCell className="text-muted-foreground">{practice.portfolioName || practice.portfolioId || "N/A"}</TableCell>
                       <TableCell className="text-right font-mono font-semibold">
                         {formatCurrency(practice.amount)}
                       </TableCell>

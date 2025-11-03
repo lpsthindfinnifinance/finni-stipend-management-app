@@ -1039,9 +1039,22 @@ export class DatabaseStorage implements IStorage {
         
         const entry = donorEntries.find(e => e.practiceId === practiceId);
         
+        // Get portfolio name for this practice
+        let portfolioName = null;
+        if (practice?.portfolioId) {
+          const [portfolio] = await db
+            .select({ name: portfolios.name })
+            .from(portfolios)
+            .where(eq(portfolios.id, practice.portfolioId))
+            .limit(1);
+          portfolioName = portfolio?.name || practice.portfolioId;
+        }
+        
         return {
           id: practiceId,
           name: practice?.name || practiceId,
+          portfolioId: practice?.portfolioId,
+          portfolioName,
           amount: entry ? Math.abs(parseFloat(entry.amount)) : 0,
         };
       })
@@ -1061,9 +1074,22 @@ export class DatabaseStorage implements IStorage {
         
         const entry = recipientEntries.find(e => e.practiceId === practiceId);
         
+        // Get portfolio name for this practice
+        let portfolioName = null;
+        if (practice?.portfolioId) {
+          const [portfolio] = await db
+            .select({ name: portfolios.name })
+            .from(portfolios)
+            .where(eq(portfolios.id, practice.portfolioId))
+            .limit(1);
+          portfolioName = portfolio?.name || practice.portfolioId;
+        }
+        
         return {
           id: practiceId,
           name: practice?.name || practiceId,
+          portfolioId: practice?.portfolioId,
+          portfolioName,
           amount: entry ? parseFloat(entry.amount) : 0,
         };
       })
