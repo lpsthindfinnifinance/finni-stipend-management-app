@@ -15,7 +15,7 @@ Finni Health is a stipend management system for 60+ ABA practices across five po
 ## System Architecture
 
 ### UI/UX Decisions
-The system uses Carbon Design System patterns, implemented with Shadcn UI components. Typography is IBM Plex Sans for text and IBM Plex Mono for financial figures. A blue/gray color palette is used for dashboards, with responsive grid designs and a 4px-based spacing system.
+The system uses Carbon Design System patterns, implemented with Shadcn UI components. Typography is IBM Plex Sans for text and IBM Plex Mono for financial figures. A blue/gray color palette is used for dashboards, with responsive grid designs and a 4px-based spacing system. The header includes role and portfolio switcher dropdowns, allowing users to dynamically change their role (Admin, Finance, Lead PSM, PSM) and portfolio (G1-G5) for testing and demonstration purposes.
 
 ### Technical Implementations
 The application uses a client-server architecture. The frontend is React with React Query for data fetching. The backend is Node.js with PostgreSQL as the database, using Drizzle-ORM and drizzle-zod for schema validation. Role-based access control is enforced, and authentication uses Replit Auth (OpenID Connect) with custom roles. Slack webhooks are integrated for notifications.

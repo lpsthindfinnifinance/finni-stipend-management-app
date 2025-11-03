@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { RoleSwitcher } from "@/components/role-switcher";
+import { PortfolioSwitcher } from "@/components/portfolio-switcher";
 import { useAuth } from "@/hooks/useAuth";
 
 // Pages
@@ -90,6 +91,7 @@ function AppContent() {
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <div className="flex items-center gap-4">
                   <RoleSwitcher />
+                  <PortfolioSwitcher />
                   <div className="h-4 w-px bg-border" />
                   <span className="text-sm text-muted-foreground" data-testid="text-current-period">
                     Pay Period {currentPeriod?.id || 1}

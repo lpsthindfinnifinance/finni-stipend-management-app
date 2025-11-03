@@ -104,6 +104,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/auth/switch-portfolio', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { portfolioId } = req.body;
+      
+      // Validate portfolio
+      const validPortfolios = ["G1", "G2", "G3", "G4", "G5"];
+      if (!validPortfolios.includes(portfolioId)) {
+        return res.status(400).json({ message: "Invalid portfolio" });
+      }
+      
+      // Get current user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update portfolio (keep current role)
+      const updatedUser = await storage.updateUserRole(userId, user.role || "PSM", portfolioId);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error switching portfolio:", error);
+      res.status(500).json({ message: "Failed to switch portfolio" });
+    }
+  });
+
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
