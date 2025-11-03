@@ -112,50 +112,51 @@ export default function NegativeEarnings() {
         </h1>
       </div>
 
-      {/* Business Level Cap */}
-      <Card data-testid="card-business-level">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">Business Level Cap</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <div className="text-xs text-muted-foreground">Total Cap</div>
-            <div className="text-2xl font-bold" data-testid="text-business-cap">
-              {formatCurrency(businessTotals.totalCap)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Utilized</div>
-            <div
-              className={`text-2xl font-bold ${getUtilizationColor(
-                businessTotals.totalUtilized,
-                businessTotals.totalCap
-              )}`}
-              data-testid="text-business-utilized"
-            >
-              {formatCurrency(businessTotals.totalUtilized)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Available</div>
-            <div className="text-2xl font-bold" data-testid="text-business-available">
-              {formatCurrency(businessTotals.totalAvailable)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Utilization</div>
-            <div className="text-2xl font-bold">
-              {businessTotals.totalCap > 0
-                ? Math.round((businessTotals.totalUtilized / businessTotals.totalCap) * 100)
-                : 0}
-              %
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Group Summary Cards */}
+      {/* Portfolio Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* Business Level Cap Card */}
+        <Card data-testid="card-business-level">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">
+              Business Level Cap
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Total Cap</div>
+              <div className="text-lg font-semibold" data-testid="text-business-cap">
+                {formatCurrency(businessTotals.totalCap)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Utilized</div>
+              <div
+                className={`text-lg font-semibold ${getUtilizationColor(
+                  businessTotals.totalUtilized,
+                  businessTotals.totalCap
+                )}`}
+                data-testid="text-business-utilized"
+              >
+                {formatCurrency(businessTotals.totalUtilized)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Available</div>
+              <div className="text-lg font-semibold" data-testid="text-business-available">
+                {formatCurrency(businessTotals.totalAvailable)}
+              </div>
+            </div>
+            <div className="pt-2 border-t">
+              <div className="text-xs text-muted-foreground">Utilization</div>
+              <div className="text-sm font-medium">
+                {businessTotals.totalCap > 0
+                  ? Math.round((businessTotals.totalUtilized / businessTotals.totalCap) * 100)
+                  : 0}
+                %
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         {groups.map((group: any) => (
           <Card key={group.groupName} data-testid={`card-group-${group.groupName}`}>
             <CardHeader className="pb-3">
