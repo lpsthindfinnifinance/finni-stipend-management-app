@@ -54,8 +54,6 @@ export interface IStorage {
   createPortfolio(portfolio: InsertPortfolio): Promise<Portfolio>;
   updatePortfolio(id: string, portfolio: Partial<UpdatePortfolio>): Promise<Portfolio>;
   deletePortfolio(id: string): Promise<{ success: boolean; message?: string }>;
-  getPortfolioSuspenseBalance(portfolioId: string): Promise<number>;
-  updatePortfolioSuspenseBalance(portfolioId: string, amount: number): Promise<void>;
   
   // Practice operations
   getPractices(filters?: { search?: string; portfolio?: string }): Promise<any[]>;
@@ -286,23 +284,6 @@ export class DatabaseStorage implements IStorage {
     return { success: true };
   }
 
-  async getPortfolioSuspenseBalance(portfolioId: string): Promise<number> {
-    const portfolio = await this.getPortfolioById(portfolioId);
-    if (!portfolio) {
-      throw new Error(`Portfolio ${portfolioId} not found`);
-    }
-    return parseFloat(portfolio.suspenseBalance || "0");
-  }
-
-  async updatePortfolioSuspenseBalance(portfolioId: string, amount: number): Promise<void> {
-    const currentBalance = await this.getPortfolioSuspenseBalance(portfolioId);
-    const newBalance = currentBalance + amount;
-    
-    await db
-      .update(portfolios)
-      .set({ suspenseBalance: newBalance.toFixed(2) })
-      .where(eq(portfolios.id, portfolioId));
-  }
 
   // ============================================================================
   // PRACTICE OPERATIONS
@@ -904,17 +885,11 @@ export class DatabaseStorage implements IStorage {
   // INTER-PSM ALLOCATION OPERATIONS
   // ============================================================================
   
-  async getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string; recipientPortfolioId?: string }): Promise<any[]> {
+  async getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<any[]> {
     const conditions = [];
     
     if (filters?.donorId) {
       conditions.push(eq(interPsmAllocations.donorPsmId, filters.donorId));
-    }
-    if (filters?.recipientId) {
-      conditions.push(eq(interPsmAllocations.recipientPsmId, filters.recipientId));
-    }
-    if (filters?.recipientPortfolioId) {
-      conditions.push(eq(interPsmAllocations.recipientPortfolioId, filters.recipientPortfolioId));
     }
 
     let query = db.select().from(interPsmAllocations);
@@ -974,16 +949,28 @@ export class DatabaseStorage implements IStorage {
           donorPortfolio = portfolio?.name || null;
         }
 
-        // Get recipient portfolio name (for inter-portfolio allocations)
+        // Get recipient portfolio from recipient practices (for practice-to-practice allocations)
         let recipientPortfolio = null;
-        if (allocation.recipientPortfolioId) {
-          const [portfolio] = await db
-            .select({ name: portfolios.name })
-            .from(portfolios)
-            .where(eq(portfolios.id, allocation.recipientPortfolioId))
+        let recipientPortfolioId = null;
+        
+        if (allocation.recipientPracticeIds && allocation.recipientPracticeIds.length > 0) {
+          const [firstRecipientPractice] = await db
+            .select()
+            .from(practices)
+            .where(eq(practices.id, allocation.recipientPracticeIds[0]))
             .limit(1);
           
-          recipientPortfolio = portfolio?.name || null;
+          if (firstRecipientPractice && firstRecipientPractice.portfolioId) {
+            recipientPortfolioId = firstRecipientPractice.portfolioId;
+            
+            const [portfolio] = await db
+              .select({ name: portfolios.name })
+              .from(portfolios)
+              .where(eq(portfolios.id, recipientPortfolioId))
+              .limit(1);
+            
+            recipientPortfolio = portfolio?.name || null;
+          }
         }
 
         return {
@@ -992,6 +979,7 @@ export class DatabaseStorage implements IStorage {
           donorPortfolio,
           donorPortfolioId,
           recipientPortfolio,
+          recipientPortfolioId,
         };
       })
     );
@@ -1059,49 +1047,34 @@ export class DatabaseStorage implements IStorage {
       })
     );
 
-    // Handle different allocation types
-    let recipientData = null;
+    // Get recipient practice details (all allocations are now practice-to-practice)
+    const recipientPracticeIds = allocation.recipientPracticeIds || [];
+    const recipientEntries = ledgerEntries.filter(e => e.transactionType === "allocation_in");
     
-    if (allocation.allocationType === "practice_to_practice") {
-      const recipientPracticeIds = allocation.recipientPracticeIds || [];
-      const recipientEntries = ledgerEntries.filter(e => e.transactionType === "allocation_in");
-      
-      const recipientPracticesData = await Promise.all(
-        recipientPracticeIds.map(async (practiceId) => {
-          const [practice] = await db
-            .select()
-            .from(practices)
-            .where(eq(practices.id, practiceId))
-            .limit(1);
-          
-          const entry = recipientEntries.find(e => e.practiceId === practiceId);
-          
-          return {
-            id: practiceId,
-            name: practice?.name || practiceId,
-            amount: entry ? parseFloat(entry.amount) : 0,
-          };
-        })
-      );
-      
-      recipientData = recipientPracticesData;
-    } else if (allocation.allocationType === "inter_portfolio") {
-      // For inter-portfolio, get recipient portfolio details
-      const [recipientPortfolio] = await db
-        .select()
-        .from(portfolios)
-        .where(eq(portfolios.id, allocation.recipientPortfolioId!))
-        .limit(1);
-      
-      recipientData = recipientPortfolio;
-    }
+    const recipientPracticesData = await Promise.all(
+      recipientPracticeIds.map(async (practiceId) => {
+        const [practice] = await db
+          .select()
+          .from(practices)
+          .where(eq(practices.id, practiceId))
+          .limit(1);
+        
+        const entry = recipientEntries.find(e => e.practiceId === practiceId);
+        
+        return {
+          id: practiceId,
+          name: practice?.name || practiceId,
+          amount: entry ? parseFloat(entry.amount) : 0,
+        };
+      })
+    );
 
     return {
       ...allocation,
       donorPsmName,
       donorPortfolioId,
       donorPractices: donorPracticesData,
-      recipientData,
+      recipientPractices: recipientPracticesData,
     };
   }
 
