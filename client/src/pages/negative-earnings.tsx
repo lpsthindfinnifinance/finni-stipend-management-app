@@ -94,6 +94,16 @@ export default function NegativeEarnings() {
     );
   }
 
+  // Calculate business-level totals
+  const businessTotals = summary.reduce(
+    (acc, practice) => ({
+      totalCap: acc.totalCap + practice.negativeEarningsCap,
+      totalUtilized: acc.totalUtilized + practice.utilized,
+      totalAvailable: acc.totalAvailable + practice.available,
+    }),
+    { totalCap: 0, totalUtilized: 0, totalAvailable: 0 }
+  );
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -101,6 +111,48 @@ export default function NegativeEarnings() {
           Negative Earnings Cap
         </h1>
       </div>
+
+      {/* Business Level Cap */}
+      <Card data-testid="card-business-level">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold">Business Level Cap</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground">Total Cap</div>
+            <div className="text-2xl font-bold" data-testid="text-business-cap">
+              {formatCurrency(businessTotals.totalCap)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Utilized</div>
+            <div
+              className={`text-2xl font-bold ${getUtilizationColor(
+                businessTotals.totalUtilized,
+                businessTotals.totalCap
+              )}`}
+              data-testid="text-business-utilized"
+            >
+              {formatCurrency(businessTotals.totalUtilized)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Available</div>
+            <div className="text-2xl font-bold" data-testid="text-business-available">
+              {formatCurrency(businessTotals.totalAvailable)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Utilization</div>
+            <div className="text-2xl font-bold">
+              {businessTotals.totalCap > 0
+                ? Math.round((businessTotals.totalUtilized / businessTotals.totalCap) * 100)
+                : 0}
+              %
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Group Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
