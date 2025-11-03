@@ -54,6 +54,8 @@ export interface IStorage {
   createPortfolio(portfolio: InsertPortfolio): Promise<Portfolio>;
   updatePortfolio(id: string, portfolio: Partial<UpdatePortfolio>): Promise<Portfolio>;
   deletePortfolio(id: string): Promise<{ success: boolean; message?: string }>;
+  getPortfolioSuspenseBalance(portfolioId: string): Promise<number>;
+  updatePortfolioSuspenseBalance(portfolioId: string, amount: number): Promise<void>;
   
   // Practice operations
   getPractices(filters?: { search?: string; portfolio?: string }): Promise<any[]>;
@@ -281,6 +283,24 @@ export class DatabaseStorage implements IStorage {
 
     await db.delete(portfolios).where(eq(portfolios.id, id));
     return { success: true };
+  }
+
+  async getPortfolioSuspenseBalance(portfolioId: string): Promise<number> {
+    const portfolio = await this.getPortfolioById(portfolioId);
+    if (!portfolio) {
+      throw new Error(`Portfolio ${portfolioId} not found`);
+    }
+    return parseFloat(portfolio.suspenseBalance || "0");
+  }
+
+  async updatePortfolioSuspenseBalance(portfolioId: string, amount: number): Promise<void> {
+    const currentBalance = await this.getPortfolioSuspenseBalance(portfolioId);
+    const newBalance = currentBalance + amount;
+    
+    await db
+      .update(portfolios)
+      .set({ suspenseBalance: newBalance.toFixed(2) })
+      .where(eq(portfolios.id, portfolioId));
   }
 
   // ============================================================================

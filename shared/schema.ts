@@ -67,6 +67,7 @@ export type User = typeof users.$inferSelect;
 export const portfolios = pgTable("portfolios", {
   id: varchar("id").primaryKey(), // G1, G2, G3, G4, G5
   name: varchar("name").notNull(),
+  suspenseBalance: decimal("suspense_balance", { precision: 12, scale: 2 }).notNull().default("0"), // Suspense account balance for inter-portfolio allocations
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -187,7 +188,7 @@ export const practiceLedger = pgTable("practice_ledger", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   practiceId: varchar("practice_id").notNull(),
   payPeriod: integer("pay_period").notNull(),
-  transactionType: varchar("transaction_type").notNull(), // opening_balance, remeasurement, paid, committed, allocation_in, allocation_out
+  transactionType: varchar("transaction_type").notNull(), // opening_balance, remeasurement, paid, committed, allocation_in, allocation_out, suspense_in, suspense_out
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(), // Can be positive or negative
   description: text("description"),
   relatedRequestId: integer("related_request_id"), // Reference to stipend_requests.id if applicable
@@ -299,8 +300,10 @@ export type StipendRequestWithDetails = StipendRequest & {
 
 export const interPsmAllocations = pgTable("inter_psm_allocations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  allocationType: varchar("allocation_type").notNull().default("practice_to_practice"), // practice_to_practice, inter_portfolio
   donorPsmId: varchar("donor_psm_id").notNull(),
-  recipientPsmId: varchar("recipient_psm_id").notNull(),
+  recipientPsmId: varchar("recipient_psm_id"), // For practice_to_practice only
+  recipientPortfolioId: varchar("recipient_portfolio_id"), // For inter_portfolio only
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
   donorPracticeIds: text("donor_practice_ids").array().notNull(), // Array of practice IDs
   status: varchar("status").notNull().default("pending"), // pending, allocated, completed
@@ -313,7 +316,22 @@ export const insertInterPsmAllocationSchema = createInsertSchema(interPsmAllocat
   status: true,
   createdAt: true,
   completedAt: true,
-} as any);
+} as any).extend({
+  allocationType: z.enum(["practice_to_practice", "inter_portfolio"]),
+}).refine(
+  (data) => {
+    // For practice_to_practice, recipientPsmId is required and recipientPortfolioId should be null
+    if (data.allocationType === "practice_to_practice") {
+      return data.recipientPsmId != null && data.recipientPortfolioId == null;
+    }
+    // For inter_portfolio, recipientPortfolioId is required and recipientPsmId should be null
+    if (data.allocationType === "inter_portfolio") {
+      return data.recipientPortfolioId != null && data.recipientPsmId == null;
+    }
+    return true;
+  },
+  { message: "Invalid recipient configuration for allocation type" }
+);
 
 export type InsertInterPsmAllocation = z.infer<typeof insertInterPsmAllocationSchema>;
 export type InterPsmAllocation = typeof interPsmAllocations.$inferSelect;
