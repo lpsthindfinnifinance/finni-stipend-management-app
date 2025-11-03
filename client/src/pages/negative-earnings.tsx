@@ -116,7 +116,10 @@ export default function NegativeEarnings() {
     return acc;
   }, {});
 
-  const groups = Object.values(groupedData);
+  const groups = Object.values(groupedData).sort((a: any, b: any) => {
+    // Sort by portfolio name (G1, G2, G3, G4, G5)
+    return a.groupName.localeCompare(b.groupName);
+  });
 
   // Filter practices
   const filteredPractices = summary.filter((practice) => {
@@ -271,12 +274,14 @@ export default function NegativeEarnings() {
                   <TableHead className="sticky top-0 bg-card z-10 border-b text-right">Utilized</TableHead>
                   <TableHead className="sticky top-0 bg-card z-10 border-b text-right">Available</TableHead>
                   <TableHead className="sticky top-0 bg-card z-10 border-b text-right">Utilization %</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10 border-b text-right">Negative Earnings Cap 75%</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10 border-b text-right">Balance 75%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPractices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
                       No practices found
                     </TableCell>
                   </TableRow>
@@ -286,6 +291,9 @@ export default function NegativeEarnings() {
                       practice.negativeEarningsCap > 0
                         ? (practice.utilized / practice.negativeEarningsCap) * 100
                         : 0;
+                    
+                    const cap75Percent = practice.negativeEarningsCap * 0.75;
+                    const balance75Percent = cap75Percent - practice.utilized;
 
                     return (
                       <TableRow key={practice.practiceId} data-testid={`row-practice-${practice.practiceId}`}>
@@ -313,6 +321,12 @@ export default function NegativeEarnings() {
                         </TableCell>
                         <TableCell className="text-right" data-testid={`text-utilization-${practice.practiceId}`}>
                           {Math.round(utilizationPercent)}%
+                        </TableCell>
+                        <TableCell className="text-right font-mono" data-testid={`text-cap-75-${practice.practiceId}`}>
+                          {formatCurrency(cap75Percent)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono" data-testid={`text-balance-75-${practice.practiceId}`}>
+                          {formatCurrency(balance75Percent)}
                         </TableCell>
                       </TableRow>
                     );
