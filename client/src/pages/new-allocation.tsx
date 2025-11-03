@@ -283,6 +283,7 @@ export default function NewAllocation() {
                       <TableRow>
                         <TableHead className="w-12"></TableHead>
                         <TableHead className="font-medium">Practice</TableHead>
+                        <TableHead className="font-medium">Portfolio</TableHead>
                         <TableHead className="font-medium text-right">Available Balance</TableHead>
                         <TableHead className="font-medium text-right">Amount to Allocate</TableHead>
                       </TableRow>
@@ -306,6 +307,9 @@ export default function NewAllocation() {
                             </TableCell>
                             <TableCell>
                               {practice.name} ({practice.id})
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-muted-foreground">{practice.portfolioId}</span>
                             </TableCell>
                             <TableCell className="text-right font-mono font-semibold">
                               {formatCurrency(availableBalance)}
@@ -363,6 +367,7 @@ export default function NewAllocation() {
                         <TableRow>
                           <TableHead className="w-12"></TableHead>
                           <TableHead className="font-medium">Practice</TableHead>
+                          <TableHead className="font-medium">Portfolio</TableHead>
                           <TableHead className="font-medium text-right">Current Balance</TableHead>
                           <TableHead className="font-medium text-right">Amount to Receive</TableHead>
                         </TableRow>
@@ -384,6 +389,9 @@ export default function NewAllocation() {
                               </TableCell>
                               <TableCell>
                                 {practice.name} ({practice.id})
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-muted-foreground">{practice.portfolioId}</span>
                               </TableCell>
                               <TableCell className="text-right font-mono font-semibold text-muted-foreground">
                                 {formatCurrency(currentBalance)}
