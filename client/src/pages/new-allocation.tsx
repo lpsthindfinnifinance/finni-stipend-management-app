@@ -22,11 +22,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface DonorPractice {
   practiceId: string;
   amount: number;
 }
+
+type AllocationType = "practice_to_practice" | "inter_portfolio";
 
 export default function NewAllocation() {
   const { toast } = useToast();
@@ -34,7 +37,9 @@ export default function NewAllocation() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading: authLoading, user, role } = useAuth();
   
+  const [allocationType, setAllocationType] = useState<AllocationType>("practice_to_practice");
   const [recipientPsmId, setRecipientPsmId] = useState("");
+  const [recipientPortfolioId, setRecipientPortfolioId] = useState("");
   const [donorPractices, setDonorPractices] = useState<DonorPractice[]>([]);
 
   useEffect(() => {
@@ -50,16 +55,22 @@ export default function NewAllocation() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  // Fetch donor PSM's practices (Admin can also create allocations)
+  // Fetch donor PSM's practices (or all practices for Finance/Admin)
   const { data: myPractices } = useQuery({
-    queryKey: ["/api/practices/my"],
-    enabled: isAuthenticated && (user?.role === "PSM" || user?.role === "Admin"),
+    queryKey: user?.role === "Finance" || user?.role === "Admin" ? ["/api/practices"] : ["/api/practices/my"],
+    enabled: isAuthenticated,
   });
 
-  // Fetch all PSMs for recipient selection
+  // Fetch all PSMs for recipient selection (practice-to-practice)
   const { data: allUsers } = useQuery({
     queryKey: ["/api/users"],
     enabled: isAuthenticated,
+  });
+
+  // Fetch all portfolios for recipient selection (inter-portfolio)
+  const { data: allPortfolios } = useQuery({
+    queryKey: ["/api/portfolios"],
+    enabled: isAuthenticated && allocationType === "inter_portfolio",
   });
 
   const submitMutation = useMutation({
@@ -120,10 +131,20 @@ export default function NewAllocation() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!recipientPsmId) {
+    // Validate recipient based on allocation type
+    if (allocationType === "practice_to_practice" && !recipientPsmId) {
       toast({
         title: "Validation Error",
         description: "Please select a recipient PSM",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (allocationType === "inter_portfolio" && !recipientPortfolioId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a recipient portfolio",
         variant: "destructive",
       });
       return;
@@ -148,11 +169,29 @@ export default function NewAllocation() {
       return;
     }
 
+    // Validate balance limits
+    const hasBalanceErrors = donorPractices.some(dp => {
+      const practice = (myPractices as any[] || []).find((p: any) => p.id === dp.practiceId);
+      const availableBalance = Number(practice?.currentBalance || 0);
+      return dp.amount > availableBalance;
+    });
+
+    if (hasBalanceErrors) {
+      toast({
+        title: "Validation Error",
+        description: "One or more amounts exceed available practice balance",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const totalAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
 
     submitMutation.mutate({
+      allocationType,
       donorPsmId: user?.id,
-      recipientPsmId,
+      recipientPsmId: allocationType === "practice_to_practice" ? recipientPsmId : undefined,
+      recipientPortfolioId: allocationType === "inter_portfolio" ? recipientPortfolioId : undefined,
       totalAmount,
       donorPracticeIds: donorPractices.map(p => p.practiceId),
       donorPractices, // Include amounts for each practice
@@ -164,8 +203,23 @@ export default function NewAllocation() {
   }
 
   const totalAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
-  const otherPsms = (allUsers as any[] || []).filter((u: any) => 
-    u.role === "PSM" && u.id !== user?.id
+  
+  // Filter PSMs based on allocation type and user role
+  const otherPsms = (allUsers as any[] || []).filter((u: any) => {
+    if (!u.role || u.role === "Finance" || u.role === "Admin") return false;
+    if (u.id === user?.id) return false;
+    
+    // For practice-to-practice: PSM/Lead PSM can only see PSMs from same portfolio
+    if (allocationType === "practice_to_practice" && (user?.role === "PSM" || user?.role === "Lead PSM")) {
+      return u.portfolioId === user?.portfolioId;
+    }
+    
+    return true;
+  });
+
+  // Filter portfolios - exclude current user's portfolio for inter-portfolio
+  const availablePortfolios = (allPortfolios as any[] || []).filter((p: any) => 
+    p.id !== user?.portfolioId
   );
 
   // Check for validation errors
@@ -201,29 +255,105 @@ export default function NewAllocation() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Fields */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Allocation Type Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Allocation Type</CardTitle>
+                <CardDescription>
+                  Choose how you want to allocate stipend budget
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup 
+                  value={allocationType} 
+                  onValueChange={(value) => {
+                    setAllocationType(value as AllocationType);
+                    // Reset recipient selections when changing type
+                    setRecipientPsmId("");
+                    setRecipientPortfolioId("");
+                  }}
+                  data-testid="radio-allocation-type"
+                >
+                  <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg hover-elevate">
+                    <RadioGroupItem value="practice_to_practice" id="practice_to_practice" data-testid="radio-practice-to-practice" />
+                    <div className="flex-1">
+                      <Label htmlFor="practice_to_practice" className="font-semibold cursor-pointer">
+                        Practice-to-Practice
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Allocate directly to another PSM's practices within your portfolio
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg hover-elevate">
+                    <RadioGroupItem value="inter_portfolio" id="inter_portfolio" data-testid="radio-inter-portfolio" />
+                    <div className="flex-1">
+                      <Label htmlFor="inter_portfolio" className="font-semibold cursor-pointer">
+                        Inter-Portfolio
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Allocate to another portfolio's suspense account. The recipient portfolio's Lead PSM will distribute funds to their practices.
+                      </p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+
             {/* Recipient Selection */}
             <Card>
               <CardHeader>
-                <CardTitle>Recipient PSM</CardTitle>
+                <CardTitle>
+                  {allocationType === "practice_to_practice" ? "Recipient PSM" : "Recipient Portfolio"}
+                </CardTitle>
                 <CardDescription>
-                  Select the PSM who will receive the allocated budget
+                  {allocationType === "practice_to_practice" 
+                    ? "Select the PSM who will receive the allocated budget"
+                    : "Select the portfolio whose suspense account will receive the funds"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <Label htmlFor="recipient">Recipient *</Label>
-                  <Select value={recipientPsmId} onValueChange={setRecipientPsmId}>
-                    <SelectTrigger id="recipient" data-testid="select-recipient">
-                      <SelectValue placeholder="Select a PSM" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {otherPsms.map((psm: any) => (
-                        <SelectItem key={psm.id} value={psm.id}>
-                          {psm.fullName || psm.email} (Portfolio: {psm.portfolioId || "N/A"})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {allocationType === "practice_to_practice" ? (
+                    <Select value={recipientPsmId} onValueChange={setRecipientPsmId}>
+                      <SelectTrigger id="recipient" data-testid="select-recipient-psm">
+                        <SelectValue placeholder="Select a PSM" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {otherPsms.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground text-center">
+                            No PSMs available in your portfolio
+                          </div>
+                        ) : (
+                          otherPsms.map((psm: any) => (
+                            <SelectItem key={psm.id} value={psm.id}>
+                              {psm.fullName || psm.email} ({psm.role})
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select value={recipientPortfolioId} onValueChange={setRecipientPortfolioId}>
+                      <SelectTrigger id="recipient" data-testid="select-recipient-portfolio">
+                        <SelectValue placeholder="Select a portfolio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePortfolios.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground text-center">
+                            No other portfolios available
+                          </div>
+                        ) : (
+                          availablePortfolios.map((portfolio: any) => (
+                            <SelectItem key={portfolio.id} value={portfolio.id}>
+                              {portfolio.name} ({portfolio.id})
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -309,7 +439,15 @@ export default function NewAllocation() {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={!recipientPsmId || donorPractices.length === 0 || totalAmount <= 0 || hasZeroOrNegative || hasBalanceErrors || submitMutation.isPending}
+                disabled={
+                  (allocationType === "practice_to_practice" && !recipientPsmId) ||
+                  (allocationType === "inter_portfolio" && !recipientPortfolioId) ||
+                  donorPractices.length === 0 || 
+                  totalAmount <= 0 || 
+                  hasZeroOrNegative || 
+                  hasBalanceErrors || 
+                  submitMutation.isPending
+                }
                 data-testid="button-submit-allocation"
               >
                 {submitMutation.isPending ? "Creating..." : "Create Allocation"}
