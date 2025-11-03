@@ -22,14 +22,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface PracticeAmount {
   practiceId: string;
   amount: number;
 }
-
-type AllocationType = "practice_to_practice" | "inter_portfolio";
 
 export default function NewAllocation() {
   const { toast } = useToast();
@@ -37,8 +34,6 @@ export default function NewAllocation() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading: authLoading, user, role } = useAuth();
   
-  const [allocationType, setAllocationType] = useState<AllocationType>("practice_to_practice");
-  const [recipientPortfolioId, setRecipientPortfolioId] = useState("");
   const [donorPractices, setDonorPractices] = useState<PracticeAmount[]>([]);
   const [recipientPractices, setRecipientPractices] = useState<PracticeAmount[]>([]);
 
@@ -55,23 +50,21 @@ export default function NewAllocation() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  // Fetch donor PSM's practices (or all practices for Finance/Admin)
+  // Fetch donor PSM's practices (or all practices for Finance/Admin/Lead PSM)
   const { data: myPractices } = useQuery({
-    queryKey: user?.role === "Finance" || user?.role === "Admin" ? ["/api/practices"] : ["/api/practices/my"],
+    queryKey: user?.role === "Finance" || user?.role === "Admin" || user?.role === "Lead PSM" ? ["/api/practices"] : ["/api/practices/my"],
     enabled: isAuthenticated,
   });
 
-  // Fetch all practices in the same portfolio for recipient selection (practice-to-practice)
+  // Fetch recipient practices:
+  // - For PSM: practices in their portfolio
+  // - For Lead PSM/Finance/Admin: all practices
   const { data: portfolioPractices } = useQuery({
-    queryKey: user?.portfolioId ? [`/api/practices?portfolio=${user.portfolioId}`] : ["/api/practices"],
-    enabled: isAuthenticated && allocationType === "practice_to_practice",
-  });
-
-  // Fetch all portfolios for recipient selection (inter-portfolio)
-  // Always fetch to have data ready when user switches to inter-portfolio mode
-  // Use lightweight /list endpoint for dropdown (avoids expensive summary calculations)
-  const { data: allPortfolios } = useQuery({
-    queryKey: ["/api/portfolios/list"],
+    queryKey: user?.role === "Lead PSM" || user?.role === "Finance" || user?.role === "Admin" 
+      ? ["/api/practices"] 
+      : user?.portfolioId 
+        ? [`/api/practices?portfolio=${user.portfolioId}`] 
+        : ["/api/practices"],
     enabled: isAuthenticated,
   });
 
@@ -184,61 +177,45 @@ export default function NewAllocation() {
       return;
     }
 
-    // Validate recipient based on allocation type
-    if (allocationType === "practice_to_practice") {
-      if (recipientPractices.length === 0) {
-        toast({
-          title: "Validation Error",
-          description: "Please select at least one recipient practice",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const hasInvalidRecipientAmounts = recipientPractices.some(p => p.amount <= 0);
-      if (hasInvalidRecipientAmounts) {
-        toast({
-          title: "Validation Error",
-          description: "All selected recipient practices must have an amount greater than 0",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check that total donor amounts match total recipient amounts
-      const totalDonor = donorPractices.reduce((sum, p) => sum + p.amount, 0);
-      const totalRecipient = recipientPractices.reduce((sum, p) => sum + p.amount, 0);
-      
-      if (Math.abs(totalDonor - totalRecipient) > 0.01) {
-        toast({
-          title: "Validation Error",
-          description: `Total donor amount (${formatCurrency(totalDonor)}) must equal total recipient amount (${formatCurrency(totalRecipient)})`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    if (allocationType === "inter_portfolio" && !recipientPortfolioId) {
+    // Validate recipients
+    if (recipientPractices.length === 0) {
       toast({
         title: "Validation Error",
-        description: "Please select a recipient portfolio",
+        description: "Please select at least one recipient practice",
         variant: "destructive",
       });
       return;
     }
 
-    const totalAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
+    const hasInvalidRecipientAmounts = recipientPractices.some(p => p.amount <= 0);
+    if (hasInvalidRecipientAmounts) {
+      toast({
+        title: "Validation Error",
+        description: "All selected recipient practices must have an amount greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check that total donor amounts match total recipient amounts
+    const totalDonor = donorPractices.reduce((sum, p) => sum + p.amount, 0);
+    const totalRecipient = recipientPractices.reduce((sum, p) => sum + p.amount, 0);
+    
+    if (Math.abs(totalDonor - totalRecipient) > 0.01) {
+      toast({
+        title: "Validation Error",
+        description: `Total donor amount (${formatCurrency(totalDonor)}) must equal total recipient amount (${formatCurrency(totalRecipient)})`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     submitMutation.mutate({
-      allocationType,
       donorPsmId: user?.id,
-      recipientPracticeIds: allocationType === "practice_to_practice" ? recipientPractices.map(p => p.practiceId) : undefined,
-      recipientPortfolioId: allocationType === "inter_portfolio" ? recipientPortfolioId : undefined,
-      totalAmount,
+      totalAmount: totalDonor,
       donorPracticeIds: donorPractices.map(p => p.practiceId),
-      donorPractices, // Include amounts for each practice
-      recipientPractices: allocationType === "practice_to_practice" ? recipientPractices : undefined,
+      donorPractices,
+      recipientPractices,
     });
   };
 
@@ -248,11 +225,6 @@ export default function NewAllocation() {
 
   const totalDonorAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
   const totalRecipientAmount = recipientPractices.reduce((sum, p) => sum + p.amount, 0);
-  
-  // Filter portfolios - exclude current user's portfolio for inter-portfolio
-  const availablePortfolios = (allPortfolios as any[] || []).filter((p: any) => 
-    p.id !== user?.portfolioId
-  );
 
   // Get available recipient practices (exclude practices already selected as donors)
   const availableRecipientPractices = (portfolioPractices as any[] || []).filter((p: any) => 
@@ -292,86 +264,6 @@ export default function NewAllocation() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Fields */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Allocation Type Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Allocation Type</CardTitle>
-                <CardDescription>
-                  Choose how you want to allocate stipend budget
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup 
-                  value={allocationType} 
-                  onValueChange={(value) => {
-                    setAllocationType(value as AllocationType);
-                    // Reset recipient selections when changing type
-                    setRecipientPractices([]);
-                    setRecipientPortfolioId("");
-                  }}
-                  data-testid="radio-allocation-type"
-                >
-                  <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg hover-elevate">
-                    <RadioGroupItem value="practice_to_practice" id="practice_to_practice" data-testid="radio-practice-to-practice" />
-                    <div className="flex-1">
-                      <Label htmlFor="practice_to_practice" className="font-semibold cursor-pointer">
-                        Practice-to-Practice
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Allocate directly to another PSM's practices within your portfolio
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg hover-elevate">
-                    <RadioGroupItem value="inter_portfolio" id="inter_portfolio" data-testid="radio-inter-portfolio" />
-                    <div className="flex-1">
-                      <Label htmlFor="inter_portfolio" className="font-semibold cursor-pointer">
-                        Inter-Portfolio
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Allocate to another portfolio's suspense account. The recipient portfolio's Lead PSM will distribute funds to their practices.
-                      </p>
-                    </div>
-                  </div>
-                </RadioGroup>
-              </CardContent>
-            </Card>
-
-            {/* Recipient Selection - Only show for inter_portfolio */}
-            {allocationType === "inter_portfolio" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recipient Portfolio</CardTitle>
-                  <CardDescription>
-                    Select the portfolio whose suspense account will receive the funds
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label htmlFor="recipient">Recipient Portfolio *</Label>
-                    <Select value={recipientPortfolioId} onValueChange={setRecipientPortfolioId}>
-                      <SelectTrigger id="recipient" data-testid="select-recipient-portfolio">
-                        <SelectValue placeholder="Select a portfolio" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePortfolios.length === 0 ? (
-                          <div className="p-4 text-sm text-muted-foreground text-center">
-                            No other portfolios available
-                          </div>
-                        ) : (
-                          availablePortfolios.map((portfolio: any) => (
-                            <SelectItem key={portfolio.id} value={portfolio.id}>
-                              {portfolio.name} ({portfolio.id})
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Donor Practices Selection */}
             <Card>
               <CardHeader>
@@ -450,9 +342,8 @@ export default function NewAllocation() {
               </CardContent>
             </Card>
 
-            {/* Recipient Practices Selection - Only for practice_to_practice */}
-            {allocationType === "practice_to_practice" && (
-              <Card>
+            {/* Recipient Practices Selection */}
+            <Card>
                 <CardHeader>
                   <CardTitle>Select Recipient Practices</CardTitle>
                   <CardDescription>
@@ -520,19 +411,17 @@ export default function NewAllocation() {
                   )}
                 </CardContent>
               </Card>
-            )}
 
             <div className="flex gap-3">
               <Button
                 type="submit"
                 disabled={
-                  (allocationType === "practice_to_practice" && recipientPractices.length === 0) ||
-                  (allocationType === "inter_portfolio" && !recipientPortfolioId) ||
+                  recipientPractices.length === 0 ||
                   donorPractices.length === 0 || 
                   totalDonorAmount <= 0 || 
                   hasZeroOrNegative || 
                   hasBalanceErrors || 
-                  (allocationType === "practice_to_practice" && Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01) ||
+                  Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 ||
                   submitMutation.isPending
                 }
                 data-testid="button-submit-allocation"
@@ -567,24 +456,20 @@ export default function NewAllocation() {
                       {formatCurrency(totalDonorAmount)}
                     </span>
                   </div>
-                  {allocationType === "practice_to_practice" && (
-                    <>
-                      <div className="flex justify-between text-sm pt-2 border-t">
-                        <span className="text-muted-foreground">Recipient Practices</span>
-                        <span className="font-semibold">{recipientPractices.length}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Total Recipient Amount</span>
-                        <span className={`font-mono font-semibold ${Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 ? 'text-red-600' : ''}`}>
-                          {formatCurrency(totalRecipientAmount)}
-                        </span>
-                      </div>
-                      {Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 && totalDonorAmount > 0 && totalRecipientAmount > 0 && (
-                        <div className="text-xs text-red-600 pt-1">
-                          Amounts must match
-                        </div>
-                      )}
-                    </>
+                  <div className="flex justify-between text-sm pt-2 border-t">
+                    <span className="text-muted-foreground">Recipient Practices</span>
+                    <span className="font-semibold">{recipientPractices.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Recipient Amount</span>
+                    <span className={`font-mono font-semibold ${Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 ? 'text-red-600' : ''}`}>
+                      {formatCurrency(totalRecipientAmount)}
+                    </span>
+                  </div>
+                  {Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 && totalDonorAmount > 0 && totalRecipientAmount > 0 && (
+                    <div className="text-xs text-red-600 pt-1">
+                      Amounts must match
+                    </div>
                   )}
                 </div>
 

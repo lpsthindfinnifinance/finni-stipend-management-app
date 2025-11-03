@@ -244,6 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
             ...practice,
             stipendCap,
+            currentBalance: balance, // For frontend compatibility with donor validation
             availableBalance: balance,
             stipendPaid,
             stipendCommitted,
@@ -1281,131 +1282,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Distribute incoming inter-portfolio allocation from suspense to practices
-  app.post('/api/allocations/:id/distribute', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const allocationId = parseInt(req.params.id);
-      const { practices } = req.body;
-
-      if (isNaN(allocationId)) {
-        return res.status(400).json({ message: "Invalid allocation ID" });
-      }
-
-      if (!practices || !Array.isArray(practices) || practices.length === 0) {
-        return res.status(400).json({ message: "Practices array is required" });
-      }
-
-      // Get user details
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Get allocation details
-      const allocation = await storage.getInterPsmAllocationById(allocationId);
-      if (!allocation) {
-        return res.status(404).json({ message: "Allocation not found" });
-      }
-
-      // Verify this is an incoming inter-portfolio allocation for the user's portfolio
-      if (allocation.allocationType !== "inter_portfolio") {
-        return res.status(400).json({ message: "This endpoint is only for inter-portfolio allocations" });
-      }
-
-      if (allocation.recipientPortfolioId !== user.portfolioId) {
-        return res.status(403).json({ message: "You can only distribute allocations sent to your portfolio" });
-      }
-
-      if (allocation.status === "completed") {
-        return res.status(400).json({ message: "This allocation has already been distributed" });
-      }
-
-      // Validate each practice amount
-      for (const practice of practices) {
-        if (!practice.practiceId) {
-          return res.status(400).json({ message: "Practice ID is required for all practices" });
-        }
-
-        if (practice.amount === null || practice.amount === undefined) {
-          return res.status(400).json({ message: `Amount is required for practice ${practice.practiceId}` });
-        }
-
-        const amount = typeof practice.amount === 'number' ? practice.amount : parseFloat(practice.amount);
-        
-        if (isNaN(amount)) {
-          return res.status(400).json({ message: `Invalid amount for practice ${practice.practiceId}` });
-        }
-
-        if (amount <= 0) {
-          return res.status(400).json({ message: `Amount must be greater than zero for practice ${practice.practiceId}` });
-        }
-
-        // Update to use validated amount
-        practice.amount = amount;
-      }
-
-      // Validate total amount
-      const totalAmount = practices.reduce((sum: number, p: any) => sum + p.amount, 0);
-      const expectedAmount = parseFloat(allocation.totalAmount);
-
-      if (Math.abs(totalAmount - expectedAmount) > 0.01) {
-        return res.status(400).json({ 
-          message: `Total distribution amount ($${totalAmount.toFixed(2)}) must equal allocation amount ($${expectedAmount.toFixed(2)})` 
-        });
-      }
-
-      // Get current pay period
-      const currentPeriod = await storage.getCurrentPayPeriod();
-      if (!currentPeriod) {
-        return res.status(400).json({ message: "No active pay period found" });
-      }
-
-      // Create ledger entries
-      // 1. Suspense out (negative amount from portfolio suspense)
-      await storage.createLedgerEntry({
-        practiceId: `${user.portfolioId}-SUSPENSE`,
-        payPeriod: currentPeriod.id,
-        transactionType: "suspense_out",
-        amount: (-expectedAmount).toString(),
-        description: `Distributed from suspense to practices (Allocation #${allocationId})`,
-        relatedAllocationId: allocationId,
-      });
-
-      // 2. Allocation in for each practice (positive amounts)
-      for (const practice of practices) {
-        await storage.createLedgerEntry({
-          practiceId: practice.practiceId,
-          payPeriod: currentPeriod.id,
-          transactionType: "allocation_in",
-          amount: practice.amount.toString(),
-          description: `Received from ${user.portfolioId} suspense (Allocation #${allocationId})`,
-          relatedAllocationId: allocationId,
-        });
-      }
-
-      // Mark allocation as completed
-      await storage.updateAllocationStatus(allocationId, "completed");
-
-      res.json({ 
-        success: true, 
-        message: "Funds distributed successfully",
-        allocationId 
-      });
-    } catch (error) {
-      console.error("Error distributing allocation:", error);
-      res.status(500).json({ message: "Failed to distribute allocation" });
-    }
-  });
 
   app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { 
-        allocationType = "practice_to_practice", 
         donorPsmId, 
-        recipientPracticeIds,
-        recipientPortfolioId,
         totalAmount, 
         donorPracticeIds, 
         donorPractices,
@@ -1417,17 +1299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Cannot allocate from another PSM's budget" });
       }
 
-      // Validate allocation type
-      if (!["practice_to_practice", "inter_portfolio"].includes(allocationType)) {
-        return res.status(400).json({ message: "Invalid allocation type" });
-      }
-
-      // Validate recipient based on allocation type
-      if (allocationType === "practice_to_practice" && (!recipientPracticeIds || recipientPracticeIds.length === 0)) {
-        return res.status(400).json({ message: "Recipient practices are required for practice-to-practice allocations" });
-      }
-      if (allocationType === "inter_portfolio" && !recipientPortfolioId) {
-        return res.status(400).json({ message: "Recipient portfolio is required for inter-portfolio allocations" });
+      // Validate recipient practices
+      if (!recipientPractices || recipientPractices.length === 0) {
+        return res.status(400).json({ message: "Recipient practices are required" });
       }
 
       // Coerce and validate numeric fields
@@ -1446,39 +1320,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const userPortfolioId = user?.portfolioId;
 
-      // For practice-to-practice: validate recipient practices exist and match sum
-      if (allocationType === "practice_to_practice") {
-        if (!recipientPractices || recipientPractices.length === 0) {
-          return res.status(400).json({ message: "Recipient practices with amounts are required" });
+      // Validate recipient amounts match donor amounts
+      const recipientSum = recipientPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+      if (Math.abs(recipientSum - numericTotalAmount) > 0.01) {
+        return res.status(400).json({ 
+          message: `Total recipient amount ($${recipientSum.toFixed(2)}) must equal total donor amount ($${numericTotalAmount.toFixed(2)})` 
+        });
+      }
+
+      // Validate each recipient practice exists
+      for (const recipientPractice of recipientPractices) {
+        const practice = await storage.getPracticeById(recipientPractice.practiceId);
+        if (!practice) {
+          return res.status(404).json({ message: `Recipient practice ${recipientPractice.practiceId} not found` });
         }
 
-        // Validate recipient amounts match donor amounts
-        const recipientSum = recipientPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
-        if (Math.abs(recipientSum - numericTotalAmount) > 0.01) {
-          return res.status(400).json({ 
-            message: `Total recipient amount ($${recipientSum.toFixed(2)}) must equal total donor amount ($${numericTotalAmount.toFixed(2)})` 
+        // For PSM: recipient practices must be in same portfolio
+        // For Lead PSM/Finance/Admin: can allocate to any practice
+        if (user?.role === "PSM" && practice.portfolioId !== userPortfolioId) {
+          return res.status(403).json({ 
+            message: `As a PSM, you can only allocate to practices within your portfolio (${userPortfolioId})` 
           });
         }
 
-        // Validate each recipient practice exists and is in same portfolio
-        for (const recipientPractice of recipientPractices) {
-          const practice = await storage.getPracticeById(recipientPractice.practiceId);
-          if (!practice) {
-            return res.status(404).json({ message: `Recipient practice ${recipientPractice.practiceId} not found` });
-          }
-
-          // For PSM/Lead PSM: recipient practices must be in same portfolio
-          if ((user?.role === "PSM" || user?.role === "Lead PSM") && practice.portfolioId !== userPortfolioId) {
-            return res.status(403).json({ 
-              message: `Practice-to-practice allocations can only be made within your portfolio (${userPortfolioId})` 
-            });
-          }
-
-          // Validate amount
-          const amount = Number(recipientPractice.amount);
-          if (!Number.isFinite(amount) || amount <= 0) {
-            return res.status(400).json({ message: `Invalid amount for recipient practice ${practice.name}` });
-          }
+        // Validate amount
+        const amount = Number(recipientPractice.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return res.status(400).json({ message: `Invalid amount for recipient practice ${practice.name}` });
         }
       }
 
@@ -1495,20 +1363,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: `Practice ${donorPractice.practiceId} not found` });
         }
 
-        // For PSM role: Verify practice belongs to donor's portfolio
-        if (user?.role === "PSM" || user?.role === "Lead PSM") {
-          if (practice.portfolioId !== userPortfolioId) {
-            return res.status(403).json({ message: `Practice ${donorPractice.practiceId} does not belong to your portfolio` });
-          }
-
-          // For practice-to-practice: ensure both practices are in the same portfolio (only for PSM/Lead PSM)
-          if (allocationType === "practice_to_practice" && practice.portfolioId !== userPortfolioId) {
-            return res.status(403).json({ 
-              message: "Practice-to-practice allocations can only be made within the same portfolio" 
-            });
-          }
+        // For PSM: Verify practice belongs to donor's portfolio
+        // For Lead PSM/Finance/Admin: can allocate from any practice
+        if (user?.role === "PSM" && practice.portfolioId !== userPortfolioId) {
+          return res.status(403).json({ message: `Practice ${donorPractice.practiceId} does not belong to your portfolio` });
         }
-        // Admin/Finance can allocate from any practice
 
         // Check available balance
         const available = await storage.getPracticeBalance(donorPractice.practiceId);
@@ -1525,12 +1384,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create allocation record
+      const recipientPracticeIds = recipientPractices.map((p: any) => p.practiceId);
       const allocationData: any = {
-        allocationType,
         donorPsmId,
         recipientPsmId: null, // DEPRECATED - no longer used
-        recipientPracticeIds: allocationType === "practice_to_practice" ? recipientPracticeIds : null,
-        recipientPortfolioId: allocationType === "inter_portfolio" ? recipientPortfolioId : null,
+        recipientPracticeIds,
         totalAmount: totalAmount.toString(),
         donorPracticeIds,
       };
@@ -1544,47 +1402,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           payPeriod: currentPeriod?.id || 1,
           transactionType: "allocation_out",
           amount: (-Math.abs(donorPractice.amount)).toString(),
-          description: allocationType === "practice_to_practice" 
-            ? `Allocation #${allocation.id} to ${recipientPracticeIds.length} recipient practice(s)`
-            : `Allocation #${allocation.id} to Portfolio ${recipientPortfolioId} Suspense`,
+          description: `Allocation #${allocation.id} to ${recipientPracticeIds.length} recipient practice(s)`,
           relatedRequestId: null,
           relatedAllocationId: allocation.id,
         });
       }
 
-      // Handle recipient based on allocation type
-      if (allocationType === "inter_portfolio") {
-        // Update recipient portfolio's suspense balance
-        await storage.updatePortfolioSuspenseBalance(recipientPortfolioId, numericTotalAmount);
-
-        // Send Slack notification
-        await sendSlackNotification(
-          `💸 Inter-Portfolio Allocation #${allocation.id}: $${totalAmount} transferred to Portfolio ${recipientPortfolioId} Suspense (${donorPracticeIds.length} donor practices)`
-        );
-        
-        // Inter-portfolio allocations remain "pending" until distributed by Lead PSM
-      } else {
-        // practice_to_practice: create allocation_in entries for recipient practices
-        for (const recipientPractice of recipientPractices) {
-          await storage.createLedgerEntry({
-            practiceId: recipientPractice.practiceId,
-            payPeriod: currentPeriod?.id || 1,
-            transactionType: "allocation_in",
-            amount: Math.abs(recipientPractice.amount).toString(),
-            description: `Allocation #${allocation.id} from ${donorPracticeIds.length} donor practice(s)`,
-            relatedRequestId: null,
-            relatedAllocationId: allocation.id,
-          });
-        }
-
-        // Send Slack notification
-        await sendSlackNotification(
-          `💸 Practice-to-Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`
-        );
-        
-        // Mark practice-to-practice allocations as completed immediately
-        await storage.updateAllocationStatus(allocation.id, "completed");
+      // Create allocation_in entries for recipient practices
+      for (const recipientPractice of recipientPractices) {
+        await storage.createLedgerEntry({
+          practiceId: recipientPractice.practiceId,
+          payPeriod: currentPeriod?.id || 1,
+          transactionType: "allocation_in",
+          amount: Math.abs(recipientPractice.amount).toString(),
+          description: `Allocation #${allocation.id} from ${donorPracticeIds.length} donor practice(s)`,
+          relatedRequestId: null,
+          relatedAllocationId: allocation.id,
+        });
       }
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `💸 Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`
+      );
+      
+      // Mark allocations as completed immediately
+      await storage.updateAllocationStatus(allocation.id, "completed");
 
       res.json(allocation);
     } catch (error) {
@@ -1593,117 +1436,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============================================================================
-  // PORTFOLIO SUSPENSE ROUTES
-  // ============================================================================
-
-  // Get portfolio suspense balance
-  app.get('/api/portfolios/:id/suspense', isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-
-      // Only PSM, Lead PSM, Finance, or Admin of the portfolio can view suspense
-      const isAuthorized = ((user?.role === "PSM" || user?.role === "Lead PSM") && user?.portfolioId === id) || 
-                          user?.role === "Finance" || 
-                          user?.role === "Admin";
-
-      if (!isAuthorized) {
-        return res.status(403).json({ message: "Unauthorized to view this portfolio's suspense account" });
-      }
-
-      const balance = await storage.getPortfolioSuspenseBalance(id);
-      res.json({ portfolioId: id, suspenseBalance: balance });
-    } catch (error) {
-      console.error("Error fetching suspense balance:", error);
-      res.status(500).json({ message: "Failed to fetch suspense balance" });
-    }
-  });
-
-  // Allocate from suspense to practices (PSM and Lead PSM)
-  app.post('/api/portfolios/:id/allocate-from-suspense', isAuthenticated, async (req: any, res) => {
-    try {
-      const { id: portfolioId } = req.params;
-      const userId = req.user.claims.sub;
-      const { recipientPractices } = req.body; // Array of { practiceId, amount }
-
-      // Validate user is PSM or Lead PSM of this portfolio
-      const user = await storage.getUser(userId);
-      if ((user?.role !== "PSM" && user?.role !== "Lead PSM") || user?.portfolioId !== portfolioId) {
-        return res.status(403).json({ 
-          message: "Only the PSM or Lead PSM of this portfolio can allocate from suspense" 
-        });
-      }
-
-      // Validate recipient practices array
-      if (!Array.isArray(recipientPractices) || recipientPractices.length === 0) {
-        return res.status(400).json({ message: "Recipient practices array is required" });
-      }
-
-      // Calculate total amount
-      const totalAmount = recipientPractices.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-
-      // Check suspense balance
-      const suspenseBalance = await storage.getPortfolioSuspenseBalance(portfolioId);
-      if (totalAmount > suspenseBalance) {
-        return res.status(400).json({ 
-          message: `Insufficient suspense balance. Available: $${suspenseBalance.toFixed(2)}, Requested: $${totalAmount.toFixed(2)}` 
-        });
-      }
-
-      // Validate each practice belongs to this portfolio and amount is valid
-      for (const recipient of recipientPractices) {
-        const requestedAmount = Number(recipient.amount);
-        if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
-          return res.status(400).json({ message: `Invalid amount for practice ${recipient.practiceId}` });
-        }
-
-        const practice = await storage.getPracticeById(recipient.practiceId);
-        if (!practice) {
-          return res.status(404).json({ message: `Practice ${recipient.practiceId} not found` });
-        }
-
-        if (practice.portfolioId !== portfolioId) {
-          return res.status(403).json({ 
-            message: `Practice ${recipient.practiceId} does not belong to portfolio ${portfolioId}` 
-          });
-        }
-      }
-
-      // Deduct from portfolio suspense
-      await storage.updatePortfolioSuspenseBalance(portfolioId, -totalAmount);
-
-      // Create ledger entries for recipient practices (credit)
-      const currentPeriod = await storage.getCurrentPayPeriod();
-      for (const recipient of recipientPractices) {
-        await storage.createLedgerEntry({
-          practiceId: recipient.practiceId,
-          payPeriod: currentPeriod?.id || 1,
-          transactionType: "suspense_in",
-          amount: recipient.amount.toString(),
-          description: `Allocation from Portfolio ${portfolioId} Suspense`,
-          relatedRequestId: null,
-          relatedAllocationId: null,
-        });
-      }
-
-      // Send Slack notification
-      await sendSlackNotification(
-        `✅ Suspense Allocation: Portfolio ${portfolioId} allocated $${totalAmount.toFixed(2)} from suspense to ${recipientPractices.length} practice(s)`
-      );
-
-      res.json({ 
-        success: true, 
-        totalAmount, 
-        recipientCount: recipientPractices.length,
-        remainingSuspense: suspenseBalance - totalAmount
-      });
-    } catch (error) {
-      console.error("Error allocating from suspense:", error);
-      res.status(500).json({ message: "Failed to allocate from suspense" });
-    }
-  });
 
   // ============================================================================
   // SETTINGS ROUTES (Finance only)
