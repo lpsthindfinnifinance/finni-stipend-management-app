@@ -68,12 +68,6 @@ export function AppSidebar() {
       roles: ["PSM", "Lead PSM", "Finance", "Admin"],
     },
     {
-      title: "Finance Ops",
-      url: "/finance-ops",
-      icon: Calendar,
-      roles: ["Finance", "Admin"],
-    },
-    {
       title: "Negative Earnings",
       url: "/negative-earnings",
       icon: TrendingDown,
@@ -127,6 +121,18 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === "/finance-ops"}
+                    data-testid="nav-finance-ops"
+                  >
+                    <a href="/finance-ops">
+                      <Calendar className="h-4 w-4" />
+                      <span>Finance Ops</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
