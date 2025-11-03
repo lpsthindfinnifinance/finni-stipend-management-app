@@ -1002,6 +1002,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         firstName: users.firstName,
         lastName: users.lastName,
+        portfolioId: users.portfolioId,
       })
       .from(users)
       .where(eq(users.id, allocation.donorPsmId))
@@ -1010,6 +1011,8 @@ export class DatabaseStorage implements IStorage {
     const donorPsmName = donorPsm 
       ? `${donorPsm.firstName || ''} ${donorPsm.lastName || ''}`.trim() || allocation.donorPsmId
       : allocation.donorPsmId;
+    
+    const donorPortfolioId = donorPsm?.portfolioId || null;
 
     // Fetch ledger entries for this allocation to get practice details with amounts
     const ledgerEntries = await db
@@ -1083,6 +1086,7 @@ export class DatabaseStorage implements IStorage {
     return {
       ...allocation,
       donorPsmName,
+      donorPortfolioId,
       donorPractices: donorPracticesData,
       recipientData,
     };
