@@ -1,6 +1,5 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -17,85 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 
 export default function NegativeEarnings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
-  const [showRequestDialog, setShowRequestDialog] = useState(false);
-  const [selectedPractice, setSelectedPractice] = useState("");
-  const [requestAmount, setRequestAmount] = useState("");
-  const [justification, setJustification] = useState("");
-  const { toast } = useToast();
 
   const { data: summary = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/negative-earnings/summary"],
   });
-
-  const requestMutation = useMutation({
-    mutationFn: async (data: { practiceId: string; amount: number; justification: string }) => {
-      return await apiRequest("/api/negative-earnings/requests", "POST", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/negative-earnings/summary"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/negative-earnings/requests"] });
-      setShowRequestDialog(false);
-      setSelectedPractice("");
-      setRequestAmount("");
-      setJustification("");
-      toast({
-        title: "Request Submitted",
-        description: "Your negative earnings cap request has been submitted for Finance approval.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to submit request",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmitRequest = () => {
-    if (!selectedPractice || !requestAmount || !justification) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const amount = parseFloat(requestAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a valid amount",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    requestMutation.mutate({
-      practiceId: selectedPractice,
-      amount,
-      justification,
-    });
-  };
 
   // Group practices by portfolio/group
   const groupedData = summary.reduce((acc: any, practice: any) => {
@@ -170,14 +100,6 @@ export default function NegativeEarnings() {
         <h1 className="text-3xl font-bold" data-testid="text-page-title">
           Negative Earnings Cap
         </h1>
-        <Button 
-          data-testid="button-request-cap" 
-          variant="default"
-          onClick={() => setShowRequestDialog(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Request Additional Cap
-        </Button>
       </div>
 
       {/* Group Summary Cards */}
@@ -263,7 +185,7 @@ export default function NegativeEarnings() {
           <CardTitle>Practice Details</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="relative w-full max-h-[calc(100vh-600px)] overflow-auto">
+          <div className="relative w-full min-h-[750px] max-h-[calc(100vh-600px)] overflow-auto">
             <table className="w-full caption-bottom text-sm">
               <TableHeader>
                 <TableRow>
@@ -337,73 +259,6 @@ export default function NegativeEarnings() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Request Additional Cap Dialog */}
-      <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
-        <DialogContent data-testid="dialog-request-cap">
-          <DialogHeader>
-            <DialogTitle>Request Additional Negative Earnings Cap</DialogTitle>
-            <DialogDescription>
-              Submit a request for additional negative earnings cap. This will be sent directly to Finance for approval.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="practice">Practice</Label>
-              <Select value={selectedPractice} onValueChange={setSelectedPractice}>
-                <SelectTrigger data-testid="select-practice">
-                  <SelectValue placeholder="Select a practice" />
-                </SelectTrigger>
-                <SelectContent>
-                  {summary.map((practice) => (
-                    <SelectItem key={practice.practiceId} value={practice.practiceId}>
-                      {practice.practiceName} ({practice.group || practice.portfolioName})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="0.00"
-                value={requestAmount}
-                onChange={(e) => setRequestAmount(e.target.value)}
-                data-testid="input-amount"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="justification">Justification</Label>
-              <Textarea
-                id="justification"
-                placeholder="Explain why additional negative earnings cap is needed..."
-                value={justification}
-                onChange={(e) => setJustification(e.target.value)}
-                rows={4}
-                data-testid="textarea-justification"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowRequestDialog(false)}
-              data-testid="button-cancel"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitRequest}
-              disabled={requestMutation.isPending}
-              data-testid="button-submit-request"
-            >
-              {requestMutation.isPending ? "Submitting..." : "Submit Request"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
