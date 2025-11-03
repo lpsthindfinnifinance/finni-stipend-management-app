@@ -1191,11 +1191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { 
         allocationType = "practice_to_practice", 
         donorPsmId, 
-        recipientPsmId, 
+        recipientPracticeIds,
         recipientPortfolioId,
         totalAmount, 
         donorPracticeIds, 
-        donorPractices 
+        donorPractices,
+        recipientPractices
       } = req.body;
 
       // Verify donor PSM is the current user
@@ -1209,8 +1210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate recipient based on allocation type
-      if (allocationType === "practice_to_practice" && !recipientPsmId) {
-        return res.status(400).json({ message: "Recipient PSM is required for practice-to-practice allocations" });
+      if (allocationType === "practice_to_practice" && (!recipientPracticeIds || recipientPracticeIds.length === 0)) {
+        return res.status(400).json({ message: "Recipient practices are required for practice-to-practice allocations" });
       }
       if (allocationType === "inter_portfolio" && !recipientPortfolioId) {
         return res.status(400).json({ message: "Recipient portfolio is required for inter-portfolio allocations" });
@@ -1232,16 +1233,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const userPortfolioId = user?.portfolioId;
 
-      // For practice-to-practice with PSM/Lead PSM: validate recipient is in same portfolio
-      if (allocationType === "practice_to_practice" && (user?.role === "PSM" || user?.role === "Lead PSM")) {
-        const recipientUser = await storage.getUser(recipientPsmId);
-        if (!recipientUser) {
-          return res.status(404).json({ message: `Recipient PSM ${recipientPsmId} not found` });
+      // For practice-to-practice: validate recipient practices exist and match sum
+      if (allocationType === "practice_to_practice") {
+        if (!recipientPractices || recipientPractices.length === 0) {
+          return res.status(400).json({ message: "Recipient practices with amounts are required" });
         }
-        if (recipientUser.portfolioId !== userPortfolioId) {
-          return res.status(403).json({ 
-            message: "Practice-to-practice allocations can only be made to PSMs within the same portfolio" 
+
+        // Validate recipient amounts match donor amounts
+        const recipientSum = recipientPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+        if (Math.abs(recipientSum - numericTotalAmount) > 0.01) {
+          return res.status(400).json({ 
+            message: `Total recipient amount ($${recipientSum.toFixed(2)}) must equal total donor amount ($${numericTotalAmount.toFixed(2)})` 
           });
+        }
+
+        // Validate each recipient practice exists and is in same portfolio
+        for (const recipientPractice of recipientPractices) {
+          const practice = await storage.getPracticeById(recipientPractice.practiceId);
+          if (!practice) {
+            return res.status(404).json({ message: `Recipient practice ${recipientPractice.practiceId} not found` });
+          }
+
+          // For PSM/Lead PSM: recipient practices must be in same portfolio
+          if ((user?.role === "PSM" || user?.role === "Lead PSM") && practice.portfolioId !== userPortfolioId) {
+            return res.status(403).json({ 
+              message: `Practice-to-practice allocations can only be made within your portfolio (${userPortfolioId})` 
+            });
+          }
+
+          // Validate amount
+          const amount = Number(recipientPractice.amount);
+          if (!Number.isFinite(amount) || amount <= 0) {
+            return res.status(400).json({ message: `Invalid amount for recipient practice ${practice.name}` });
+          }
         }
       }
 
@@ -1291,13 +1315,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allocation = await storage.createInterPsmAllocation({
         allocationType,
         donorPsmId,
-        recipientPsmId: allocationType === "practice_to_practice" ? recipientPsmId : null,
+        recipientPsmId: null, // DEPRECATED - no longer used
+        recipientPracticeIds: allocationType === "practice_to_practice" ? recipientPracticeIds : null,
         recipientPortfolioId: allocationType === "inter_portfolio" ? recipientPortfolioId : null,
         totalAmount: totalAmount.toString(),
         donorPracticeIds,
       });
 
-      // Create ledger entries for donor practices (debit)
+      // Create ledger entries for donor practices (debit/allocation_out)
       const currentPeriod = await storage.getCurrentPayPeriod();
       for (const donorPractice of donorPractices) {
         await storage.createLedgerEntry({
@@ -1306,7 +1331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           transactionType: "allocation_out",
           amount: (-Math.abs(donorPractice.amount)).toString(),
           description: allocationType === "practice_to_practice" 
-            ? `Allocation #${allocation.id} to PSM ${recipientPsmId}`
+            ? `Allocation #${allocation.id} to ${recipientPracticeIds.length} recipient practice(s)`
             : `Allocation #${allocation.id} to Portfolio ${recipientPortfolioId} Suspense`,
           relatedRequestId: null,
           relatedAllocationId: allocation.id,
@@ -1323,9 +1348,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `💸 Inter-Portfolio Allocation #${allocation.id}: $${totalAmount} transferred to Portfolio ${recipientPortfolioId} Suspense (${donorPracticeIds.length} donor practices)`
         );
       } else {
-        // practice_to_practice: notification only (recipient can allocate to their practices)
+        // practice_to_practice: create allocation_in entries for recipient practices
+        for (const recipientPractice of recipientPractices) {
+          await storage.createLedgerEntry({
+            practiceId: recipientPractice.practiceId,
+            payPeriod: currentPeriod?.id || 1,
+            transactionType: "allocation_in",
+            amount: Math.abs(recipientPractice.amount).toString(),
+            description: `Allocation #${allocation.id} from ${donorPracticeIds.length} donor practice(s)`,
+            relatedRequestId: null,
+            relatedAllocationId: allocation.id,
+          });
+        }
+
+        // Send Slack notification
         await sendSlackNotification(
-          `💸 Practice-to-Practice Allocation #${allocation.id}: $${totalAmount} transferred from ${donorPsmId} to ${recipientPsmId} (${donorPracticeIds.length} practices)`
+          `💸 Practice-to-Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`
         );
       }
 

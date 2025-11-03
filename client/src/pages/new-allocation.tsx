@@ -24,7 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-interface DonorPractice {
+interface PracticeAmount {
   practiceId: string;
   amount: number;
 }
@@ -38,9 +38,9 @@ export default function NewAllocation() {
   const { isAuthenticated, isLoading: authLoading, user, role } = useAuth();
   
   const [allocationType, setAllocationType] = useState<AllocationType>("practice_to_practice");
-  const [recipientPsmId, setRecipientPsmId] = useState("");
   const [recipientPortfolioId, setRecipientPortfolioId] = useState("");
-  const [donorPractices, setDonorPractices] = useState<DonorPractice[]>([]);
+  const [donorPractices, setDonorPractices] = useState<PracticeAmount[]>([]);
+  const [recipientPractices, setRecipientPractices] = useState<PracticeAmount[]>([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -61,10 +61,10 @@ export default function NewAllocation() {
     enabled: isAuthenticated,
   });
 
-  // Fetch all PSMs for recipient selection (practice-to-practice)
-  const { data: allUsers } = useQuery({
-    queryKey: ["/api/users"],
-    enabled: isAuthenticated,
+  // Fetch all practices in the same portfolio for recipient selection (practice-to-practice)
+  const { data: portfolioPractices } = useQuery({
+    queryKey: ["/api/practices", { portfolio: user?.portfolioId }],
+    enabled: isAuthenticated && allocationType === "practice_to_practice" && !!user?.portfolioId,
   });
 
   // Fetch all portfolios for recipient selection (inter-portfolio)
@@ -106,24 +106,39 @@ export default function NewAllocation() {
     },
   });
 
-  const handleTogglePractice = (practiceId: string, maxAmount: number) => {
+  const handleToggleDonorPractice = (practiceId: string) => {
     const existing = donorPractices.find(p => p.practiceId === practiceId);
     if (existing) {
-      // Remove practice
       setDonorPractices(donorPractices.filter(p => p.practiceId !== practiceId));
     } else {
-      // Add practice with 0 amount initially
       setDonorPractices([...donorPractices, { practiceId, amount: 0 }]);
     }
   };
 
-  const handleUpdateAmount = (practiceId: string, rawValue: string) => {
-    // Parse the value and ensure it's a valid number (not NaN)
+  const handleUpdateDonorAmount = (practiceId: string, rawValue: string) => {
     const amount = parseFloat(rawValue);
     const validAmount = isNaN(amount) || amount < 0 ? 0 : amount;
-    
     setDonorPractices(
       donorPractices.map(p => 
+        p.practiceId === practiceId ? { ...p, amount: validAmount } : p
+      )
+    );
+  };
+
+  const handleToggleRecipientPractice = (practiceId: string) => {
+    const existing = recipientPractices.find(p => p.practiceId === practiceId);
+    if (existing) {
+      setRecipientPractices(recipientPractices.filter(p => p.practiceId !== practiceId));
+    } else {
+      setRecipientPractices([...recipientPractices, { practiceId, amount: 0 }]);
+    }
+  };
+
+  const handleUpdateRecipientAmount = (practiceId: string, rawValue: string) => {
+    const amount = parseFloat(rawValue);
+    const validAmount = isNaN(amount) || amount < 0 ? 0 : amount;
+    setRecipientPractices(
+      recipientPractices.map(p => 
         p.practiceId === practiceId ? { ...p, amount: validAmount } : p
       )
     );
@@ -132,25 +147,7 @@ export default function NewAllocation() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate recipient based on allocation type
-    if (allocationType === "practice_to_practice" && !recipientPsmId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a recipient PSM",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (allocationType === "inter_portfolio" && !recipientPortfolioId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a recipient portfolio",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Validate donor practices
     if (donorPractices.length === 0) {
       toast({
         title: "Validation Error",
@@ -160,11 +157,11 @@ export default function NewAllocation() {
       return;
     }
 
-    const hasInvalidAmounts = donorPractices.some(p => p.amount <= 0);
-    if (hasInvalidAmounts) {
+    const hasInvalidDonorAmounts = donorPractices.some(p => p.amount <= 0);
+    if (hasInvalidDonorAmounts) {
       toast({
         title: "Validation Error",
-        description: "All selected practices must have an amount greater than 0",
+        description: "All selected donor practices must have an amount greater than 0",
         variant: "destructive",
       });
       return;
@@ -186,16 +183,61 @@ export default function NewAllocation() {
       return;
     }
 
+    // Validate recipient based on allocation type
+    if (allocationType === "practice_to_practice") {
+      if (recipientPractices.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please select at least one recipient practice",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const hasInvalidRecipientAmounts = recipientPractices.some(p => p.amount <= 0);
+      if (hasInvalidRecipientAmounts) {
+        toast({
+          title: "Validation Error",
+          description: "All selected recipient practices must have an amount greater than 0",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check that total donor amounts match total recipient amounts
+      const totalDonor = donorPractices.reduce((sum, p) => sum + p.amount, 0);
+      const totalRecipient = recipientPractices.reduce((sum, p) => sum + p.amount, 0);
+      
+      if (Math.abs(totalDonor - totalRecipient) > 0.01) {
+        toast({
+          title: "Validation Error",
+          description: `Total donor amount (${formatCurrency(totalDonor)}) must equal total recipient amount (${formatCurrency(totalRecipient)})`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (allocationType === "inter_portfolio" && !recipientPortfolioId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a recipient portfolio",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const totalAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
 
     submitMutation.mutate({
       allocationType,
       donorPsmId: user?.id,
-      recipientPsmId: allocationType === "practice_to_practice" ? recipientPsmId : undefined,
+      recipientPracticeIds: allocationType === "practice_to_practice" ? recipientPractices.map(p => p.practiceId) : undefined,
       recipientPortfolioId: allocationType === "inter_portfolio" ? recipientPortfolioId : undefined,
       totalAmount,
       donorPracticeIds: donorPractices.map(p => p.practiceId),
       donorPractices, // Include amounts for each practice
+      recipientPractices: allocationType === "practice_to_practice" ? recipientPractices : undefined,
     });
   };
 
@@ -203,24 +245,17 @@ export default function NewAllocation() {
     return null;
   }
 
-  const totalAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
+  const totalDonorAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
+  const totalRecipientAmount = recipientPractices.reduce((sum, p) => sum + p.amount, 0);
   
-  // Filter PSMs based on allocation type and user role
-  const otherPsms = (allUsers as any[] || []).filter((u: any) => {
-    if (!u.role || u.role === "Finance" || u.role === "Admin") return false;
-    if (u.id === user?.id) return false;
-    
-    // For practice-to-practice: PSM/Lead PSM can only see PSMs from same portfolio
-    if (allocationType === "practice_to_practice" && (user?.role === "PSM" || user?.role === "Lead PSM")) {
-      return u.portfolioId === user?.portfolioId;
-    }
-    
-    return true;
-  });
-
   // Filter portfolios - exclude current user's portfolio for inter-portfolio
   const availablePortfolios = (allPortfolios as any[] || []).filter((p: any) => 
     p.id !== user?.portfolioId
+  );
+
+  // Get available recipient practices (exclude practices already selected as donors)
+  const availableRecipientPractices = (portfolioPractices as any[] || []).filter((p: any) => 
+    !donorPractices.some(dp => dp.practiceId === p.id)
   );
 
   // Check for validation errors
@@ -270,7 +305,7 @@ export default function NewAllocation() {
                   onValueChange={(value) => {
                     setAllocationType(value as AllocationType);
                     // Reset recipient selections when changing type
-                    setRecipientPsmId("");
+                    setRecipientPractices([]);
                     setRecipientPortfolioId("");
                   }}
                   data-testid="radio-allocation-type"
@@ -301,41 +336,18 @@ export default function NewAllocation() {
               </CardContent>
             </Card>
 
-            {/* Recipient Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {allocationType === "practice_to_practice" ? "Recipient PSM" : "Recipient Portfolio"}
-                </CardTitle>
-                <CardDescription>
-                  {allocationType === "practice_to_practice" 
-                    ? "Select the PSM who will receive the allocated budget"
-                    : "Select the portfolio whose suspense account will receive the funds"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Label htmlFor="recipient">Recipient *</Label>
-                  {allocationType === "practice_to_practice" ? (
-                    <Select value={recipientPsmId} onValueChange={setRecipientPsmId}>
-                      <SelectTrigger id="recipient" data-testid="select-recipient-psm">
-                        <SelectValue placeholder="Select a PSM" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {otherPsms.length === 0 ? (
-                          <div className="p-4 text-sm text-muted-foreground text-center">
-                            No PSMs available in your portfolio
-                          </div>
-                        ) : (
-                          otherPsms.map((psm: any) => (
-                            <SelectItem key={psm.id} value={psm.id}>
-                              {psm.fullName || psm.email} ({psm.role})
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  ) : (
+            {/* Recipient Selection - Only show for inter_portfolio */}
+            {allocationType === "inter_portfolio" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recipient Portfolio</CardTitle>
+                  <CardDescription>
+                    Select the portfolio whose suspense account will receive the funds
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Recipient Portfolio *</Label>
                     <Select value={recipientPortfolioId} onValueChange={setRecipientPortfolioId}>
                       <SelectTrigger id="recipient" data-testid="select-recipient-portfolio">
                         <SelectValue placeholder="Select a portfolio" />
@@ -354,10 +366,10 @@ export default function NewAllocation() {
                         )}
                       </SelectContent>
                     </Select>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Donor Practices Selection */}
             <Card>
@@ -395,8 +407,8 @@ export default function NewAllocation() {
                             <TableCell>
                               <Checkbox
                                 checked={isSelected}
-                                onCheckedChange={() => handleTogglePractice(practice.id, availableBalance)}
-                                data-testid={`checkbox-practice-${practice.id}`}
+                                onCheckedChange={() => handleToggleDonorPractice(practice.id)}
+                                data-testid={`checkbox-donor-practice-${practice.id}`}
                               />
                             </TableCell>
                             <TableCell>
@@ -414,9 +426,9 @@ export default function NewAllocation() {
                                     min="0.01"
                                     max={availableBalance}
                                     value={selectedPractice?.amount || ''}
-                                    onChange={(e) => handleUpdateAmount(practice.id, e.target.value)}
+                                    onChange={(e) => handleUpdateDonorAmount(practice.id, e.target.value)}
                                     className={`max-w-[150px] ml-auto text-right font-mono ${hasError ? 'border-red-500' : ''}`}
-                                    data-testid={`input-amount-${practice.id}`}
+                                    data-testid={`input-donor-amount-${practice.id}`}
                                   />
                                   {hasError && (
                                     <span className="text-xs text-red-600">
@@ -437,16 +449,89 @@ export default function NewAllocation() {
               </CardContent>
             </Card>
 
+            {/* Recipient Practices Selection - Only for practice_to_practice */}
+            {allocationType === "practice_to_practice" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Recipient Practices</CardTitle>
+                  <CardDescription>
+                    Choose practices within your portfolio to receive the allocated budget
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!availableRecipientPractices || availableRecipientPractices.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {donorPractices.length > 0 
+                        ? "No additional practices available (donor practices excluded)"
+                        : "No practices available"}
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead className="font-medium">Practice</TableHead>
+                          <TableHead className="font-medium text-right">Current Balance</TableHead>
+                          <TableHead className="font-medium text-right">Amount to Receive</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {availableRecipientPractices.map((practice: any) => {
+                          const isSelected = recipientPractices.some(p => p.practiceId === practice.id);
+                          const selectedPractice = recipientPractices.find(p => p.practiceId === practice.id);
+                          const currentBalance = practice.currentBalance || 0;
+
+                          return (
+                            <TableRow key={practice.id} data-testid={`row-recipient-practice-${practice.id}`}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => handleToggleRecipientPractice(practice.id)}
+                                  data-testid={`checkbox-recipient-practice-${practice.id}`}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {practice.name} ({practice.id})
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold text-muted-foreground">
+                                {formatCurrency(currentBalance)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isSelected ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    value={selectedPractice?.amount || ''}
+                                    onChange={(e) => handleUpdateRecipientAmount(practice.id, e.target.value)}
+                                    className="max-w-[150px] ml-auto text-right font-mono"
+                                    data-testid={`input-recipient-amount-${practice.id}`}
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex gap-3">
               <Button
                 type="submit"
                 disabled={
-                  (allocationType === "practice_to_practice" && !recipientPsmId) ||
+                  (allocationType === "practice_to_practice" && recipientPractices.length === 0) ||
                   (allocationType === "inter_portfolio" && !recipientPortfolioId) ||
                   donorPractices.length === 0 || 
-                  totalAmount <= 0 || 
+                  totalDonorAmount <= 0 || 
                   hasZeroOrNegative || 
                   hasBalanceErrors || 
+                  (allocationType === "practice_to_practice" && Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01) ||
                   submitMutation.isPending
                 }
                 data-testid="button-submit-allocation"
@@ -472,15 +557,34 @@ export default function NewAllocation() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Practices Selected</span>
+                    <span className="text-muted-foreground">Donor Practices</span>
                     <span className="font-semibold">{donorPractices.length}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total Amount</span>
+                    <span className="text-muted-foreground">Total Donor Amount</span>
                     <span className="font-mono font-semibold">
-                      {formatCurrency(totalAmount)}
+                      {formatCurrency(totalDonorAmount)}
                     </span>
                   </div>
+                  {allocationType === "practice_to_practice" && (
+                    <>
+                      <div className="flex justify-between text-sm pt-2 border-t">
+                        <span className="text-muted-foreground">Recipient Practices</span>
+                        <span className="font-semibold">{recipientPractices.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Recipient Amount</span>
+                        <span className={`font-mono font-semibold ${Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 ? 'text-red-600' : ''}`}>
+                          {formatCurrency(totalRecipientAmount)}
+                        </span>
+                      </div>
+                      {Math.abs(totalDonorAmount - totalRecipientAmount) > 0.01 && totalDonorAmount > 0 && totalRecipientAmount > 0 && (
+                        <div className="text-xs text-red-600 pt-1">
+                          Amounts must match
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {hasZeroOrNegative ? (
@@ -497,7 +601,7 @@ export default function NewAllocation() {
                       One or more amounts exceed available balance
                     </AlertDescription>
                   </Alert>
-                ) : totalAmount > 0 ? (
+                ) : totalDonorAmount > 0 ? (
                   <Alert>
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-600">
