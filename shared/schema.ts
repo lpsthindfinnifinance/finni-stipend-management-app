@@ -299,14 +299,11 @@ export type StipendRequestWithDetails = StipendRequest & {
 
 export const interPsmAllocations = pgTable("inter_psm_allocations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  allocationType: varchar("allocation_type").notNull().default("practice_to_practice"), // practice_to_practice, inter_portfolio
   donorPsmId: varchar("donor_psm_id").notNull(),
-  recipientPsmId: varchar("recipient_psm_id"), // DEPRECATED - kept for backward compatibility
-  recipientPracticeIds: text("recipient_practice_ids").array(), // For practice_to_practice only
-  recipientPortfolioId: varchar("recipient_portfolio_id"), // For inter_portfolio only
+  recipientPracticeIds: text("recipient_practice_ids").array().notNull(), // Array of recipient practice IDs
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
   donorPracticeIds: text("donor_practice_ids").array().notNull(), // Array of donor practice IDs
-  status: varchar("status").notNull().default("pending"), // pending, allocated, completed
+  status: varchar("status").notNull().default("completed"), // All allocations are completed immediately
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -316,23 +313,7 @@ export const insertInterPsmAllocationSchema = createInsertSchema(interPsmAllocat
   status: true,
   createdAt: true,
   completedAt: true,
-  recipientPsmId: true,
-} as any).extend({
-  allocationType: z.enum(["practice_to_practice", "inter_portfolio"]),
-}).refine(
-  (data) => {
-    // For practice_to_practice, recipientPracticeIds is required and recipientPortfolioId should be null
-    if (data.allocationType === "practice_to_practice") {
-      return data.recipientPracticeIds != null && data.recipientPracticeIds.length > 0 && data.recipientPortfolioId == null;
-    }
-    // For inter_portfolio, recipientPortfolioId is required and recipientPracticeIds should be null
-    if (data.allocationType === "inter_portfolio") {
-      return data.recipientPortfolioId != null && data.recipientPracticeIds == null;
-    }
-    return true;
-  },
-  { message: "Invalid recipient configuration for allocation type" }
-);
+} as any);
 
 export type InsertInterPsmAllocation = z.infer<typeof insertInterPsmAllocationSchema>;
 export type InterPsmAllocation = typeof interPsmAllocations.$inferSelect;
