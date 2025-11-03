@@ -21,8 +21,6 @@ import Approvals from "@/pages/approvals";
 import Allocations from "@/pages/allocations";
 import NewAllocation from "@/pages/new-allocation";
 import AllocationDetail from "@/pages/allocation-detail";
-import AllocationInDetail from "@/pages/allocation-in-detail";
-import AllocationOutDetail from "@/pages/allocation-out-detail";
 import Reports from "@/pages/reports";
 import PayPeriods from "@/pages/pay-periods";
 import FinanceOps from "@/pages/finance-ops";
@@ -48,8 +46,6 @@ function Router() {
           <Route path="/approvals" component={Approvals} />
           <Route path="/allocations" component={Allocations} />
           <Route path="/allocations/new" component={NewAllocation} />
-          <Route path="/allocations/in/:id" component={AllocationInDetail} />
-          <Route path="/allocations/out/:id" component={AllocationOutDetail} />
           <Route path="/allocations/:id" component={AllocationDetail} />
           <Route path="/reports" component={Reports} />
           <Route path="/pay-periods" component={PayPeriods} />

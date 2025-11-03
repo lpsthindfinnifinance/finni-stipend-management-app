@@ -452,10 +452,6 @@ export const interPsmAllocationsRelations = relations(interPsmAllocations, ({ on
     fields: [interPsmAllocations.donorPsmId],
     references: [users.id],
   }),
-  recipientPsm: one(users, {
-    fields: [interPsmAllocations.recipientPsmId],
-    references: [users.id],
-  }),
   ledgerEntries: many(practiceLedger),
 }));
 
