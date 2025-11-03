@@ -930,10 +930,17 @@ export class DatabaseStorage implements IStorage {
       allocations.map(async (allocation) => {
         // Get donor PSM name
         const [donorPsm] = await db
-          .select({ name: users.name })
+          .select({ 
+            firstName: users.firstName, 
+            lastName: users.lastName 
+          })
           .from(users)
           .where(eq(users.id, allocation.donorPsmId))
           .limit(1);
+        
+        const donorPsmName = donorPsm 
+          ? `${donorPsm.firstName || ''} ${donorPsm.lastName || ''}`.trim() || allocation.donorPsmId
+          : allocation.donorPsmId;
 
         // Get donor portfolio by querying the first donor practice's portfolio
         let donorPortfolio = null;
@@ -969,7 +976,7 @@ export class DatabaseStorage implements IStorage {
 
         return {
           ...allocation,
-          donorPsmName: donorPsm?.name || allocation.donorPsmId,
+          donorPsmName,
           donorPortfolio,
           recipientPortfolio,
         };
@@ -992,10 +999,17 @@ export class DatabaseStorage implements IStorage {
 
     // Fetch donor PSM details
     const [donorPsm] = await db
-      .select()
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
       .from(users)
       .where(eq(users.id, allocation.donorPsmId))
       .limit(1);
+    
+    const donorPsmName = donorPsm 
+      ? `${donorPsm.firstName || ''} ${donorPsm.lastName || ''}`.trim() || allocation.donorPsmId
+      : allocation.donorPsmId;
 
     // Fetch ledger entries for this allocation to get practice details with amounts
     const ledgerEntries = await db
@@ -1068,7 +1082,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...allocation,
-      donorPsmName: donorPsm?.name || allocation.donorPsmId,
+      donorPsmName,
       donorPractices: donorPracticesData,
       recipientData,
     };
@@ -1222,7 +1236,8 @@ export class DatabaseStorage implements IStorage {
         practiceId: negativeEarningsCapRequests.practiceId,
         practiceName: practices.name,
         requestorId: negativeEarningsCapRequests.requestorId,
-        requestorName: users.name,
+        requestorFirstName: users.firstName,
+        requestorLastName: users.lastName,
         payPeriod: negativeEarningsCapRequests.payPeriod,
         requestedAmount: negativeEarningsCapRequests.requestedAmount,
         approvedAmount: negativeEarningsCapRequests.approvedAmount,

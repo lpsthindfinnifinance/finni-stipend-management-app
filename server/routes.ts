@@ -755,7 +755,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const requests = await storage.getNegativeEarningsCapRequests(filters);
-      res.json(requests);
+      
+      // Transform to combine firstName and lastName into requestorName
+      const transformedRequests = requests.map(req => ({
+        ...req,
+        requestorName: req.requestorFirstName && req.requestorLastName
+          ? `${req.requestorFirstName} ${req.requestorLastName}`.trim()
+          : req.requestorId,
+        requestorFirstName: undefined,
+        requestorLastName: undefined,
+      }));
+      
+      res.json(transformedRequests);
     } catch (error) {
       console.error("Error fetching negative earnings requests:", error);
       res.status(500).json({ message: "Failed to fetch negative earnings requests" });
