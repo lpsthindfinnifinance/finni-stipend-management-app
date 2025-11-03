@@ -262,7 +262,7 @@ export default function NegativeEarnings() {
         <CardContent>
           <div className="max-h-[600px] overflow-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
                   <TableHead>Practice Name</TableHead>
                   <TableHead>Clinic Name</TableHead>
