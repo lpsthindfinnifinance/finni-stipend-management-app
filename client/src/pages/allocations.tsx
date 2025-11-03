@@ -88,7 +88,7 @@ export default function Allocations() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="font-medium">ID</TableHead>
-                      <TableHead className="font-medium">Donor PSM</TableHead>
+                      <TableHead className="font-medium">Allocated By</TableHead>
                       <TableHead className="font-medium">Recipient Practices</TableHead>
                       <TableHead className="font-medium">Donor Practices</TableHead>
                       <TableHead className="font-medium text-right">Amount</TableHead>
