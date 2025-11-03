@@ -123,7 +123,39 @@ export default function AllocationDetail() {
       return;
     }
 
-    const totalDistributed = selectedPractices.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    // Validate each practice amount
+    for (const practice of selectedPractices) {
+      const amount = parseFloat(practice.amount);
+      
+      if (!practice.amount || practice.amount.trim() === "") {
+        toast({
+          variant: "destructive",
+          title: "Missing Amount",
+          description: `Please enter an amount for ${practice.practiceName}.`,
+        });
+        return;
+      }
+
+      if (isNaN(amount)) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Amount",
+          description: `Amount for ${practice.practiceName} must be a valid number.`,
+        });
+        return;
+      }
+
+      if (amount <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Amount",
+          description: `Amount for ${practice.practiceName} must be greater than zero.`,
+        });
+        return;
+      }
+    }
+
+    const totalDistributed = selectedPractices.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const availableAmount = parseFloat(allocation.totalAmount);
 
     if (Math.abs(totalDistributed - availableAmount) > 0.01) {

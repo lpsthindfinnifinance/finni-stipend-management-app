@@ -1295,8 +1295,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "This allocation has already been distributed" });
       }
 
+      // Validate each practice amount
+      for (const practice of practices) {
+        if (!practice.practiceId) {
+          return res.status(400).json({ message: "Practice ID is required for all practices" });
+        }
+
+        if (practice.amount === null || practice.amount === undefined) {
+          return res.status(400).json({ message: `Amount is required for practice ${practice.practiceId}` });
+        }
+
+        const amount = typeof practice.amount === 'number' ? practice.amount : parseFloat(practice.amount);
+        
+        if (isNaN(amount)) {
+          return res.status(400).json({ message: `Invalid amount for practice ${practice.practiceId}` });
+        }
+
+        if (amount <= 0) {
+          return res.status(400).json({ message: `Amount must be greater than zero for practice ${practice.practiceId}` });
+        }
+
+        // Update to use validated amount
+        practice.amount = amount;
+      }
+
       // Validate total amount
-      const totalAmount = practices.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+      const totalAmount = practices.reduce((sum: number, p: any) => sum + p.amount, 0);
       const expectedAmount = parseFloat(allocation.totalAmount);
 
       if (Math.abs(totalAmount - expectedAmount) > 0.01) {
