@@ -524,10 +524,7 @@ export default function FinanceOps() {
                           >
                             <TableCell className="font-medium">#{req.id}</TableCell>
                             <TableCell>
-                              <div>
-                                <div className="font-medium">{req.practice?.clinicName || req.practiceId}</div>
-                                <div className="text-xs text-muted-foreground">{req.practiceId}</div>
-                              </div>
+                              <div className="font-medium">{req.practice?.clinicName || req.practiceId}</div>
                             </TableCell>
                             <TableCell className="font-mono">{formatCurrency(parseFloat(req.amount))}</TableCell>
                             <TableCell>
