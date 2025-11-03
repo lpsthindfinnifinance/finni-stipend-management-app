@@ -489,7 +489,7 @@ export default function Allocations() {
                               <TableCell className="font-mono">{allocation.id}</TableCell>
                               <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
                               <TableCell className="text-sm text-muted-foreground">
-                                Portfolio {allocation.donorPortfolioId || 'N/A'}
+                                {allocation.donorPortfolio || 'Unknown'}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {allocation.donorPracticeIds?.length || 0} practices

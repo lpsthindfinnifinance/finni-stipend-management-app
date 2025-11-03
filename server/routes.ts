@@ -1189,8 +1189,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/allocations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const allocations = await storage.getInterPsmAllocations({ donorId: userId });
-      res.json(allocations);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Fetch both allocations where user is donor AND where user's portfolio is recipient
+      const [donorAllocations, recipientAllocations] = await Promise.all([
+        storage.getInterPsmAllocations({ donorId: userId }),
+        user.portfolioId 
+          ? storage.getInterPsmAllocations({ recipientPortfolioId: user.portfolioId })
+          : Promise.resolve([])
+      ]);
+
+      // Combine and deduplicate (in case user is both donor and recipient)
+      const allAllocations = [...donorAllocations];
+      for (const recipientAlloc of recipientAllocations) {
+        if (!allAllocations.find(a => a.id === recipientAlloc.id)) {
+          allAllocations.push(recipientAlloc);
+        }
+      }
+
+      // Sort by creation date (newest first)
+      allAllocations.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      res.json(allAllocations);
     } catch (error) {
       console.error("Error fetching allocations:", error);
       res.status(500).json({ message: "Failed to fetch allocations" });

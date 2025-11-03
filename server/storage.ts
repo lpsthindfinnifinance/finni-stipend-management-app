@@ -94,7 +94,7 @@ export interface IStorage {
   deleteStipendRequest(requestId: number): Promise<{ success: boolean; message?: string }>;
   
   // Inter-PSM allocation operations
-  getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<InterPsmAllocation[]>;
+  getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string; recipientPortfolioId?: string }): Promise<any[]>;
   getInterPsmAllocationById(id: number): Promise<any | undefined>;
   createInterPsmAllocation(allocation: InsertInterPsmAllocation): Promise<InterPsmAllocation>;
   updateAllocationStatus(id: number, status: string): Promise<InterPsmAllocation>;
@@ -904,7 +904,7 @@ export class DatabaseStorage implements IStorage {
   // INTER-PSM ALLOCATION OPERATIONS
   // ============================================================================
   
-  async getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<InterPsmAllocation[]> {
+  async getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string; recipientPortfolioId?: string }): Promise<any[]> {
     const conditions = [];
     
     if (filters?.donorId) {
@@ -913,6 +913,9 @@ export class DatabaseStorage implements IStorage {
     if (filters?.recipientId) {
       conditions.push(eq(interPsmAllocations.recipientPsmId, filters.recipientId));
     }
+    if (filters?.recipientPortfolioId) {
+      conditions.push(eq(interPsmAllocations.recipientPortfolioId, filters.recipientPortfolioId));
+    }
 
     let query = db.select().from(interPsmAllocations);
     
@@ -920,7 +923,58 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
 
-    return await query.orderBy(desc(interPsmAllocations.createdAt));
+    const allocations = await query.orderBy(desc(interPsmAllocations.createdAt));
+
+    // Enrich allocations with donor PSM name, donor portfolio, and recipient portfolio info
+    const enrichedAllocations = await Promise.all(
+      allocations.map(async (allocation) => {
+        // Get donor PSM name
+        const [donorPsm] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, allocation.donorPsmId))
+          .limit(1);
+
+        // Get donor portfolio by querying the first donor practice's portfolio
+        let donorPortfolio = null;
+        if (allocation.donorPracticeIds && allocation.donorPracticeIds.length > 0) {
+          const [firstDonorPractice] = await db
+            .select({
+              portfolioId: practices.portfolioId,
+              portfolioName: portfolios.name,
+            })
+            .from(practices)
+            .leftJoin(portfolios, eq(practices.portfolioId, portfolios.id))
+            .where(eq(practices.id, allocation.donorPracticeIds[0]))
+            .limit(1);
+          
+          if (firstDonorPractice) {
+            donorPortfolio = firstDonorPractice.portfolioName;
+          }
+        }
+
+        // Get recipient portfolio name (for inter-portfolio allocations)
+        let recipientPortfolio = null;
+        if (allocation.recipientPortfolioId) {
+          const [portfolio] = await db
+            .select({ name: portfolios.name })
+            .from(portfolios)
+            .where(eq(portfolios.id, allocation.recipientPortfolioId))
+            .limit(1);
+          
+          recipientPortfolio = portfolio?.name || null;
+        }
+
+        return {
+          ...allocation,
+          donorPsmName: donorPsm?.name || allocation.donorPsmId,
+          donorPortfolio,
+          recipientPortfolio,
+        };
+      })
+    );
+
+    return enrichedAllocations;
   }
 
   async getInterPsmAllocationById(id: number): Promise<any | undefined> {
