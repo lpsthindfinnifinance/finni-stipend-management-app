@@ -77,9 +77,8 @@ export default function AllocationDetail() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Allocation Details Card */}
-          <Card>
+        {/* Allocation Details Card */}
+        <Card className="max-w-md">
             <CardHeader>
               <CardTitle className="text-lg">Allocation Details</CardTitle>
             </CardHeader>
@@ -88,13 +87,6 @@ export default function AllocationDetail() {
                 <p className="text-sm text-muted-foreground">Donor PSM</p>
                 <p className="font-medium" data-testid="text-donor-psm">
                   {allocation.donorPsmName}
-                </p>
-              </div>
-
-              <div data-testid="section-donor-portfolio">
-                <p className="text-sm text-muted-foreground">Donor Portfolio</p>
-                <p className="font-medium" data-testid="text-donor-portfolio">
-                  {allocation.donorPortfolio || allocation.donorPortfolioId || "N/A"}
                 </p>
               </div>
 
@@ -108,33 +100,11 @@ export default function AllocationDetail() {
               <div data-testid="section-created-date">
                 <p className="text-sm text-muted-foreground">Created On</p>
                 <p className="font-medium" data-testid="text-created-date">
-                  {formatDate(allocation.createdAt)}
+                  {new Date(allocation.createdAt).toLocaleString()}
                 </p>
               </div>
             </CardContent>
           </Card>
-
-          {/* Recipient Information Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recipient Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div data-testid="section-recipient-portfolio">
-                <p className="text-sm text-muted-foreground">Recipient Portfolio</p>
-                <p className="font-medium" data-testid="text-recipient-portfolio">
-                  {allocation.recipientPortfolio || allocation.recipientPortfolioId || "N/A"}
-                </p>
-              </div>
-              <div data-testid="section-recipient-practices">
-                <p className="text-sm text-muted-foreground">Recipient Practices</p>
-                <p className="font-medium" data-testid="text-recipient-count">
-                  {allocation.recipientPractices?.length || 0} practices
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Donor Practices Table */}
         <Card>
