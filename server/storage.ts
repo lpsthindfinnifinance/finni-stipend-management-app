@@ -939,17 +939,19 @@ export class DatabaseStorage implements IStorage {
         let donorPortfolio = null;
         if (allocation.donorPracticeIds && allocation.donorPracticeIds.length > 0) {
           const [firstDonorPractice] = await db
-            .select({
-              portfolioId: practices.portfolioId,
-              portfolioName: portfolios.name,
-            })
+            .select()
             .from(practices)
-            .leftJoin(portfolios, eq(practices.portfolioId, portfolios.id))
             .where(eq(practices.id, allocation.donorPracticeIds[0]))
             .limit(1);
           
-          if (firstDonorPractice) {
-            donorPortfolio = firstDonorPractice.portfolioName;
+          if (firstDonorPractice && firstDonorPractice.portfolioId) {
+            const [portfolio] = await db
+              .select()
+              .from(portfolios)
+              .where(eq(portfolios.id, firstDonorPractice.portfolioId))
+              .limit(1);
+            
+            donorPortfolio = portfolio?.name || null;
           }
         }
 
