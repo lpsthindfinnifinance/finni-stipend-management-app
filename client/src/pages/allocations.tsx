@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -326,55 +327,142 @@ export default function Allocations() {
                 </p>
               </div>
             ) : (
-              <div className="max-h-[600px] overflow-auto">
-                <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-medium">ID</TableHead>
-                    <TableHead className="font-medium">Type</TableHead>
-                    <TableHead className="font-medium">Donor PSM</TableHead>
-                    <TableHead className="font-medium">Recipient</TableHead>
-                    <TableHead className="font-medium">Practices</TableHead>
-                    <TableHead className="font-medium text-right">Amount</TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                    <TableHead className="font-medium">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(allocations as any[]).map((allocation: any) => {
-                    const isPracticeToP = allocation.allocationType === "practice_to_practice";
-                    const recipientDisplay = isPracticeToP 
-                      ? `${allocation.recipientPracticeIds?.length || 0} practices`
-                      : `Portfolio ${allocation.recipientPortfolioId} (Suspense)`;
-                    
-                    return (
-                      <TableRow key={allocation.id} data-testid={`row-allocation-${allocation.id}`}>
-                        <TableCell className="font-mono">{allocation.id}</TableCell>
-                        <TableCell>
-                          <span className="text-xs px-2 py-1 rounded bg-muted">
-                            {isPracticeToP ? "Practice-to-Practice" : "Inter-Portfolio"}
-                          </span>
-                        </TableCell>
-                        <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{recipientDisplay}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {allocation.donorPracticeIds?.length || 0} donor
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-semibold">
-                          {formatCurrency(allocation.totalAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={allocation.status} />
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDateTime(allocation.createdAt)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              </div>
+              <Tabs defaultValue="practice" className="w-full">
+                <div className="px-6 pt-2">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="practice" data-testid="tab-practice-allocations">
+                      Practice Allocations
+                    </TabsTrigger>
+                    <TabsTrigger value="inter-out" data-testid="tab-inter-out">
+                      Inter-Portfolio - Out
+                    </TabsTrigger>
+                    <TabsTrigger value="inter-in" data-testid="tab-inter-in">
+                      Inter-Portfolio - In
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="practice" className="mt-0">
+                  <div className="max-h-[600px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-medium">ID</TableHead>
+                          <TableHead className="font-medium">Donor PSM</TableHead>
+                          <TableHead className="font-medium">Recipient Practices</TableHead>
+                          <TableHead className="font-medium">Donor Practices</TableHead>
+                          <TableHead className="font-medium text-right">Amount</TableHead>
+                          <TableHead className="font-medium">Status</TableHead>
+                          <TableHead className="font-medium">Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(allocations as any[])
+                          .filter((a: any) => a.allocationType === "practice_to_practice")
+                          .map((allocation: any) => (
+                            <TableRow 
+                              key={allocation.id} 
+                              className="cursor-pointer hover-elevate"
+                              onClick={() => setLocation(`/allocations/${allocation.id}`)}
+                              data-testid={`row-allocation-${allocation.id}`}
+                            >
+                              <TableCell className="font-mono">{allocation.id}</TableCell>
+                              <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {allocation.recipientPracticeIds?.length || 0} practices
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {allocation.donorPracticeIds?.length || 0} practices
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold">
+                                {formatCurrency(allocation.totalAmount)}
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={allocation.status} />
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {formatDateTime(allocation.createdAt)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        {(allocations as any[]).filter((a: any) => a.allocationType === "practice_to_practice").length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              No practice-to-practice allocations found
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="inter-out" className="mt-0">
+                  <div className="max-h-[600px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-medium">ID</TableHead>
+                          <TableHead className="font-medium">Donor PSM</TableHead>
+                          <TableHead className="font-medium">Recipient Portfolio</TableHead>
+                          <TableHead className="font-medium">Donor Practices</TableHead>
+                          <TableHead className="font-medium text-right">Amount</TableHead>
+                          <TableHead className="font-medium">Status</TableHead>
+                          <TableHead className="font-medium">Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(allocations as any[])
+                          .filter((a: any) => a.allocationType === "inter_portfolio")
+                          .map((allocation: any) => (
+                            <TableRow 
+                              key={allocation.id} 
+                              className="cursor-pointer hover-elevate"
+                              onClick={() => setLocation(`/allocations/${allocation.id}`)}
+                              data-testid={`row-allocation-${allocation.id}`}
+                            >
+                              <TableCell className="font-mono">{allocation.id}</TableCell>
+                              <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                Portfolio {allocation.recipientPortfolioId}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {allocation.donorPracticeIds?.length || 0} practices
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold">
+                                {formatCurrency(allocation.totalAmount)}
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={allocation.status} />
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {formatDateTime(allocation.createdAt)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        {(allocations as any[]).filter((a: any) => a.allocationType === "inter_portfolio").length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              No outgoing inter-portfolio allocations found
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="inter-in" className="mt-0">
+                  <div className="max-h-[600px] overflow-auto">
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p className="text-lg mb-2">Coming Soon</p>
+                      <p className="text-sm">
+                        This tab will show allocations received from other portfolios
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
           </CardContent>
         </Card>

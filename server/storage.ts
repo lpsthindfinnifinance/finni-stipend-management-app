@@ -95,6 +95,7 @@ export interface IStorage {
   
   // Inter-PSM allocation operations
   getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string }): Promise<InterPsmAllocation[]>;
+  getInterPsmAllocationById(id: number): Promise<any | undefined>;
   createInterPsmAllocation(allocation: InsertInterPsmAllocation): Promise<InterPsmAllocation>;
   updateAllocationStatus(id: number, status: string): Promise<InterPsmAllocation>;
   
@@ -920,6 +921,101 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await query.orderBy(desc(interPsmAllocations.createdAt));
+  }
+
+  async getInterPsmAllocationById(id: number): Promise<any | undefined> {
+    const [allocation] = await db
+      .select()
+      .from(interPsmAllocations)
+      .where(eq(interPsmAllocations.id, id))
+      .limit(1);
+
+    if (!allocation) {
+      return undefined;
+    }
+
+    // Fetch donor PSM details
+    const [donorPsm] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, allocation.donorPsmId))
+      .limit(1);
+
+    // Fetch ledger entries for this allocation to get practice details with amounts
+    const ledgerEntries = await db
+      .select({
+        practiceId: practiceLedger.practiceId,
+        transactionType: practiceLedger.transactionType,
+        amount: practiceLedger.amount,
+      })
+      .from(practiceLedger)
+      .where(eq(practiceLedger.relatedAllocationId, id));
+
+    // Get donor practice details
+    const donorPracticeIds = allocation.donorPracticeIds || [];
+    const donorEntries = ledgerEntries.filter(e => e.transactionType === "allocation_out");
+    
+    const donorPracticesData = await Promise.all(
+      donorPracticeIds.map(async (practiceId) => {
+        const [practice] = await db
+          .select()
+          .from(practices)
+          .where(eq(practices.id, practiceId))
+          .limit(1);
+        
+        const entry = donorEntries.find(e => e.practiceId === practiceId);
+        
+        return {
+          id: practiceId,
+          name: practice?.name || practiceId,
+          amount: entry ? Math.abs(parseFloat(entry.amount)) : 0,
+        };
+      })
+    );
+
+    // Handle different allocation types
+    let recipientData = null;
+    
+    if (allocation.allocationType === "practice_to_practice") {
+      const recipientPracticeIds = allocation.recipientPracticeIds || [];
+      const recipientEntries = ledgerEntries.filter(e => e.transactionType === "allocation_in");
+      
+      const recipientPracticesData = await Promise.all(
+        recipientPracticeIds.map(async (practiceId) => {
+          const [practice] = await db
+            .select()
+            .from(practices)
+            .where(eq(practices.id, practiceId))
+            .limit(1);
+          
+          const entry = recipientEntries.find(e => e.practiceId === practiceId);
+          
+          return {
+            id: practiceId,
+            name: practice?.name || practiceId,
+            amount: entry ? parseFloat(entry.amount) : 0,
+          };
+        })
+      );
+      
+      recipientData = recipientPracticesData;
+    } else if (allocation.allocationType === "inter_portfolio") {
+      // For inter-portfolio, get recipient portfolio details
+      const [recipientPortfolio] = await db
+        .select()
+        .from(portfolios)
+        .where(eq(portfolios.id, allocation.recipientPortfolioId!))
+        .limit(1);
+      
+      recipientData = recipientPortfolio;
+    }
+
+    return {
+      ...allocation,
+      donorPsmName: donorPsm?.name || allocation.donorPsmId,
+      donorPractices: donorPracticesData,
+      recipientData,
+    };
   }
 
   async createInterPsmAllocation(allocation: InsertInterPsmAllocation): Promise<InterPsmAllocation> {

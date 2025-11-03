@@ -1185,6 +1185,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/allocations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const allocationId = parseInt(req.params.id);
+      
+      if (isNaN(allocationId)) {
+        return res.status(400).json({ message: "Invalid allocation ID" });
+      }
+
+      const allocation = await storage.getInterPsmAllocationById(allocationId);
+      
+      if (!allocation) {
+        return res.status(404).json({ message: "Allocation not found" });
+      }
+
+      res.json(allocation);
+    } catch (error) {
+      console.error("Error fetching allocation details:", error);
+      res.status(500).json({ message: "Failed to fetch allocation details" });
+    }
+  });
+
   app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
