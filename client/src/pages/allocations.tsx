@@ -344,7 +344,7 @@ export default function Allocations() {
                   {(allocations as any[]).map((allocation: any) => {
                     const isPracticeToP = allocation.allocationType === "practice_to_practice";
                     const recipientDisplay = isPracticeToP 
-                      ? (allocation.recipientPsmName || allocation.recipientPsmId)
+                      ? `${allocation.recipientPracticeIds?.length || 0} practices`
                       : `Portfolio ${allocation.recipientPortfolioId} (Suspense)`;
                     
                     return (
@@ -356,9 +356,9 @@ export default function Allocations() {
                           </span>
                         </TableCell>
                         <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
-                        <TableCell>{recipientDisplay}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{recipientDisplay}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {allocation.donorPracticeIds?.length || 0} practices
+                          {allocation.donorPracticeIds?.length || 0} donor
                         </TableCell>
                         <TableCell className="text-right font-mono font-semibold">
                           {formatCurrency(allocation.totalAmount)}
