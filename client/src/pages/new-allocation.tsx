@@ -253,10 +253,10 @@ export default function NewAllocation() {
           </Button>
           <div>
             <h1 className="text-3xl font-semibold text-foreground mb-2">
-              New Inter-PSM Allocation
+              New Allocation
             </h1>
             <p className="text-muted-foreground">
-              Transfer stipend budget to another PSM
+              Transfer stipend cap to another Practice
             </p>
           </div>
         </div>
