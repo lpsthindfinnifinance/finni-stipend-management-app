@@ -65,6 +65,13 @@ export default function FinanceOps() {
     enabled: isAuthenticated,
   });
 
+  // Set default filter to current pay period
+  useEffect(() => {
+    if (currentPeriod && selectedPayPeriod === "all") {
+      setSelectedPayPeriod(currentPeriod.id.toString());
+    }
+  }, [currentPeriod, selectedPayPeriod]);
+
   const { data: periods, isLoading: periodsLoading } = useQuery<any[]>({
     queryKey: ["/api/pay-periods"],
     enabled: isAuthenticated,
