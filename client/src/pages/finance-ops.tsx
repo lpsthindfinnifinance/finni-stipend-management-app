@@ -42,6 +42,7 @@ export default function FinanceOps() {
   const [csvContent, setCsvContent] = useState("");
   const [csvFileName, setCsvFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasSetDefaultPeriod = useRef(false);
   
   // Filters for stipend requests table
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<string>("all");
@@ -65,12 +66,13 @@ export default function FinanceOps() {
     enabled: isAuthenticated,
   });
 
-  // Set default filter to current pay period
+  // Set default filter to current pay period (only once on initial load)
   useEffect(() => {
-    if (currentPeriod && selectedPayPeriod === "all") {
+    if (currentPeriod && !hasSetDefaultPeriod.current) {
       setSelectedPayPeriod(currentPeriod.id.toString());
+      hasSetDefaultPeriod.current = true;
     }
-  }, [currentPeriod, selectedPayPeriod]);
+  }, [currentPeriod]);
 
   const { data: periods, isLoading: periodsLoading } = useQuery<any[]>({
     queryKey: ["/api/pay-periods"],
