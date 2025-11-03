@@ -562,14 +562,16 @@ export default function FinanceOps() {
                             <TableCell>
                               <Badge
                                 variant={
-                                  req.status === "approved"
+                                  req.isFullyPaid
+                                    ? "default"
+                                    : req.status === "approved"
                                     ? "default"
                                     : req.status === "rejected"
                                     ? "destructive"
                                     : "secondary"
                                 }
                               >
-                                {req.status}
+                                {req.isFullyPaid ? "Paid" : req.status}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -581,15 +583,17 @@ export default function FinanceOps() {
                               </div>
                             </TableCell>
                             <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.location.href = `/requests/${req.id}`}
-                                data-testid={`button-manage-payments-${req.id}`}
-                              >
-                                <DollarSign className="h-3 w-3 mr-1" />
-                                Manage Payments
-                              </Button>
+                              {!req.isFullyPaid && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => window.location.href = `/requests/${req.id}`}
+                                  data-testid={`button-manage-payments-${req.id}`}
+                                >
+                                  <DollarSign className="h-3 w-3 mr-1" />
+                                  Manage Payments
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
