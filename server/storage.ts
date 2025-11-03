@@ -1360,12 +1360,54 @@ export class DatabaseStorage implements IStorage {
     const currentPeriod = await this.getCurrentPayPeriod();
     const currentPeriodNumber = currentPeriod?.id || 21;
     
-    const summaries = [];
-    for (const portfolio of portfolioList) {
-      // Get all practices in this portfolio
-      const portfolioPractices = await db.select()
-        .from(practices)
-        .where(eq(practices.portfolioId, portfolio.id));
+    // Fetch all data in bulk to avoid N+1 queries
+    const [allPractices, allMetrics, allUsers] = await Promise.all([
+      db.select().from(practices),
+      db.select().from(practiceMetrics).where(eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)),
+      db.select().from(users),
+    ]);
+
+    // Get all ledger totals in one efficient query
+    const ledgerTotals = await db.select({
+      practiceId: practiceLedger.practiceId,
+      transactionType: practiceLedger.transactionType,
+      total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
+    })
+    .from(practiceLedger)
+    .where(or(
+      eq(practiceLedger.transactionType, 'paid'),
+      eq(practiceLedger.transactionType, 'committed')
+    ))
+    .groupBy(practiceLedger.practiceId, practiceLedger.transactionType);
+
+    // Create lookup maps for efficient access
+    const practicesByPortfolio = allPractices.reduce((acc, practice) => {
+      if (!acc[practice.portfolioId]) acc[practice.portfolioId] = [];
+      acc[practice.portfolioId].push(practice);
+      return acc;
+    }, {} as Record<string, typeof allPractices>);
+
+    const metricsByPractice = allMetrics.reduce((acc, metric) => {
+      acc[metric.clinicName] = metric;
+      return acc;
+    }, {} as Record<string, typeof allMetrics[0]>);
+
+    const ledgerByPractice = ledgerTotals.reduce((acc, ledger) => {
+      if (!acc[ledger.practiceId]) acc[ledger.practiceId] = {};
+      acc[ledger.practiceId][ledger.transactionType] = Number(ledger.total);
+      return acc;
+    }, {} as Record<string, Record<string, number>>);
+
+    const usersByPortfolio = allUsers.reduce((acc, user) => {
+      if (user.portfolioId && !acc[user.portfolioId]) {
+        acc[user.portfolioId] = user;
+      }
+      return acc;
+    }, {} as Record<string, typeof allUsers[0]>);
+
+    // Build summaries
+    const summaries = portfolioList.map((portfolio) => {
+      const portfolioPractices = practicesByPortfolio[portfolio.id] || [];
       
       // Calculate portfolio metrics
       let totalCap = 0;
@@ -1373,27 +1415,16 @@ export class DatabaseStorage implements IStorage {
       let stipendCommitted = 0;
 
       for (const practice of portfolioPractices) {
-        // Get stipend cap from current period metrics
-        const metrics = await db.select()
-          .from(practiceMetrics)
-          .where(
-            and(
-              eq(practiceMetrics.clinicName, practice.id),
-              eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)
-            )
-          )
-          .limit(1);
-        
-        if (metrics[0]?.stipendCapAvgFinal) {
-          totalCap += parseFloat(metrics[0].stipendCapAvgFinal);
+        // Get stipend cap from metrics
+        const metrics = metricsByPractice[practice.id];
+        if (metrics?.stipendCapAvgFinal) {
+          totalCap += parseFloat(metrics.stipendCapAvgFinal);
         }
 
-        // Use storage methods to calculate paid and committed
-        const paid = await this.getStipendPaid(practice.id);
-        const committed = await this.getStipendCommitted(practice.id);
-        
-        stipendPaid += paid;
-        stipendCommitted += committed;
+        // Get paid and committed from ledger
+        const ledger = ledgerByPractice[practice.id] || {};
+        stipendPaid += ledger['paid'] || 0;
+        stipendCommitted += ledger['committed'] || 0;
       }
 
       // Calculate derived metrics
@@ -1403,17 +1434,12 @@ export class DatabaseStorage implements IStorage {
       const utilizationPercent = totalCap > 0 ? ((stipendPaid + stipendCommitted) / totalCap) * 100 : 0;
       
       // Get PSM name
-      let psmName = null;
-      const [psm] = await db.select().from(users)
-        .where(eq(users.portfolioId, portfolio.id))
-        .limit(1);
-      if (psm) {
-        psmName = psm.firstName && psm.lastName 
-          ? `${psm.firstName} ${psm.lastName}` 
-          : psm.email;
-      }
+      const psm = usersByPortfolio[portfolio.id];
+      const psmName = psm?.firstName && psm?.lastName 
+        ? `${psm.firstName} ${psm.lastName}` 
+        : psm?.email || null;
       
-      summaries.push({
+      return {
         id: portfolio.id,
         name: portfolio.name,
         psmName,
@@ -1424,8 +1450,14 @@ export class DatabaseStorage implements IStorage {
         remainingPerPP,
         utilizationPercent,
         practiceCount: portfolioPractices.length,
-      });
-    }
+      };
+    });
+    
+    // Sort portfolios in order: G1, G2, G3, G4, G5
+    summaries.sort((a, b) => {
+      const order = ['G1', 'G2', 'G3', 'G4', 'G5'];
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
     
     return summaries;
   }
