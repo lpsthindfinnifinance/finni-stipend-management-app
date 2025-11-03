@@ -479,7 +479,7 @@ export default function NewAllocation() {
                         {availableRecipientPractices.map((practice: any) => {
                           const isSelected = recipientPractices.some(p => p.practiceId === practice.id);
                           const selectedPractice = recipientPractices.find(p => p.practiceId === practice.id);
-                          const currentBalance = practice.currentBalance || 0;
+                          const currentBalance = practice.availableBalance || 0;
 
                           return (
                             <TableRow key={practice.id} data-testid={`row-recipient-practice-${practice.id}`}>
