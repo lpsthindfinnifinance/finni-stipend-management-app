@@ -46,10 +46,15 @@ export default function AllocationInDetail() {
     enabled: isAuthenticated && !!id,
   });
 
-  const { data: practices = [] } = useQuery<any[]>({
+  const { data: allPractices = [] } = useQuery<any[]>({
     queryKey: ["/api/practices/my"],
     enabled: isAuthenticated && !!user?.portfolioId,
   });
+
+  // Filter practices to only show those in the recipient portfolio
+  const practices = allPractices.filter((p: any) => 
+    p.portfolioId === allocation?.recipientPortfolioId
+  );
 
   const distributeMutation = useMutation({
     mutationFn: async (data: { allocationId: string; practices: { practiceId: string; amount: number }[] }) => {
@@ -360,7 +365,7 @@ export default function AllocationInDetail() {
                     <SelectContent>
                       {practices.filter((p: any) => !selectedPractices.some(sp => sp.practiceId === p.id)).map((practice: any) => (
                         <SelectItem key={practice.id} value={practice.id}>
-                          {practice.name}
+                          {practice.id} - {practice.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
