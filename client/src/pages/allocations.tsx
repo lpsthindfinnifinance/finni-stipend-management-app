@@ -413,7 +413,10 @@ export default function Allocations() {
                       </TableHeader>
                       <TableBody>
                         {(allocations as any[])
-                          .filter((a: any) => a.allocationType === "inter_portfolio")
+                          .filter((a: any) => 
+                            a.allocationType === "inter_portfolio" && 
+                            a.donorPsmId === user?.id
+                          )
                           .map((allocation: any) => (
                             <TableRow 
                               key={allocation.id} 
@@ -440,7 +443,11 @@ export default function Allocations() {
                               </TableCell>
                             </TableRow>
                           ))}
-                        {(allocations as any[]).filter((a: any) => a.allocationType === "inter_portfolio").length === 0 && (
+                        {(allocations as any[])
+                          .filter((a: any) => 
+                            a.allocationType === "inter_portfolio" && 
+                            a.donorPsmId === user?.id
+                          ).length === 0 && (
                           <TableRow>
                             <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                               No outgoing inter-portfolio allocations found
@@ -454,12 +461,63 @@ export default function Allocations() {
 
                 <TabsContent value="inter-in" className="mt-0">
                   <div className="max-h-[600px] overflow-auto">
-                    <div className="text-center py-12 text-muted-foreground">
-                      <p className="text-lg mb-2">Coming Soon</p>
-                      <p className="text-sm">
-                        This tab will show allocations received from other portfolios
-                      </p>
-                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-medium">ID</TableHead>
+                          <TableHead className="font-medium">Donor PSM</TableHead>
+                          <TableHead className="font-medium">Donor Portfolio</TableHead>
+                          <TableHead className="font-medium">Donor Practices</TableHead>
+                          <TableHead className="font-medium text-right">Amount</TableHead>
+                          <TableHead className="font-medium">Status</TableHead>
+                          <TableHead className="font-medium">Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(allocations as any[])
+                          .filter((a: any) => 
+                            a.allocationType === "inter_portfolio" && 
+                            a.recipientPortfolioId === user?.portfolioId
+                          )
+                          .map((allocation: any) => (
+                            <TableRow 
+                              key={allocation.id} 
+                              className="cursor-pointer hover-elevate"
+                              onClick={() => setLocation(`/allocations/${allocation.id}`)}
+                              data-testid={`row-allocation-${allocation.id}`}
+                            >
+                              <TableCell className="font-mono">{allocation.id}</TableCell>
+                              <TableCell>{allocation.donorPsmName || allocation.donorPsmId}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                Portfolio {allocation.donorPortfolioId || 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {allocation.donorPracticeIds?.length || 0} practices
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold">
+                                {formatCurrency(allocation.totalAmount)}
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={allocation.status} />
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {formatDateTime(allocation.createdAt)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        {(allocations as any[])
+                          .filter((a: any) => 
+                            a.allocationType === "inter_portfolio" && 
+                            a.recipientPortfolioId === user?.portfolioId
+                          ).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              No incoming inter-portfolio allocations found
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </TabsContent>
               </Tabs>
