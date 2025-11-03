@@ -260,8 +260,8 @@ export default function NegativeEarnings() {
           <CardTitle>Practice Details</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="max-h-[calc(100vh-600px)] overflow-auto">
-            <Table>
+          <div className="relative w-full max-h-[calc(100vh-600px)] overflow-auto">
+            <table className="w-full caption-bottom text-sm">
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky top-0 bg-card z-10 border-b">Practice Name</TableHead>
@@ -319,7 +319,7 @@ export default function NegativeEarnings() {
                   })
                 )}
               </TableBody>
-            </Table>
+            </table>
           </div>
         </CardContent>
       </Card>
