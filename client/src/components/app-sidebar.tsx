@@ -3,7 +3,6 @@ import {
   Briefcase,
   FileText,
   ClipboardCheck,
-  BarChart3,
   Settings,
   LogOut,
   Calendar,
@@ -66,12 +65,6 @@ export function AppSidebar() {
       title: "Allocations",
       url: "/allocations",
       icon: ArrowRightLeft,
-      roles: ["PSM", "Lead PSM", "Finance", "Admin"],
-    },
-    {
-      title: "Reports",
-      url: "/reports",
-      icon: BarChart3,
       roles: ["PSM", "Lead PSM", "Finance", "Admin"],
     },
     {

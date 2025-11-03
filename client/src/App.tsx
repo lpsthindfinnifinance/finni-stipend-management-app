@@ -21,7 +21,6 @@ import Approvals from "@/pages/approvals";
 import Allocations from "@/pages/allocations";
 import NewAllocation from "@/pages/new-allocation";
 import AllocationDetail from "@/pages/allocation-detail";
-import Reports from "@/pages/reports";
 import PayPeriods from "@/pages/pay-periods";
 import FinanceOps from "@/pages/finance-ops";
 import NegativeEarnings from "@/pages/negative-earnings";
@@ -47,7 +46,6 @@ function Router() {
           <Route path="/allocations" component={Allocations} />
           <Route path="/allocations/new" component={NewAllocation} />
           <Route path="/allocations/:id" component={AllocationDetail} />
-          <Route path="/reports" component={Reports} />
           <Route path="/pay-periods" component={PayPeriods} />
           <Route path="/finance-ops" component={FinanceOps} />
           <Route path="/negative-earnings" component={NegativeEarnings} />
