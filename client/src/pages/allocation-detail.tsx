@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import {
   Table,
   TableBody,
@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/table";
 
 export default function AllocationDetail() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
 
   const { data: allocation, isLoading } = useQuery<any>({
     queryKey: ["/api/allocations", id],
@@ -49,6 +50,9 @@ export default function AllocationDetail() {
   }
 
   const isPracticeToP = allocation.allocationType === "practice_to_practice";
+  const isInterPortfolio = allocation.allocationType === "inter_portfolio";
+  // Check if this is an incoming inter-portfolio allocation (user's portfolio is the recipient)
+  const isIncoming = isInterPortfolio && user?.portfolioId === allocation.recipientPortfolioId;
 
   return (
     <div className="flex-1 overflow-auto">
@@ -65,7 +69,7 @@ export default function AllocationDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-semibold" data-testid="text-page-title">
-              Allocation #{allocation.id}
+              Allocation #{allocation.id} {isIncoming && "(Incoming)"}
             </h1>
             <p className="text-sm text-muted-foreground">
               Created on {formatDate(allocation.createdAt)}
@@ -113,13 +117,30 @@ export default function AllocationDetail() {
             </CardContent>
           </Card>
 
-          {/* Recipient Information Card */}
+          {/* Recipient/Sender Information Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Recipient Information</CardTitle>
+              <CardTitle className="text-lg">
+                {isIncoming ? "Sender Information" : "Recipient Information"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isPracticeToP ? (
+              {isIncoming ? (
+                <>
+                  <div data-testid="section-sender-portfolio">
+                    <p className="text-sm text-muted-foreground">Sender Portfolio</p>
+                    <p className="font-medium" data-testid="text-sender-portfolio">
+                      {allocation.donorPortfolio || "Unknown"}
+                    </p>
+                  </div>
+                  <div data-testid="section-sender-practices">
+                    <p className="text-sm text-muted-foreground">Sender Practices</p>
+                    <p className="font-medium" data-testid="text-sender-practices-count">
+                      {allocation.donorPractices?.length || 0} practices
+                    </p>
+                  </div>
+                </>
+              ) : isPracticeToP ? (
                 <div data-testid="section-recipient-practices">
                   <p className="text-sm text-muted-foreground mb-2">Recipient Practices</p>
                   <p className="font-medium" data-testid="text-recipient-count">
@@ -138,10 +159,12 @@ export default function AllocationDetail() {
           </Card>
         </div>
 
-        {/* Donor Practices Table */}
+        {/* Donor/Sender Practices Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Donor Practices</CardTitle>
+            <CardTitle>
+              {isIncoming ? "Sender Practices" : "Donor Practices"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -155,7 +178,7 @@ export default function AllocationDetail() {
               <TableBody>
                 {allocation.donorPractices && allocation.donorPractices.length > 0 ? (
                   allocation.donorPractices.map((practice: any) => (
-                    <TableRow key={practice.id} data-testid={`row-donor-practice-${practice.id}`}>
+                    <TableRow key={practice.id} data-testid={`row-${isIncoming ? 'sender' : 'donor'}-practice-${practice.id}`}>
                       <TableCell className="font-mono">{practice.id}</TableCell>
                       <TableCell>{practice.name}</TableCell>
                       <TableCell className="text-right font-mono font-semibold">
@@ -166,7 +189,7 @@ export default function AllocationDetail() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center text-muted-foreground">
-                      No donor practices
+                      No {isIncoming ? "sender" : "donor"} practices
                     </TableCell>
                   </TableRow>
                 )}
@@ -176,7 +199,37 @@ export default function AllocationDetail() {
         </Card>
 
         {/* Recipient Practices/Portfolio Table */}
-        {isPracticeToP ? (
+        {isIncoming ? (
+          // For incoming allocations, show a distribute funds card
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribute Received Funds</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div data-testid="section-incoming-details">
+                  <p className="text-sm text-muted-foreground">
+                    These funds have been received in your portfolio's suspense account. 
+                    You can now allocate them to practices within your portfolio.
+                  </p>
+                </div>
+                <div data-testid="section-available-amount">
+                  <p className="text-sm text-muted-foreground">Available Amount</p>
+                  <p className="font-mono font-semibold text-lg" data-testid="text-available-amount">
+                    {formatCurrency(parseFloat(allocation.totalAmount))}
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setLocation("/allocations/new")}
+                  data-testid="button-distribute-funds"
+                  className="w-full md:w-auto"
+                >
+                  Distribute Funds to Practices
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : isPracticeToP ? (
           <Card>
             <CardHeader>
               <CardTitle>Recipient Practices</CardTitle>
