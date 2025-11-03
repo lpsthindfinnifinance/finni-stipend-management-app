@@ -157,10 +157,10 @@ export default function Allocations() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-semibold text-foreground mb-2">
-              Inter-PSM Allocations
+              Allocations
             </h1>
             <p className="text-muted-foreground">
-              Transfer stipend budget between PSMs and portfolios
+              Transfer stipend budget between Practices and Portfolios
             </p>
           </div>
           <div className="flex gap-3">
