@@ -78,13 +78,13 @@ export default function AllocationDetail() {
         </div>
 
         {/* Allocation Details Card */}
-        <Card className="max-w-md">
+        <Card>
             <CardHeader>
               <CardTitle className="text-lg">Allocation Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div data-testid="section-donor-psm">
-                <p className="text-sm text-muted-foreground">Donor PSM</p>
+                <p className="text-sm text-muted-foreground">Allocated by</p>
                 <p className="font-medium" data-testid="text-donor-psm">
                   {allocation.donorPsmName}
                 </p>
