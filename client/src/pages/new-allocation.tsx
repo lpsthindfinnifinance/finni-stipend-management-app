@@ -68,9 +68,10 @@ export default function NewAllocation() {
   });
 
   // Fetch all portfolios for recipient selection (inter-portfolio)
+  // Always fetch to have data ready when user switches to inter-portfolio mode
   const { data: allPortfolios } = useQuery({
     queryKey: ["/api/portfolios"],
-    enabled: isAuthenticated && allocationType === "inter_portfolio",
+    enabled: isAuthenticated,
   });
 
   const submitMutation = useMutation({
