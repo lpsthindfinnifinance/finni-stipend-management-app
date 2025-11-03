@@ -69,8 +69,9 @@ export default function NewAllocation() {
 
   // Fetch all portfolios for recipient selection (inter-portfolio)
   // Always fetch to have data ready when user switches to inter-portfolio mode
+  // Use lightweight /list endpoint for dropdown (avoids expensive summary calculations)
   const { data: allPortfolios } = useQuery({
-    queryKey: ["/api/portfolios"],
+    queryKey: ["/api/portfolios/list"],
     enabled: isAuthenticated,
   });
 

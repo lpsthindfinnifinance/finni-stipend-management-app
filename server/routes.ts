@@ -144,6 +144,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PORTFOLIO ROUTES
   // ============================================================================
 
+  // Lightweight endpoint for dropdowns - returns only basic portfolio info
+  app.get('/api/portfolios/list', isAuthenticated, async (req, res) => {
+    try {
+      const portfolios = await storage.getPortfolios();
+      res.json(portfolios);
+    } catch (error) {
+      console.error("Error fetching portfolio list:", error);
+      res.status(500).json({ message: "Failed to fetch portfolio list" });
+    }
+  });
+
+  // Full endpoint with summaries for dashboard/analytics
   app.get('/api/portfolios', isAuthenticated, async (req, res) => {
     try {
       const portfolios = await storage.getPortfolioSummaries();
