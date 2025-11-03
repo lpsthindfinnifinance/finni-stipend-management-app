@@ -321,18 +321,69 @@ export default function AllocationInDetail() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribute Received Funds</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div data-testid="section-incoming-details">
-                <p className="text-sm text-muted-foreground">
-                  These funds have been received in your portfolio's suspense account. 
-                  Allocate them to practices within your portfolio below.
-                </p>
+        {allocation.status === "completed" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribution Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div data-testid="section-distribution-completed">
+                  <p className="text-sm text-muted-foreground">
+                    This allocation has been distributed. The funds were allocated from the portfolio suspense account to the practices below.
+                  </p>
+                </div>
+                
+                <div data-testid="section-completion-date">
+                  <p className="text-sm text-muted-foreground">Distribution Date</p>
+                  <p className="font-medium" data-testid="text-completion-date">
+                    {allocation.completedAt ? formatDate(allocation.completedAt) : "N/A"}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Distributed Practices</Label>
+                  {allocation.recipientPractices && allocation.recipientPractices.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-medium">Practice ID</TableHead>
+                          <TableHead className="font-medium">Practice Name</TableHead>
+                          <TableHead className="font-medium text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allocation.recipientPractices.map((practice: any) => (
+                          <TableRow key={practice.id} data-testid={`row-recipient-practice-${practice.id}`}>
+                            <TableCell className="font-mono">{practice.id}</TableCell>
+                            <TableCell>{practice.name}</TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              {formatCurrency(practice.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No distribution details available</p>
+                  )}
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribute Received Funds</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div data-testid="section-incoming-details">
+                  <p className="text-sm text-muted-foreground">
+                    These funds have been received in your portfolio's suspense account. 
+                    Allocate them to practices within your portfolio below.
+                  </p>
+                </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div data-testid="section-available-amount">
@@ -428,6 +479,8 @@ export default function AllocationInDetail() {
             </div>
           </CardContent>
         </Card>
+        )}
+        
       </div>
     </div>
   );

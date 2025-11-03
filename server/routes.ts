@@ -1499,7 +1499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create allocation record
-      const allocation = await storage.createInterPsmAllocation({
+      const allocationData: any = {
         allocationType,
         donorPsmId,
         recipientPsmId: null, // DEPRECATED - no longer used
@@ -1507,7 +1507,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recipientPortfolioId: allocationType === "inter_portfolio" ? recipientPortfolioId : null,
         totalAmount: totalAmount.toString(),
         donorPracticeIds,
-      });
+      };
+      const allocation = await storage.createInterPsmAllocation(allocationData);
 
       // Create ledger entries for donor practices (debit/allocation_out)
       const currentPeriod = await storage.getCurrentPayPeriod();
@@ -1534,6 +1535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await sendSlackNotification(
           `💸 Inter-Portfolio Allocation #${allocation.id}: $${totalAmount} transferred to Portfolio ${recipientPortfolioId} Suspense (${donorPracticeIds.length} donor practices)`
         );
+        
+        // Inter-portfolio allocations remain "pending" until distributed by Lead PSM
       } else {
         // practice_to_practice: create allocation_in entries for recipient practices
         for (const recipientPractice of recipientPractices) {
@@ -1552,10 +1555,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await sendSlackNotification(
           `💸 Practice-to-Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`
         );
+        
+        // Mark practice-to-practice allocations as completed immediately
+        await storage.updateAllocationStatus(allocation.id, "completed");
       }
-
-      // Update allocation status to completed
-      await storage.updateAllocationStatus(allocation.id, "completed");
 
       res.json(allocation);
     } catch (error) {
