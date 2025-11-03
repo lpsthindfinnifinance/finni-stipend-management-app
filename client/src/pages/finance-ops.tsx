@@ -268,7 +268,7 @@ export default function FinanceOps() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="max-w-[90rem] mx-auto p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-semibold text-foreground mb-2">
             Finance Operations
@@ -278,10 +278,10 @@ export default function FinanceOps() {
           </p>
         </div>
 
-        <Tabs defaultValue="periods" className="w-full">
+        <Tabs defaultValue="stipends" className="w-full">
           <TabsList>
-            <TabsTrigger value="periods" data-testid="tab-pay-periods">Pay Periods</TabsTrigger>
             <TabsTrigger value="stipends" data-testid="tab-stipends">All Stipends</TabsTrigger>
+            <TabsTrigger value="periods" data-testid="tab-pay-periods">Pay Periods</TabsTrigger>
           </TabsList>
 
           <TabsContent value="periods" className="space-y-6">
