@@ -188,8 +188,11 @@ export default function FinanceOps() {
   const handleExportStipends = () => {
     const filteredStipends = allStipendRequests.filter((req: any) => {
       const periodMatch = selectedPayPeriod === "all" || 
-        (req.effectivePayPeriod && req.effectivePayPeriod <= parseInt(selectedPayPeriod) && 
-         (!req.recurringEndPeriod || req.recurringEndPeriod >= parseInt(selectedPayPeriod)));
+        (req.requestType === "one_time"
+          ? req.effectivePayPeriod === parseInt(selectedPayPeriod)
+          : (req.effectivePayPeriod <= parseInt(selectedPayPeriod) && 
+             (!req.recurringEndPeriod || req.recurringEndPeriod >= parseInt(selectedPayPeriod)))
+        );
       const practiceMatch = selectedPractice === "all" || req.practiceId === selectedPractice;
       return periodMatch && practiceMatch;
     });
@@ -260,8 +263,11 @@ export default function FinanceOps() {
 
   const filteredStipends = allStipendRequests.filter((req: any) => {
     const periodMatch = selectedPayPeriod === "all" || 
-      (req.effectivePayPeriod && req.effectivePayPeriod <= parseInt(selectedPayPeriod) && 
-       (!req.recurringEndPeriod || req.recurringEndPeriod >= parseInt(selectedPayPeriod)));
+      (req.requestType === "one_time"
+        ? req.effectivePayPeriod === parseInt(selectedPayPeriod)
+        : (req.effectivePayPeriod <= parseInt(selectedPayPeriod) && 
+           (!req.recurringEndPeriod || req.recurringEndPeriod >= parseInt(selectedPayPeriod)))
+      );
     const practiceMatch = selectedPractice === "all" || req.practiceId === selectedPractice;
     return periodMatch && practiceMatch;
   });
