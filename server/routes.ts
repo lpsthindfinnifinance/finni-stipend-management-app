@@ -1255,6 +1255,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Distribute incoming inter-portfolio allocation from suspense to practices
+  app.post('/api/allocations/:id/distribute', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const allocationId = parseInt(req.params.id);
+      const { practices } = req.body;
+
+      if (isNaN(allocationId)) {
+        return res.status(400).json({ message: "Invalid allocation ID" });
+      }
+
+      if (!practices || !Array.isArray(practices) || practices.length === 0) {
+        return res.status(400).json({ message: "Practices array is required" });
+      }
+
+      // Get user details
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get allocation details
+      const allocation = await storage.getInterPsmAllocationById(allocationId);
+      if (!allocation) {
+        return res.status(404).json({ message: "Allocation not found" });
+      }
+
+      // Verify this is an incoming inter-portfolio allocation for the user's portfolio
+      if (allocation.allocationType !== "inter_portfolio") {
+        return res.status(400).json({ message: "This endpoint is only for inter-portfolio allocations" });
+      }
+
+      if (allocation.recipientPortfolioId !== user.portfolioId) {
+        return res.status(403).json({ message: "You can only distribute allocations sent to your portfolio" });
+      }
+
+      if (allocation.status === "completed") {
+        return res.status(400).json({ message: "This allocation has already been distributed" });
+      }
+
+      // Validate total amount
+      const totalAmount = practices.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+      const expectedAmount = parseFloat(allocation.totalAmount);
+
+      if (Math.abs(totalAmount - expectedAmount) > 0.01) {
+        return res.status(400).json({ 
+          message: `Total distribution amount ($${totalAmount.toFixed(2)}) must equal allocation amount ($${expectedAmount.toFixed(2)})` 
+        });
+      }
+
+      // Get current pay period
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      if (!currentPeriod) {
+        return res.status(400).json({ message: "No active pay period found" });
+      }
+
+      // Create ledger entries
+      // 1. Suspense out (negative amount from portfolio suspense)
+      await storage.createLedgerEntry({
+        practiceId: `${user.portfolioId}-SUSPENSE`,
+        payPeriod: currentPeriod.id,
+        transactionType: "suspense_out",
+        amount: (-expectedAmount).toString(),
+        description: `Distributed from suspense to practices (Allocation #${allocationId})`,
+        relatedAllocationId: allocationId,
+      });
+
+      // 2. Allocation in for each practice (positive amounts)
+      for (const practice of practices) {
+        await storage.createLedgerEntry({
+          practiceId: practice.practiceId,
+          payPeriod: currentPeriod.id,
+          transactionType: "allocation_in",
+          amount: practice.amount.toString(),
+          description: `Received from ${user.portfolioId} suspense (Allocation #${allocationId})`,
+          relatedAllocationId: allocationId,
+        });
+      }
+
+      // Mark allocation as completed
+      await storage.updateAllocationStatus(allocationId, "completed");
+
+      res.json({ 
+        success: true, 
+        message: "Funds distributed successfully",
+        allocationId 
+      });
+    } catch (error) {
+      console.error("Error distributing allocation:", error);
+      res.status(500).json({ message: "Failed to distribute allocation" });
+    }
+  });
+
   app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
