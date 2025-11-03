@@ -67,7 +67,6 @@ export type User = typeof users.$inferSelect;
 export const portfolios = pgTable("portfolios", {
   id: varchar("id").primaryKey(), // G1, G2, G3, G4, G5
   name: varchar("name").notNull(),
-  suspenseBalance: decimal("suspense_balance", { precision: 12, scale: 2 }).notNull().default("0"), // Suspense account balance for inter-portfolio allocations
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
