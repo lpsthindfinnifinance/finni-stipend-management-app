@@ -928,11 +928,12 @@ export class DatabaseStorage implements IStorage {
     // Enrich allocations with donor PSM name, donor portfolio, and recipient portfolio info
     const enrichedAllocations = await Promise.all(
       allocations.map(async (allocation) => {
-        // Get donor PSM name
+        // Get donor PSM name and portfolio
         const [donorPsm] = await db
           .select({ 
             firstName: users.firstName, 
-            lastName: users.lastName 
+            lastName: users.lastName,
+            portfolioId: users.portfolioId
           })
           .from(users)
           .where(eq(users.id, allocation.donorPsmId))
@@ -942,9 +943,12 @@ export class DatabaseStorage implements IStorage {
           ? `${donorPsm.firstName || ''} ${donorPsm.lastName || ''}`.trim() || allocation.donorPsmId
           : allocation.donorPsmId;
 
-        // Get donor portfolio by querying the first donor practice's portfolio
+        // Get donor portfolio - try from donor practices first, fall back to donor PSM's portfolio
         let donorPortfolio = null;
+        let donorPortfolioId = null;
+        
         if (allocation.donorPracticeIds && allocation.donorPracticeIds.length > 0) {
+          // For practice-to-practice allocations, get portfolio from first donor practice
           const [firstDonorPractice] = await db
             .select()
             .from(practices)
@@ -952,14 +956,22 @@ export class DatabaseStorage implements IStorage {
             .limit(1);
           
           if (firstDonorPractice && firstDonorPractice.portfolioId) {
-            const [portfolio] = await db
-              .select()
-              .from(portfolios)
-              .where(eq(portfolios.id, firstDonorPractice.portfolioId))
-              .limit(1);
-            
-            donorPortfolio = portfolio?.name || null;
+            donorPortfolioId = firstDonorPractice.portfolioId;
           }
+        } else {
+          // For inter-portfolio allocations, use donor PSM's portfolio
+          donorPortfolioId = donorPsm?.portfolioId || null;
+        }
+        
+        // Fetch portfolio name if we have an ID
+        if (donorPortfolioId) {
+          const [portfolio] = await db
+            .select()
+            .from(portfolios)
+            .where(eq(portfolios.id, donorPortfolioId))
+            .limit(1);
+          
+          donorPortfolio = portfolio?.name || null;
         }
 
         // Get recipient portfolio name (for inter-portfolio allocations)
@@ -978,6 +990,7 @@ export class DatabaseStorage implements IStorage {
           ...allocation,
           donorPsmName,
           donorPortfolio,
+          donorPortfolioId,
           recipientPortfolio,
         };
       })

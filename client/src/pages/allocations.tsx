@@ -415,13 +415,13 @@ export default function Allocations() {
                         {(allocations as any[])
                           .filter((a: any) => 
                             a.allocationType === "inter_portfolio" && 
-                            a.donorPsmId === user?.id
+                            a.donorPortfolioId === user?.portfolioId
                           )
                           .map((allocation: any) => (
                             <TableRow 
                               key={allocation.id} 
                               className="cursor-pointer hover-elevate"
-                              onClick={() => setLocation(`/allocations/${allocation.id}`)}
+                              onClick={() => setLocation(`/allocations/out/${allocation.id}`)}
                               data-testid={`row-allocation-${allocation.id}`}
                             >
                               <TableCell className="font-mono">{allocation.id}</TableCell>
@@ -446,7 +446,7 @@ export default function Allocations() {
                         {(allocations as any[])
                           .filter((a: any) => 
                             a.allocationType === "inter_portfolio" && 
-                            a.donorPsmId === user?.id
+                            a.donorPortfolioId === user?.portfolioId
                           ).length === 0 && (
                           <TableRow>
                             <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
@@ -483,7 +483,7 @@ export default function Allocations() {
                             <TableRow 
                               key={allocation.id} 
                               className="cursor-pointer hover-elevate"
-                              onClick={() => setLocation(`/allocations/${allocation.id}`)}
+                              onClick={() => setLocation(`/allocations/in/${allocation.id}`)}
                               data-testid={`row-allocation-${allocation.id}`}
                             >
                               <TableCell className="font-mono">{allocation.id}</TableCell>

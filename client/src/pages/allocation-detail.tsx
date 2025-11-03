@@ -55,11 +55,7 @@ export default function AllocationDetail() {
 
   const distributeMutation = useMutation({
     mutationFn: async (data: { allocationId: string; practices: { practiceId: string; amount: number }[] }) => {
-      return await apiRequest(`/api/allocations/${data.allocationId}/distribute`, {
-        method: "POST",
-        body: JSON.stringify({ practices: data.practices }),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("POST", `/api/allocations/${data.allocationId}/distribute`, { practices: data.practices });
     },
     onSuccess: () => {
       toast({
