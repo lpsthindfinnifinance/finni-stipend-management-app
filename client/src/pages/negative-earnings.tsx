@@ -162,7 +162,7 @@ export default function NegativeEarnings() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold" data-testid="text-page-title">
           Negative Earnings Cap
@@ -255,22 +255,22 @@ export default function NegativeEarnings() {
       </div>
 
       {/* Practice Details Table */}
-      <Card>
+      <Card className="flex-1 flex flex-col overflow-hidden">
         <CardHeader>
           <CardTitle>Practice Details</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="max-h-[600px] overflow-auto">
+        <CardContent className="flex-1 overflow-hidden p-0">
+          <div className="h-full overflow-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
+              <TableHeader>
                 <TableRow>
-                  <TableHead>Practice Name</TableHead>
-                  <TableHead>Clinic Name</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead className="text-right">Negative Earnings Cap</TableHead>
-                  <TableHead className="text-right">Utilized</TableHead>
-                  <TableHead className="text-right">Available</TableHead>
-                  <TableHead className="text-right">Utilization %</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10">Practice Name</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10">Clinic Name</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10">Group</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10 text-right">Negative Earnings Cap</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10 text-right">Utilized</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10 text-right">Available</TableHead>
+                  <TableHead className="sticky top-0 bg-card z-10 text-right">Utilization %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
