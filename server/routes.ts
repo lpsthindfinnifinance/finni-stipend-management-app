@@ -516,8 +516,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use validated data (type assertion needed due to Zod refine chain)
       const validatedData = validationResult.data as any;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const request = await storage.createStipendRequest(validatedData);
       
+      // Get practice details for portfolio information
+      const practice = await storage.getPractice(validatedData.practiceId);
+      const portfolioName = practice?.portfolioId || 'Unknown';
+
       // Construct URL to the stipend request
       const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
         ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
@@ -526,13 +537,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : 'http://localhost:5000';
       const requestUrl = `${baseUrl}/stipend-requests/${request.id}`;
 
+      // Build pay period info
+      let payPeriodInfo = '';
+      if (validatedData.requestType === 'one-time') {
+        payPeriodInfo = `*Pay Period:* PP${validatedData.effectivePayPeriod || 'Current'}\n`;
+      } else if (validatedData.requestType === 'recurring') {
+        const endPeriod = validatedData.recurringEndPeriod || 26;
+        payPeriodInfo = `*Effective Pay Period:* PP${validatedData.effectivePayPeriod || 'Current'}\n` +
+                       `*Recurring Until:* PP${endPeriod}\n`;
+      }
+
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `🆕 *New Stipend Request Submitted*\n` +
         `*Request ID:* #${request.id}\n` +
+        `*Submitted by:* ${user.firstName} ${user.lastName}\n` +
+        `*Group:* ${portfolioName}\n` +
         `*Clinic ID:* ${validatedData.practiceId}\n` +
         `*Amount:* $${parseFloat(validatedData.amount).toFixed(2)}\n` +
         `*Description:* ${validatedData.stipendDescription}\n` +
+        payPeriodInfo +
         `*View Request:* ${requestUrl}`
       );
       
@@ -785,6 +809,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updated = await storage.updateStipendRequestStatus(requestId, newStatus, userId, comment);
       
+      // Get requestor details
+      const requestor = await storage.getUser(request.requestorId);
+      
+      // Get practice details for portfolio information
+      const practice = await storage.getPractice(request.practiceId);
+      const portfolioName = practice?.portfolioId || 'Unknown';
+
       // Construct URL to the stipend request
       const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
         ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
@@ -793,12 +824,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : 'http://localhost:5000';
       const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
 
+      // Build pay period info
+      let payPeriodInfo = '';
+      if (request.requestType === 'one_time') {
+        payPeriodInfo = `*Pay Period:* PP${request.effectivePayPeriod}\n`;
+      } else if (request.requestType === 'recurring') {
+        payPeriodInfo = `*Effective Pay Period:* PP${request.effectivePayPeriod}\n` +
+                       `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
+      }
+
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `✅ *Stipend Request Approved*\n` +
         `*Request ID:* #${requestId}\n` +
+        `*Submitted by:* ${requestor?.firstName} ${requestor?.lastName}\n` +
+        `*Group:* ${portfolioName}\n` +
         `*Clinic ID:* ${request.practiceId}\n` +
+        `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
+        payPeriodInfo +
         `*Approved by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*New Status:* ${newStatus}\n` +
         `*View Request:* ${requestUrl}`
@@ -830,6 +874,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.updateStipendRequestStatus(requestId, "rejected", userId, reason);
       
+      // Get requestor details
+      const requestor = await storage.getUser(request.requestorId);
+      
+      // Get practice details for portfolio information
+      const practice = await storage.getPractice(request.practiceId);
+      const portfolioName = practice?.portfolioId || 'Unknown';
+
       // Construct URL to the stipend request
       const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
         ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
@@ -838,12 +889,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : 'http://localhost:5000';
       const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
 
+      // Build pay period info
+      let payPeriodInfo = '';
+      if (request.requestType === 'one_time') {
+        payPeriodInfo = `*Pay Period:* PP${request.effectivePayPeriod}\n`;
+      } else if (request.requestType === 'recurring') {
+        payPeriodInfo = `*Effective Pay Period:* PP${request.effectivePayPeriod}\n` +
+                       `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
+      }
+
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `❌ *Stipend Request Rejected*\n` +
         `*Request ID:* #${requestId}\n` +
+        `*Submitted by:* ${requestor?.firstName} ${requestor?.lastName}\n` +
+        `*Group:* ${portfolioName}\n` +
         `*Clinic ID:* ${request.practiceId}\n` +
+        `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
+        payPeriodInfo +
         `*Rejected by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*Reason:* ${reason || "No reason provided"}\n` +
         `*View Request:* ${requestUrl}`
@@ -955,6 +1019,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.markPeriodAsPaid(requestId, payPeriod);
 
+      // Get requestor details
+      const requestor = await storage.getUser(request.requestorId);
+      
+      // Get practice details for portfolio information
+      const practice = await storage.getPractice(request.practiceId);
+      const portfolioName = practice?.portfolioId || 'Unknown';
+
       // Construct URL to the stipend request
       const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
         ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
@@ -967,7 +1038,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await sendSlackNotification(
         `✅ *Stipend Request #${requestId} Marked as Paid*\n` +
         `*Pay Period:* PP${payPeriod}\n` +
+        `*Submitted by:* ${requestor?.firstName} ${requestor?.lastName}\n` +
+        `*Group:* ${portfolioName}\n` +
         `*Clinic ID:* ${request.practiceId}\n` +
+        `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         `*Marked by:* ${user.firstName} ${user.lastName}\n` +
         `*View Request:* ${requestUrl}`
