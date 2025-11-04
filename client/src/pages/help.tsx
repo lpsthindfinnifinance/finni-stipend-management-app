@@ -17,8 +17,25 @@ import {
   Download,
   Upload
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Help() {
+  const { role } = useAuth();
+
+  const availableTabs = [
+    { value: "overview", label: "Overview", roles: ["PSM", "Lead PSM", "Finance", "Admin"] },
+    { value: "psm", label: "PSM", roles: ["PSM", "Lead PSM", "Finance", "Admin"] },
+    { value: "lead-psm", label: "Lead PSM", roles: ["Lead PSM", "Finance", "Admin"] },
+    { value: "finance", label: "Finance", roles: ["Finance", "Admin"] },
+    { value: "admin", label: "Admin", roles: ["Admin"] },
+  ];
+
+  const visibleTabs = availableTabs.filter(tab => role && tab.roles.includes(role));
+  const gridCols = visibleTabs.length === 1 ? "grid-cols-1" : 
+                   visibleTabs.length === 2 ? "grid-cols-2" : 
+                   visibleTabs.length === 3 ? "grid-cols-3" : 
+                   visibleTabs.length === 4 ? "grid-cols-4" : "grid-cols-5";
+
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-8">
@@ -31,16 +48,17 @@ export default function Help() {
         </p>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-          <TabsTrigger value="psm" data-testid="tab-psm">PSM</TabsTrigger>
-          <TabsTrigger value="lead-psm" data-testid="tab-lead-psm">Lead PSM</TabsTrigger>
-          <TabsTrigger value="finance" data-testid="tab-finance">Finance</TabsTrigger>
-          <TabsTrigger value="admin" data-testid="tab-admin">Admin</TabsTrigger>
+      <Tabs defaultValue={visibleTabs[0]?.value || "overview"} className="space-y-6">
+        <TabsList className={`grid w-full ${gridCols}`}>
+          {visibleTabs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} data-testid={`tab-${tab.value}`}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* Overview Tab */}
+        {/* Overview Tab - Available to all roles */}
+        {role && ["PSM", "Lead PSM", "Finance", "Admin"].includes(role) && (
         <TabsContent value="overview" className="space-y-6">
           <Card>
             <CardHeader>
@@ -113,8 +131,10 @@ export default function Help() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
-        {/* PSM Tab */}
+        {/* PSM Tab - Available to PSM, Lead PSM, Finance, Admin */}
+        {role && ["PSM", "Lead PSM", "Finance", "Admin"].includes(role) && (
         <TabsContent value="psm" className="space-y-6">
           <Card>
             <CardHeader>
@@ -229,8 +249,10 @@ export default function Help() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
-        {/* Lead PSM Tab */}
+        {/* Lead PSM Tab - Available to Lead PSM, Finance, Admin */}
+        {role && ["Lead PSM", "Finance", "Admin"].includes(role) && (
         <TabsContent value="lead-psm" className="space-y-6">
           <Card>
             <CardHeader>
@@ -333,8 +355,10 @@ export default function Help() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
-        {/* Finance Tab */}
+        {/* Finance Tab - Available to Finance, Admin */}
+        {role && ["Finance", "Admin"].includes(role) && (
         <TabsContent value="finance" className="space-y-6">
           <Card>
             <CardHeader>
@@ -548,8 +572,10 @@ export default function Help() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
-        {/* Admin Tab */}
+        {/* Admin Tab - Available to Admin only */}
+        {role && role === "Admin" && (
         <TabsContent value="admin" className="space-y-6">
           <Card>
             <CardHeader>
@@ -659,6 +685,7 @@ export default function Help() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
       </Tabs>
 
       {/* Quick Reference */}
