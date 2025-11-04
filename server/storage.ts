@@ -771,6 +771,7 @@ export class DatabaseStorage implements IStorage {
 
       let status = 'pending'; // Default if no ledger entry found
       let ledgerEntry = null;
+      let periodAmount = Number(request.amount); // Default to request amount
 
       if (ledgerEntries.length > 0) {
         // Find the most recent relevant entry (paid takes precedence over committed)
@@ -780,6 +781,7 @@ export class DatabaseStorage implements IStorage {
         if (paidEntry) {
           status = 'paid';
           ledgerEntry = paidEntry;
+          periodAmount = Math.abs(Number(paidEntry.amount)); // Use ledger entry amount
         } else if (committedEntries.length > 0) {
           // Sum all committed entries to account for cancellations (negative amounts)
           const committedSum = committedEntries.reduce((sum, entry) => sum + Number(entry.amount), 0);
@@ -792,13 +794,14 @@ export class DatabaseStorage implements IStorage {
           } else {
             status = 'committed';
             ledgerEntry = committedEntries[0]; // Use first entry for reference
+            periodAmount = Math.abs(committedSum); // Use actual committed amount from ledger
           }
         }
       }
 
       breakdown.push({
         payPeriod: period,
-        amount: request.amount,
+        amount: periodAmount,
         status: status,
         ledgerEntryId: ledgerEntry?.id,
       });
