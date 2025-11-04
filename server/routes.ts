@@ -123,8 +123,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
       
-      // For testing purposes, allow any user to switch to any role
-      // In production, you'd want to restrict this
+      // Check if user has this role assigned
+      const userRoles = currentUser.roles || [currentUser.role];
+      if (!userRoles.includes(role)) {
+        return res.status(403).json({ message: "You are not authorized to switch to this role" });
+      }
+      
       const user = await storage.updateUserRole(currentUser.id, role, undefined);
       res.json(user);
     } catch (error) {

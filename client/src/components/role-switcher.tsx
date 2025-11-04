@@ -21,7 +21,7 @@ const ROLES = [
 export function RoleSwitcher() {
   const { toast } = useToast();
   
-  const { data: user } = useQuery<{ id: string; role: string; email: string }>({
+  const { data: user } = useQuery<{ id: string; role: string; roles: string[]; email: string }>({
     queryKey: ["/api/auth/user"],
   });
 
@@ -51,6 +51,13 @@ export function RoleSwitcher() {
   if (!user) return null;
 
   const currentRole = ROLES.find(r => r.value === user.role);
+  
+  // Filter roles to only show roles assigned to the user
+  const assignedRoles = user.roles || [user.role];
+  const availableRoles = ROLES.filter(role => assignedRoles.includes(role.value));
+  
+  // Don't show the switcher if user has only one role
+  if (availableRoles.length <= 1) return null;
 
   return (
     <div className="flex items-center gap-2">
@@ -72,7 +79,7 @@ export function RoleSwitcher() {
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {ROLES.map((role) => (
+          {availableRoles.map((role) => (
             <SelectItem 
               key={role.value} 
               value={role.value}

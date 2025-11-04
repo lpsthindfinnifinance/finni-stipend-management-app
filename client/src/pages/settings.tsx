@@ -64,6 +64,7 @@ export default function Settings() {
   
   // State for user form fields
   const [userRole, setUserRole] = useState<string>("PSM");
+  const [userRoles, setUserRoles] = useState<string[]>(["PSM"]);
   const [userPortfolio, setUserPortfolio] = useState<string>("none");
   const [practicePortfolio, setPracticePortfolio] = useState<string>("");
 
@@ -247,7 +248,7 @@ export default function Settings() {
 
   // User mutations
   const createUserMutation = useMutation({
-    mutationFn: (data: { email: string; firstName?: string; lastName?: string; role: string; portfolioId?: string }) =>
+    mutationFn: (data: { email: string; firstName?: string; lastName?: string; role: string; roles: string[]; portfolioId?: string }) =>
       apiRequest("POST", "/api/settings/users", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/users"] });
@@ -265,7 +266,7 @@ export default function Settings() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; email?: string; firstName?: string; lastName?: string; role?: string; portfolioId?: string }) =>
+    mutationFn: ({ id, ...data }: { id: string; email?: string; firstName?: string; lastName?: string; role?: string; roles?: string[]; portfolioId?: string }) =>
       apiRequest("PATCH", `/api/settings/users/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/users"] });
@@ -388,11 +389,16 @@ export default function Settings() {
   const handleUserSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    // Ensure primary role is always in roles array
+    const finalRoles = userRoles.includes(userRole) ? userRoles : [userRole, ...userRoles];
+    
     const data = {
       email: formData.get("email") as string,
       firstName: formData.get("firstName") as string,
       lastName: formData.get("lastName") as string,
       role: userRole,
+      roles: finalRoles,
       portfolioId: userPortfolio === "none" ? undefined : userPortfolio,
     };
 
@@ -631,6 +637,7 @@ export default function Settings() {
                   onClick={() => {
                     setEditingUser(null);
                     setUserRole("PSM");
+                    setUserRoles(["PSM"]);
                     setUserPortfolio("none");
                     setUserDialogOpen(true);
                   }}
@@ -692,6 +699,7 @@ export default function Settings() {
                                 onClick={() => {
                                   setEditingUser(user);
                                   setUserRole(user.role);
+                                  setUserRoles((user as any).roles || [user.role]);
                                   setUserPortfolio(user.portfolioId || "none");
                                   setUserDialogOpen(true);
                                 }}
@@ -919,10 +927,16 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="user-role">Role</Label>
+                  <Label htmlFor="user-role">Primary Role (Active Role)</Label>
                   <Select 
                     value={userRole}
-                    onValueChange={setUserRole}
+                    onValueChange={(value) => {
+                      setUserRole(value);
+                      // Ensure primary role is in roles array
+                      if (!userRoles.includes(value)) {
+                        setUserRoles([...userRoles, value]);
+                      }
+                    }}
                     required
                   >
                     <SelectTrigger id="user-role" data-testid="select-user-role">
@@ -935,6 +949,36 @@ export default function Settings() {
                       <SelectItem value="Admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Additional Roles (User can switch between these)</Label>
+                  <div className="space-y-2">
+                    {["PSM", "Lead PSM", "Finance", "Admin"].map((role) => (
+                      <div key={role} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`role-${role}`}
+                          checked={userRoles.includes(role)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setUserRoles([...userRoles, role]);
+                            } else {
+                              // Don't allow unchecking the primary role
+                              if (role !== userRole) {
+                                setUserRoles(userRoles.filter(r => r !== role));
+                              }
+                            }
+                          }}
+                          disabled={role === userRole}
+                          className="h-4 w-4"
+                          data-testid={`checkbox-role-${role.toLowerCase().replace(' ', '-')}`}
+                        />
+                        <Label htmlFor={`role-${role}`} className="font-normal cursor-pointer">
+                          {role} {role === userRole && "(Primary)"}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="user-portfolio">Portfolio (PSM only)</Label>

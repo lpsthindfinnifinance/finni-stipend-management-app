@@ -36,7 +36,8 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("PSM"), // PSM, Lead PSM, Finance, Admin
+  role: varchar("role").notNull().default("PSM"), // Current active role
+  roles: text("roles").array().notNull().default(sql`ARRAY['PSM']::text[]`), // All assigned roles
   portfolioId: varchar("portfolio_id"), // G1-G5, null for Finance and Admin roles
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -50,6 +51,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 }).extend({
   email: z.string().email("Invalid email address"),
   role: z.enum(["PSM", "Lead PSM", "Finance", "Admin"], { required_error: "Role is required" }),
+  roles: z.array(z.enum(["PSM", "Lead PSM", "Finance", "Admin"])).min(1, "At least one role is required").default(["PSM"]),
   portfolioId: z.string().nullable().optional(),
 });
 
