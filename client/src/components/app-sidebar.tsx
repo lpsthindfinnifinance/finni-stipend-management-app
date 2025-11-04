@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   TrendingDown,
   FilePlus,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -126,43 +127,58 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-{(role === "Finance" || role === "Admin") && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wide px-3">
-              System
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === "/finance-ops"}
-                    data-testid="nav-finance-ops"
-                    tooltip="Finance Ops"
-                  >
-                    <a href="/finance-ops" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
-                      <Calendar className="h-4 w-4 shrink-0" />
-                      {state === "expanded" && <span className="truncate">Finance Ops</span>}
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === "/settings"}
-                    data-testid="nav-settings"
-                    tooltip="Settings"
-                  >
-                    <a href="/settings" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
-                      <Settings className="h-4 w-4 shrink-0" />
-                      {state === "expanded" && <span className="truncate">Settings</span>}
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+<SidebarGroup>
+          <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wide px-3">
+            System
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {(role === "Finance" || role === "Admin") && (
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/finance-ops"}
+                      data-testid="nav-finance-ops"
+                      tooltip="Finance Ops"
+                    >
+                      <a href="/finance-ops" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
+                        <Calendar className="h-4 w-4 shrink-0" />
+                        {state === "expanded" && <span className="truncate">Finance Ops</span>}
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/settings"}
+                      data-testid="nav-settings"
+                      tooltip="Settings"
+                    >
+                      <a href="/settings" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
+                        <Settings className="h-4 w-4 shrink-0" />
+                        {state === "expanded" && <span className="truncate">Settings</span>}
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
+              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/help"}
+                  data-testid="nav-help"
+                  tooltip="Help"
+                >
+                  <a href="/help" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
+                    <BookOpen className="h-4 w-4 shrink-0" />
+                    {state === "expanded" && <span className="truncate">Help</span>}
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
         {state === "collapsed" ? (

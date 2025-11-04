@@ -26,6 +26,7 @@ import PayPeriods from "@/pages/pay-periods";
 import FinanceOps from "@/pages/finance-ops";
 import NegativeEarnings from "@/pages/negative-earnings";
 import Settings from "@/pages/settings";
+import Help from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -52,6 +53,7 @@ function Router() {
           <Route path="/finance-ops" component={FinanceOps} />
           <Route path="/negative-earnings" component={NegativeEarnings} />
           <Route path="/settings" component={Settings} />
+          <Route path="/help" component={Help} />
         </>
       )}
       <Route component={NotFound} />
