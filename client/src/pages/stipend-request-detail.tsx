@@ -315,6 +315,8 @@ export default function StipendRequestDetail() {
 
   const canDelete = () => {
     if (!request || !user) return false;
+    // Only Admin and PSM roles can delete
+    if (role !== "Admin" && role !== "PSM") return false;
     // Only the requestor can delete their own request
     if (request.requestorId !== user.id) return false;
     // Can only delete if status is pending_psm or pending_lead_psm
