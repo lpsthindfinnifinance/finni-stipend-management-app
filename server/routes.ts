@@ -257,6 +257,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
+      // Sort by portfolio (G1, G2, G3, G4, G5) then by practice ID
+      enrichedPractices.sort((a, b) => {
+        // First sort by portfolio
+        if (a.portfolioId !== b.portfolioId) {
+          return a.portfolioId.localeCompare(b.portfolioId);
+        }
+        // Then sort by practice ID within same portfolio
+        return a.id.localeCompare(b.id);
+      });
+      
       res.json(enrichedPractices);
     } catch (error) {
       console.error("Error fetching practices:", error);
