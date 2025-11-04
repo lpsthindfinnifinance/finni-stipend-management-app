@@ -416,6 +416,28 @@ export default function Settings() {
     }
   };
 
+  const deleteSlackMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/settings/slack/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Slack webhook deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/slack"] });
+      setDeleteDialogOpen(false);
+      setDeletingItem(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete webhook",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDelete = () => {
     if (!deletingItem) return;
     
@@ -428,6 +450,9 @@ export default function Settings() {
         break;
       case "user":
         deleteUserMutation.mutate(deletingItem.id);
+        break;
+      case "slack":
+        deleteSlackMutation.mutate(deletingItem.id);
         break;
     }
   };
@@ -1291,7 +1316,8 @@ export default function Settings() {
                 disabled={
                   deletePortfolioMutation.isPending || 
                   deletePracticeMutation.isPending || 
-                  deleteUserMutation.isPending
+                  deleteUserMutation.isPending ||
+                  deleteSlackMutation.isPending
                 }
                 data-testid="button-confirm-delete"
               >
