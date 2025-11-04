@@ -9,6 +9,7 @@ import {
   decimal,
   text,
   unique,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -37,6 +38,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("PSM"), // PSM, Lead PSM, Finance, Admin
   portfolioId: varchar("portfolio_id"), // G1-G5, null for Finance and Admin roles
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -67,6 +69,7 @@ export type User = typeof users.$inferSelect;
 export const portfolios = pgTable("portfolios", {
   id: varchar("id").primaryKey(), // G1, G2, G3, G4, G5
   name: varchar("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -95,6 +98,7 @@ export const practices = pgTable("practices", {
   id: varchar("id").primaryKey(),
   name: varchar("name").notNull(),
   portfolioId: varchar("portfolio_id").notNull(), // Current portfolio assignment
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
