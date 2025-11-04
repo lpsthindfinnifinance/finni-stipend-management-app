@@ -78,6 +78,12 @@ export default function FinanceOps() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasSetDefaultPeriod = useRef(false);
   
+  // Opening Balance import states
+  const [showOpeningBalanceDialog, setShowOpeningBalanceDialog] = useState(false);
+  const [openingBalanceCsvContent, setOpeningBalanceCsvContent] = useState("");
+  const [openingBalanceCsvFileName, setOpeningBalanceCsvFileName] = useState("");
+  const openingBalanceFileInputRef = useRef<HTMLInputElement>(null);
+  
   // Filters for stipend requests table
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<string>("all");
   const [selectedPractice, setSelectedPractice] = useState<string>("all");
@@ -192,6 +198,31 @@ export default function FinanceOps() {
     },
   });
 
+  const openingBalanceImportMutation = useMutation({
+    mutationFn: async (csvData: string) => {
+      const response = await apiRequest("POST", "/api/opening-balance/import", { csvData });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Opening Balance Import Successful",
+        description: `${data.created} opening balance entries imported. ${data.skipped > 0 ? `${data.skipped} entries skipped.` : ''}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setShowOpeningBalanceDialog(false);
+      setOpeningBalanceCsvContent("");
+      setOpeningBalanceCsvFileName("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Opening Balance Import Failed",
+        description: error.message || "Failed to import opening balance data",
+        variant: "destructive",
+      });
+    },
+  });
+
   const setCurrentMutation = useMutation({
     mutationFn: async (periodId: number) => {
       return await apiRequest("POST", `/api/pay-periods/${periodId}/set-current`, {});
@@ -271,6 +302,40 @@ export default function FinanceOps() {
       return;
     }
     importMutation.mutate(csvContent);
+  };
+
+  const handleOpeningBalanceFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: "Invalid File",
+        description: "Please select a CSV file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setOpeningBalanceCsvContent(content);
+      setOpeningBalanceCsvFileName(file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleOpeningBalanceImport = () => {
+    if (!openingBalanceCsvContent) {
+      toast({
+        title: "No Data",
+        description: "Please select a CSV file first",
+        variant: "destructive",
+      });
+      return;
+    }
+    openingBalanceImportMutation.mutate(openingBalanceCsvContent);
   };
 
   const handleDownloadTemplate = async () => {
@@ -435,7 +500,7 @@ export default function FinanceOps() {
           </TabsList>
 
           <TabsContent value="periods" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -513,6 +578,35 @@ export default function FinanceOps() {
                     <Download className="h-4 w-4 mr-2" />
                     Download CSV Template
                   </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileDown className="h-5 w-5" />
+                    Import Opening Balance
+                  </CardTitle>
+                  <CardDescription>
+                    Upload historical stipend paid data
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    onClick={() => setShowOpeningBalanceDialog(true)}
+                    className="w-full"
+                    variant="secondary"
+                    data-testid="button-import-opening-balance"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Import Opening Balance CSV
+                  </Button>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      CSV format: ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid
+                    </AlertDescription>
+                  </Alert>
                 </CardContent>
               </Card>
             </div>
@@ -861,6 +955,83 @@ export default function FinanceOps() {
                 data-testid="button-confirm-import"
               >
                 {importMutation.isPending ? "Importing..." : "Import Data"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showOpeningBalanceDialog} onOpenChange={setShowOpeningBalanceDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Import Opening Balance</DialogTitle>
+              <DialogDescription>
+                Upload historical stipend paid data
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Import opening balance of stipend paid for each practice across pay periods.
+                  This data will be reflected negatively in ledgers and counted in all "Stipend Paid" and "Utilized" KPIs.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">CSV Format Requirements</Label>
+                <div className="bg-muted/50 p-3 rounded-md">
+                  <p className="text-xs font-mono mb-2">ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid</p>
+                  <p className="text-xs text-muted-foreground">Example:</p>
+                  <p className="text-xs font-mono text-muted-foreground">P001, 1, 5000.00</p>
+                  <p className="text-xs font-mono text-muted-foreground">P002, 1, 3200.50</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  ref={openingBalanceFileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleOpeningBalanceFileSelect}
+                  className="hidden"
+                  data-testid="input-opening-balance-csv-file"
+                />
+                <Button
+                  onClick={() => openingBalanceFileInputRef.current?.click()}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {openingBalanceCsvFileName || "Select CSV File"}
+                </Button>
+              </div>
+
+              {openingBalanceCsvFileName && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-600">
+                    File selected: {openingBalanceCsvFileName}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowOpeningBalanceDialog(false);
+                  setOpeningBalanceCsvContent("");
+                  setOpeningBalanceCsvFileName("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleOpeningBalanceImport}
+                disabled={!openingBalanceCsvContent || openingBalanceImportMutation.isPending}
+                data-testid="button-confirm-opening-balance-import"
+              >
+                {openingBalanceImportMutation.isPending ? "Importing..." : "Import Opening Balance"}
               </Button>
             </DialogFooter>
           </DialogContent>

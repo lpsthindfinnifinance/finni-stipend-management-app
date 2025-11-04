@@ -1458,6 +1458,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Opening Balance CSV Import
+  app.post('/api/opening-balance/import', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { csvData } = req.body;
+      
+      if (!csvData || typeof csvData !== 'string') {
+        return res.status(400).json({ message: "CSV data is required" });
+      }
+
+      // Parse CSV - expecting columns: ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid
+      const lines = csvData.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      
+      // Validate headers
+      const requiredHeaders = ['ClinicID', 'PayPeriodNumber', 'OpeningBalanceStipendPaid'];
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      
+      if (missingHeaders.length > 0) {
+        return res.status(400).json({ 
+          message: `Missing required columns: ${missingHeaders.join(', ')}. Expected columns: ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid` 
+        });
+      }
+
+      // Build header index map
+      const headerIndex: Record<string, number> = {};
+      headers.forEach((header, index) => {
+        headerIndex[header] = index;
+      });
+
+      const imports: any[] = [];
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const values = line.split(',').map(v => v.trim());
+        
+        const clinicId = values[headerIndex['ClinicID']];
+        const payPeriodNumber = values[headerIndex['PayPeriodNumber']];
+        const openingBalanceStipendPaid = values[headerIndex['OpeningBalanceStipendPaid']];
+
+        // Validate required fields
+        if (!clinicId) {
+          errors.push(`Line ${i + 1}: Missing ClinicID`);
+          continue;
+        }
+
+        if (!payPeriodNumber || isNaN(parseInt(payPeriodNumber))) {
+          errors.push(`Line ${i + 1}: Invalid PayPeriodNumber`);
+          continue;
+        }
+
+        const periodNum = parseInt(payPeriodNumber);
+        if (periodNum < 1 || periodNum > 26) {
+          errors.push(`Line ${i + 1}: PayPeriodNumber must be between 1 and 26`);
+          continue;
+        }
+
+        if (!openingBalanceStipendPaid || isNaN(parseFloat(openingBalanceStipendPaid))) {
+          errors.push(`Line ${i + 1}: Invalid OpeningBalanceStipendPaid`);
+          continue;
+        }
+
+        const amount = parseFloat(openingBalanceStipendPaid);
+        
+        imports.push({
+          clinicId,
+          payPeriodNumber: periodNum,
+          amount,
+        });
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          message: "CSV validation errors", 
+          errors: errors.slice(0, 10),
+        });
+      }
+
+      if (imports.length === 0) {
+        return res.status(400).json({ message: "No valid data to import" });
+      }
+
+      // Process imports and create ledger entries
+      let createdCount = 0;
+      let skippedCount = 0;
+      const skippedReasons: string[] = [];
+
+      for (const importData of imports) {
+        // Find practice by clinic ID
+        const practice = await storage.getPracticeById(importData.clinicId);
+        
+        if (!practice) {
+          skippedCount++;
+          skippedReasons.push(`Practice ${importData.clinicId} not found`);
+          continue;
+        }
+
+        // Create ledger entry for opening balance (negative like stipend_paid)
+        await storage.createLedgerEntry({
+          practiceId: practice.id,
+          payPeriod: importData.payPeriodNumber,
+          transactionType: 'opening_balance',
+          amount: (-Math.abs(importData.amount)).toString(), // Negative value
+          description: `Opening Balance - Stipend Paid (PP${importData.payPeriodNumber})`,
+        });
+        
+        createdCount++;
+      }
+
+      const warningMsg = skippedCount > 0 
+        ? ` ⚠️ WARNING: ${skippedCount} entries skipped. Reasons: ${skippedReasons.slice(0, 5).join(', ')}` 
+        : '';
+      
+      res.json({ 
+        message: `Successfully imported ${createdCount} opening balance entries${warningMsg}`,
+        created: createdCount,
+        skipped: skippedCount,
+      });
+    } catch (error) {
+      console.error("Error importing opening balance data:", error);
+      res.status(500).json({ message: "Failed to import opening balance data" });
+    }
+  });
+
   // ============================================================================
   // ALLOCATIONS ROUTES
   // ============================================================================
