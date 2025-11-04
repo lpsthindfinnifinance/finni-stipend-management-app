@@ -90,12 +90,14 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
         <SidebarHeader className="border-b border-sidebar-border p-4">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-              Finni Health
-            </h2>
-            <p className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Stipend Management</p>
-          </div>
+          {state === "expanded" && (
+            <div className="flex flex-col gap-2">
+              <h2 className="text-lg font-semibold text-sidebar-foreground">
+                Finni Health
+              </h2>
+              <p className="text-xs text-muted-foreground">Stipend Management</p>
+            </div>
+          )}
         </SidebarHeader>
         <SidebarContent>
         <SidebarGroup>
@@ -112,9 +114,9 @@ export function AppSidebar() {
                     data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     tooltip={item.title}
                   >
-                    <a href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                    <a href={item.url} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {state === "expanded" && <span className="truncate">{item.title}</span>}
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -137,9 +139,9 @@ export function AppSidebar() {
                     data-testid="nav-finance-ops"
                     tooltip="Finance Ops"
                   >
-                    <a href="/finance-ops">
-                      <Calendar className="h-4 w-4" />
-                      <span>Finance Ops</span>
+                    <a href="/finance-ops" className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 shrink-0" />
+                      {state === "expanded" && <span className="truncate">Finance Ops</span>}
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -150,9 +152,9 @@ export function AppSidebar() {
                     data-testid="nav-settings"
                     tooltip="Settings"
                   >
-                    <a href="/settings">
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
+                    <a href="/settings" className="flex items-center gap-2">
+                      <Settings className="h-4 w-4 shrink-0" />
+                      {state === "expanded" && <span className="truncate">Settings</span>}
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
