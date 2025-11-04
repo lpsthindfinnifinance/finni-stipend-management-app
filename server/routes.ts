@@ -518,9 +518,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = validationResult.data as any;
       const request = await storage.createStipendRequest(validatedData);
       
-      // Send Slack notification
+      // Construct URL to the stipend request
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const requestUrl = `${baseUrl}/stipend-requests/${request.id}`;
+
+      // Send Slack notification with enhanced details
       await sendSlackNotification(
-        `New stipend request submitted: $${validatedData.amount} for practice ${validatedData.practiceId}`
+        `🆕 *New Stipend Request Submitted*\n` +
+        `*Request ID:* #${request.id}\n` +
+        `*Clinic ID:* ${validatedData.practiceId}\n` +
+        `*Amount:* $${validatedData.amount.toFixed(2)}\n` +
+        `*Description:* ${validatedData.stipendDescription}\n` +
+        `*View Request:* ${requestUrl}`
       );
       
       res.json(request);
@@ -772,9 +785,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updated = await storage.updateStipendRequestStatus(requestId, newStatus, userId, comment);
       
-      // Send Slack notification
+      // Construct URL to the stipend request
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
+
+      // Send Slack notification with enhanced details
       await sendSlackNotification(
-        `Stipend request #${requestId} approved by ${user.role}. New status: ${newStatus}`
+        `✅ *Stipend Request Approved*\n` +
+        `*Request ID:* #${requestId}\n` +
+        `*Clinic ID:* ${request.practiceId}\n` +
+        `*Description:* ${request.stipendDescription}\n` +
+        `*Approved by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
+        `*New Status:* ${newStatus}\n` +
+        `*View Request:* ${requestUrl}`
       );
       
       res.json(updated);
@@ -788,13 +815,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const requestId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       const { reason } = req.body;
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get request details for Slack notification
+      const request = await storage.getStipendRequestById(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
       
       const updated = await storage.updateStipendRequestStatus(requestId, "rejected", userId, reason);
       
-      // Send Slack notification
+      // Construct URL to the stipend request
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
+
+      // Send Slack notification with enhanced details
       await sendSlackNotification(
-        `Stipend request #${requestId} rejected. Reason: ${reason || "No reason provided"}`
+        `❌ *Stipend Request Rejected*\n` +
+        `*Request ID:* #${requestId}\n` +
+        `*Clinic ID:* ${request.practiceId}\n` +
+        `*Description:* ${request.stipendDescription}\n` +
+        `*Rejected by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
+        `*Reason:* ${reason || "No reason provided"}\n` +
+        `*View Request:* ${requestUrl}`
       );
       
       res.json(updated);
