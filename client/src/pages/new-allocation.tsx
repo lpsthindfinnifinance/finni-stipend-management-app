@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
-import { ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useLocation } from "wouter";
@@ -51,7 +51,7 @@ export default function NewAllocation() {
   }, [isAuthenticated, authLoading, toast]);
 
   // Fetch donor PSM's practices (or all practices for Finance/Admin/Lead PSM)
-  const { data: myPractices } = useQuery({
+  const { data: myPractices, isLoading: isLoadingDonorPractices } = useQuery({
     queryKey: user?.role === "Finance" || user?.role === "Admin" || user?.role === "Lead PSM" ? ["/api/practices"] : ["/api/practices/my"],
     enabled: isAuthenticated,
   });
@@ -59,7 +59,7 @@ export default function NewAllocation() {
   // Fetch recipient practices:
   // - For PSM: practices in their portfolio
   // - For Lead PSM/Finance/Admin: all practices
-  const { data: portfolioPractices } = useQuery({
+  const { data: portfolioPractices, isLoading: isLoadingRecipientPractices } = useQuery({
     queryKey: user?.role === "Lead PSM" || user?.role === "Finance" || user?.role === "Admin" 
       ? ["/api/practices"] 
       : user?.portfolioId 
@@ -273,7 +273,11 @@ export default function NewAllocation() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {!myPractices || (myPractices as any[]).length === 0 ? (
+                {isLoadingDonorPractices ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" data-testid="spinner-loading-donor-practices" />
+                  </div>
+                ) : !myPractices || (myPractices as any[]).length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No practices available
                   </div>
@@ -355,7 +359,11 @@ export default function NewAllocation() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {!availableRecipientPractices || availableRecipientPractices.length === 0 ? (
+                  {isLoadingRecipientPractices ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" data-testid="spinner-loading-recipient-practices" />
+                    </div>
+                  ) : !availableRecipientPractices || availableRecipientPractices.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       {donorPractices.length > 0 
                         ? "No additional practices available (donor practices excluded)"
