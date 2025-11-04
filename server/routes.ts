@@ -34,17 +34,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Helper function to get user by email (preferred) or ID fallback
+  async function getUserFromClaims(claims: any): Promise<User | undefined> {
+    const userEmail = claims?.email;
+    const userId = claims?.sub;
+    
+    // Try to find user by email first (handles existing users with different IDs)
+    if (userEmail) {
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find(u => u.email === userEmail);
+      if (user) return user;
+    }
+    
+    // Fall back to userId
+    if (userId) {
+      return await storage.getUser(userId);
+    }
+    
+    return undefined;
+  }
+
   // Role-based middleware
   const isFinance = async (req: any, res: any, next: any) => {
     try {
-      const userId = req.user?.claims?.sub;
-      if (!userId) {
+      if (!req.user?.claims) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const user = await storage.getUser(userId);
+      const user = await getUserFromClaims(req.user.claims);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
       // Admin has all Finance permissions
-      if (user?.role !== "Finance" && user?.role !== "Admin") {
+      if (user.role !== "Finance" && user.role !== "Admin") {
         return res.status(403).json({ message: "Finance or Admin access required" });
       }
       
@@ -61,8 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromClaims(req.user.claims);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -72,10 +94,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/update-role', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const { role, portfolioId } = req.body;
+      const currentUser = await getUserFromClaims(req.user.claims);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
       
-      const user = await storage.updateUserRole(userId, role, portfolioId);
+      const { role, portfolioId } = req.body;
+      const user = await storage.updateUserRole(currentUser.id, role, portfolioId);
       res.json(user);
     } catch (error) {
       console.error("Error updating user role:", error);
@@ -85,7 +110,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/auth/switch-role', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const currentUser = await getUserFromClaims(req.user.claims);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { role } = req.body;
       
       // Validate role
@@ -96,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For testing purposes, allow any user to switch to any role
       // In production, you'd want to restrict this
-      const user = await storage.updateUserRole(userId, role, undefined);
+      const user = await storage.updateUserRole(currentUser.id, role, undefined);
       res.json(user);
     } catch (error) {
       console.error("Error switching role:", error);
@@ -106,7 +135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/auth/switch-portfolio', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const currentUser = await getUserFromClaims(req.user.claims);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { portfolioId } = req.body;
       
       // Validate portfolio
@@ -115,14 +148,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid portfolio" });
       }
       
-      // Get current user
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
       // Update portfolio (keep current role)
-      const updatedUser = await storage.updateUserRole(userId, user.role || "PSM", portfolioId);
+      const updatedUser = await storage.updateUserRole(currentUser.id, currentUser.role || "PSM", portfolioId);
       res.json(updatedUser);
     } catch (error) {
       console.error("Error switching portfolio:", error);
@@ -146,15 +173,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
+      const user = await getUserFromClaims(req.user.claims);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       const summary = await storage.getDashboardSummary(
-        userId,
+        user.id,
         user.role || "PSM",
         user.portfolioId || undefined
       );
