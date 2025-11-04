@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PracticeTable } from "@/components/practice-table";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
 
 export default function Practices() {
@@ -13,6 +15,7 @@ export default function Practices() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [search, setSearch] = useState("");
   const [portfolioFilter, setPortfolioFilter] = useState("all");
+  const [hideZeroCap, setHideZeroCap] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -62,30 +65,43 @@ export default function Practices() {
             <CardTitle className="text-lg">Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by practice ID or name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-practice"
-                />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by practice ID or name..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-practice"
+                  />
+                </div>
+                <Select value={portfolioFilter} onValueChange={setPortfolioFilter}>
+                  <SelectTrigger data-testid="select-portfolio-filter">
+                    <SelectValue placeholder="All Portfolios" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Portfolios</SelectItem>
+                    <SelectItem value="G1">G1</SelectItem>
+                    <SelectItem value="G2">G2</SelectItem>
+                    <SelectItem value="G3">G3</SelectItem>
+                    <SelectItem value="G4">G4</SelectItem>
+                    <SelectItem value="G5">G5</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={portfolioFilter} onValueChange={setPortfolioFilter}>
-                <SelectTrigger data-testid="select-portfolio-filter">
-                  <SelectValue placeholder="All Portfolios" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Portfolios</SelectItem>
-                  <SelectItem value="G1">G1</SelectItem>
-                  <SelectItem value="G2">G2</SelectItem>
-                  <SelectItem value="G3">G3</SelectItem>
-                  <SelectItem value="G4">G4</SelectItem>
-                  <SelectItem value="G5">G5</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="hide-zero-cap"
+                  checked={hideZeroCap}
+                  onCheckedChange={(checked) => setHideZeroCap(checked === true)}
+                  data-testid="checkbox-hide-zero-cap"
+                />
+                <Label htmlFor="hide-zero-cap" className="text-sm cursor-pointer">
+                  Hide zero cap practices
+                </Label>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -105,7 +121,11 @@ export default function Practices() {
             ) : (
               <div className="h-full overflow-auto">
                 <PracticeTable
-                  practices={Array.isArray(practices) ? practices : []}
+                  practices={
+                    Array.isArray(practices)
+                      ? practices.filter((p) => !hideZeroCap || (p.stipendCap && p.stipendCap > 0))
+                      : []
+                  }
                   onPracticeClick={(id) => {
                     window.location.href = `/practices/${id}`;
                   }}
