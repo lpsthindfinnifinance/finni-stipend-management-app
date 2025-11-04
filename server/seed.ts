@@ -47,7 +47,8 @@ async function seed() {
     console.log(`Created ${totalCreated} new practices`);
 
     // Create pay periods for 2025 (26 periods)
-    const baseDate = new Date("2025-01-01");
+    // PP1 starts Dec 23, 2024 and ends Jan 5, 2025
+    const baseDate = new Date("2024-12-23");
     
     for (let period = 1; period <= 26; period++) {
       const existing = await db.select().from(payPeriods).where(eq(payPeriods.id, period)).limit(1);

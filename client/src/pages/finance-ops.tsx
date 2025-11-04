@@ -629,7 +629,6 @@ export default function FinanceOps() {
                         <TableHead>Start Date</TableHead>
                         <TableHead>End Date</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Remeasurement</TableHead>
                         <TableHead>Download CSV</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -647,17 +646,6 @@ export default function FinanceOps() {
                               <Badge variant="default">Current</Badge>
                             ) : (
                               <Badge variant="secondary">Inactive</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {period.remeasurementCompleted ? (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
-                                Completed
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                                Pending
-                              </Badge>
                             )}
                           </TableCell>
                           <TableCell>
