@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { RoleSwitcher } from "@/components/role-switcher";
 import { PortfolioSwitcher } from "@/components/portfolio-switcher";
 import { useAuth } from "@/hooks/useAuth";
+import finniLogo from "@assets/finni_logo_1762237015805.png";
 
 // Pages
 import Landing from "@/pages/landing";
@@ -83,7 +84,15 @@ function AppContent() {
             <AppSidebar />
             <div className="flex flex-col flex-1 overflow-hidden">
               <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <img 
+                    src={finniLogo} 
+                    alt="Finni Health" 
+                    className="h-7"
+                    data-testid="img-finni-logo"
+                  />
+                </div>
                 <div className="flex items-center gap-4">
                   <RoleSwitcher />
                   <PortfolioSwitcher />
