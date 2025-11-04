@@ -76,7 +76,10 @@ export default function Approvals() {
         title: "Success",
         description: "Request approved successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      // Invalidate all relevant queries to update the UI in real-time
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/approved"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       setIsApproveDialogOpen(false);
       setSelectedRequest(null);
       setApprovalComment("");
@@ -110,7 +113,10 @@ export default function Approvals() {
         title: "Success",
         description: "Request rejected",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests"] });
+      // Invalidate all relevant queries to update the UI in real-time
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/rejected"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       setIsRejectDialogOpen(false);
       setSelectedRequest(null);
       setRejectionReason("");
