@@ -334,6 +334,7 @@ export const payPeriods = pgTable("pay_periods", {
   endDate: timestamp("end_date").notNull(),
   isCurrent: integer("is_current").notNull().default(0), // 0 or 1 (boolean)
   remeasurementCompleted: integer("remeasurement_completed").notNull().default(0),
+  csvData: text("csv_data"), // Stores the uploaded CSV data for this pay period
   createdAt: timestamp("created_at").defaultNow(),
 });
 

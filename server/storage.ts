@@ -105,6 +105,7 @@ export interface IStorage {
   getPayPeriods(): Promise<PayPeriod[]>;
   createPayPeriod(period: InsertPayPeriod): Promise<PayPeriod>;
   advancePayPeriod(currentId: number, nextId: number): Promise<void>;
+  updatePayPeriodCsvData(periodId: number, csvData: string): Promise<void>;
   
   // Practice reassignment operations
   createPracticeReassignment(reassignment: InsertPracticeReassignment): Promise<PracticeReassignment>;
@@ -1253,6 +1254,13 @@ export class DatabaseStorage implements IStorage {
         .set({ isCurrent: 1 })
         .where(eq(payPeriods.id, nextId));
     });
+  }
+
+  async updatePayPeriodCsvData(periodId: number, csvData: string): Promise<void> {
+    await db
+      .update(payPeriods)
+      .set({ csvData })
+      .where(eq(payPeriods.id, periodId));
   }
 
   // ============================================================================

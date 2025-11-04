@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Download, Filter } from "lucide-react";
+import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Download, Filter, FileDown } from "lucide-react";
 import { formatDate, formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -536,6 +536,7 @@ export default function FinanceOps() {
                         <TableHead>End Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Remeasurement</TableHead>
+                        <TableHead>Download CSV</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -563,6 +564,23 @@ export default function FinanceOps() {
                               <Badge variant="outline" className="text-yellow-600 border-yellow-600">
                                 Pending
                               </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {period.csvData ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  window.location.href = `/api/pay-periods/${period.id}/csv`;
+                                }}
+                                data-testid={`button-download-csv-${period.id}`}
+                              >
+                                <FileDown className="h-4 w-4 mr-1" />
+                                Download
+                              </Button>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">No data</span>
                             )}
                           </TableCell>
                           <TableCell>

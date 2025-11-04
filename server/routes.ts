@@ -1122,6 +1122,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/pay-periods/:id/csv', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const periodId = parseInt(req.params.id);
+      
+      if (isNaN(periodId)) {
+        return res.status(400).json({ message: "Invalid pay period ID" });
+      }
+
+      const periods = await storage.getPayPeriods();
+      const period = periods.find(p => p.id === periodId);
+      
+      if (!period) {
+        return res.status(404).json({ message: "Pay period not found" });
+      }
+
+      if (!period.csvData) {
+        return res.status(404).json({ message: "No CSV data available for this pay period" });
+      }
+
+      // Set headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="pay_period_${periodId}.csv"`);
+      res.send(period.csvData);
+    } catch (error) {
+      console.error("Error downloading CSV:", error);
+      res.status(500).json({ message: "Failed to download CSV" });
+    }
+  });
+
   app.post('/api/pay-periods/import', isAuthenticated, isFinance, async (req, res) => {
     try {
       const { csvData } = req.body;
@@ -1413,6 +1442,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
+
+      // Save CSV data to pay period for future downloads
+      await storage.updatePayPeriodCsvData(currentPeriod.id, csvData);
 
       const balanceMsg = openingBalanceCount > 0 ? `, ${openingBalanceCount} opening balances` : '';
       const warningMsg = skippedNullStipendCap > 0 ? ` ⚠️ WARNING: ${skippedNullStipendCap} practices skipped - StipendCapAvgFinal column is empty or missing in your CSV!` : '';
