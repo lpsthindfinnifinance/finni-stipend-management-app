@@ -84,6 +84,10 @@ export default function FinanceOps() {
   const [openingBalanceCsvFileName, setOpeningBalanceCsvFileName] = useState("");
   const openingBalanceFileInputRef = useRef<HTMLInputElement>(null);
   
+  // Warning states for CSV import
+  const [practicesNotInTable, setPracticesNotInTable] = useState<string[]>([]);
+  const [disappearedPractices, setDisappearedPractices] = useState<string[]>([]);
+  
   // Filters for stipend requests table
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<string>("all");
   const [selectedPractice, setSelectedPractice] = useState<string>("all");
@@ -181,6 +185,15 @@ export default function FinanceOps() {
         title: "Import Successful",
         description: `${data.imported} practice metrics imported for PP${currentPeriod?.id}.${balanceMsg}${remeasureMsg}`,
       });
+      
+      // Store warnings for display
+      if (data.practicesNotInTable && data.practicesNotInTable.length > 0) {
+        setPracticesNotInTable(data.practicesNotInTable);
+      }
+      if (data.disappearedPractices && data.disappearedPractices.length > 0) {
+        setDisappearedPractices(data.disappearedPractices);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pay-periods/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
@@ -492,6 +505,68 @@ export default function FinanceOps() {
             Manage pay periods, import BigQuery data, and view all stipend requests
           </p>
         </div>
+
+        {/* Persistent warnings for CSV import issues */}
+        {disappearedPractices.length > 0 && (
+          <Alert variant="destructive" className="relative" data-testid="alert-disappeared-practices">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <strong>⚠️ {disappearedPractices.length} practice(s) disappeared from CSV:</strong>
+                  <p className="mt-1 text-sm">
+                    The following practices had a stipend cap in the previous pay period but were not found in the current CSV upload. 
+                    Their stipend caps will remain unchanged from the previous period.
+                  </p>
+                  <p className="mt-2 text-sm font-mono bg-destructive/10 p-2 rounded">
+                    {disappearedPractices.join(", ")}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDisappearedPractices([])}
+                  className="shrink-0"
+                  data-testid="button-dismiss-disappeared"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {practicesNotInTable.length > 0 && (
+          <Alert variant="destructive" className="relative" data-testid="alert-practices-not-in-table">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <strong>⚠️ {practicesNotInTable.length} practice(s) in CSV not found in Practice table:</strong>
+                  <p className="mt-1 text-sm">
+                    The following practices appear in your CSV but do not exist in the Practice management table. 
+                    Their metrics were saved but no ledger entries were created.
+                  </p>
+                  <p className="mt-2 text-sm font-mono bg-destructive/10 p-2 rounded">
+                    {practicesNotInTable.join(", ")}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Add these practices in Settings → Practices, then re-upload the CSV to create ledger entries.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPracticesNotInTable([])}
+                  className="shrink-0"
+                  data-testid="button-dismiss-not-in-table"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="stipends" className="w-full">
           <TabsList>

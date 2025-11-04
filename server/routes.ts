@@ -1375,6 +1375,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let remeasurementCount = 0;
       let openingBalanceCount = 0;
       let skippedNullStipendCap = 0;
+      const practicesNotInTable: string[] = [];
+      
+      // Get the current period number from the first import
+      const currentPeriodNum = imports.length > 0 ? imports[0].currentPayPeriodNumber : currentPeriod.id;
+      const previousPeriodNum = currentPeriodNum - 1;
 
       for (const importData of imports) {
         // Upsert metrics first
@@ -1387,15 +1392,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Calculate remeasurement adjustment using StipendCapAvgFinal
-        // Get previous period number from the imported data
-        const currentPeriodNum = importData.currentPayPeriodNumber;
-        const previousPeriodNum = currentPeriodNum - 1;
-
         // Find practice by clinic name to get practiceId for ledger entry
         const practice = await storage.getPracticeByClinicName(importData.clinicName);
         
-        if (!practice) continue; // Skip if practice not found
+        if (!practice) {
+          practicesNotInTable.push(importData.clinicName);
+          continue; // Skip if practice not found
+        }
         
         // Only look for previous metrics if we're not in the first period
         if (previousPeriodNum > 0) {
@@ -1457,10 +1460,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Check for practices that disappeared from CSV (existed in previous period but not in current)
+      const disappearedPractices: string[] = [];
+      if (previousPeriodNum > 0) {
+        // Get all practices with metrics from previous period
+        const allPreviousMetrics = await storage.getAllPracticeMetricsByPeriod(previousPeriodNum);
+        const currentCsvPractices = new Set(imports.map(imp => imp.clinicName));
+        
+        for (const prevMetric of allPreviousMetrics) {
+          // Only flag if practice had a stipend cap in previous period
+          if (prevMetric.stipendCapAvgFinal !== null && 
+              Number(prevMetric.stipendCapAvgFinal) > 0.01 &&
+              !currentCsvPractices.has(prevMetric.clinicName)) {
+            disappearedPractices.push(prevMetric.clinicName);
+          }
+        }
+      }
+
       // Save CSV data to the pay period specified in the CSV (not necessarily the current period)
-      // Extract the pay period from the first data row to determine which period this CSV is for
-      const firstImportPeriod = imports.length > 0 ? imports[0].currentPayPeriodNumber : currentPeriod.id;
-      await storage.updatePayPeriodCsvData(firstImportPeriod, csvData);
+      await storage.updatePayPeriodCsvData(currentPeriodNum, csvData);
 
       const balanceMsg = openingBalanceCount > 0 ? `, ${openingBalanceCount} opening balances` : '';
       const warningMsg = skippedNullStipendCap > 0 ? ` ⚠️ WARNING: ${skippedNullStipendCap} practices skipped - StipendCapAvgFinal column is empty or missing in your CSV!` : '';
@@ -1471,6 +1489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         remeasurements: remeasurementCount,
         openingBalances: openingBalanceCount,
         skippedNullStipendCap,
+        practicesNotInTable,
+        disappearedPractices,
       });
     } catch (error) {
       console.error("Error importing BigQuery data:", error);

@@ -454,6 +454,13 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getAllPracticeMetricsByPeriod(payPeriod: number): Promise<PracticeMetrics[]> {
+    return await db
+      .select()
+      .from(practiceMetrics)
+      .where(eq(practiceMetrics.currentPayPeriodNumber, payPeriod));
+  }
+
   async getCurrentMetrics(practiceId: string, payPeriod: number): Promise<PracticeMetrics | undefined> {
     const [metrics] = await db
       .select()
