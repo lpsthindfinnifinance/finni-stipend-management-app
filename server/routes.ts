@@ -1426,11 +1426,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Only create ledger entry if adjustment is significant (> $0.01)
             if (Math.abs(adjustment) > 0.01) {
+              // Delete existing remeasurement entries for this practice/period (prevents duplicates on re-upload)
+              await storage.deleteRemeasurementEntries(practice.id, currentPeriodNum);
+              
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
                 transactionType: adjustment > 0 ? 'remeasurement_increase' : 'remeasurement_decrease',
-                amount: Math.abs(adjustment).toString(),
+                amount: adjustment.toString(), // Store actual value (positive for increase, negative for decrease)
                 description: `Remeasurement PP${currentPeriodNum}: ${adjustment > 0 ? '+' : ''}$${adjustment.toFixed(2)} (Prev PP${previousPeriodNum}: $${previousCap.toFixed(2)}, New: $${newCap.toFixed(2)})`,
               });
               remeasurementCount++;

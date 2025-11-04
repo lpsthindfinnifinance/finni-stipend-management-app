@@ -519,6 +519,19 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async deleteRemeasurementEntries(practiceId: string, payPeriod: number): Promise<void> {
+    await db.delete(practiceLedger).where(
+      and(
+        eq(practiceLedger.practiceId, practiceId),
+        eq(practiceLedger.payPeriod, payPeriod),
+        or(
+          eq(practiceLedger.transactionType, 'remeasurement_increase'),
+          eq(practiceLedger.transactionType, 'remeasurement_decrease')
+        )
+      )
+    );
+  }
+
   async getPracticeBalance(practiceId: string): Promise<number> {
     const result = await db
       .select({
