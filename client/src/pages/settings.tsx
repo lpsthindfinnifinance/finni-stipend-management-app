@@ -1133,6 +1133,145 @@ export default function Settings() {
           </DialogContent>
         </Dialog>
 
+        {/* Slack Settings Dialog */}
+        <Dialog open={slackDialogOpen} onOpenChange={setSlackDialogOpen}>
+          <DialogContent data-testid="dialog-slack">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const data = {
+                notificationType: formData.get('notificationType') as string,
+                webhookUrl: formData.get('webhookUrl') as string,
+                channelName: formData.get('channelName') as string || undefined,
+                description: formData.get('description') as string || undefined,
+                isActive: formData.get('isActive') === 'on',
+              };
+
+              if (editingSlack) {
+                apiRequest("PUT", `/api/settings/slack/${editingSlack.id}`, data)
+                  .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/settings/slack"] });
+                    toast({ title: "Success", description: "Slack webhook updated" });
+                    setSlackDialogOpen(false);
+                    setEditingSlack(null);
+                  })
+                  .catch((error) => {
+                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                  });
+              } else {
+                apiRequest("POST", "/api/settings/slack", data)
+                  .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/settings/slack"] });
+                    toast({ title: "Success", description: "Slack webhook created" });
+                    setSlackDialogOpen(false);
+                  })
+                  .catch((error) => {
+                    toast({ title: "Error", description: error.message, variant: "destructive" });
+                  });
+              }
+            }}>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingSlack ? "Edit Slack Webhook" : "Add Slack Webhook"}
+                </DialogTitle>
+                <DialogDescription>
+                  Configure a Slack webhook for specific notification types
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="notificationType">Notification Type</Label>
+                  <Select 
+                    name="notificationType"
+                    defaultValue={editingSlack?.notificationType || "general"}
+                    required
+                  >
+                    <SelectTrigger id="notificationType" data-testid="select-notification-type">
+                      <SelectValue placeholder="Select notification type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="request_submitted">Request Submitted</SelectItem>
+                      <SelectItem value="request_approved">Request Approved</SelectItem>
+                      <SelectItem value="request_rejected">Request Rejected</SelectItem>
+                      <SelectItem value="period_paid">Period Paid</SelectItem>
+                      <SelectItem value="general">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="webhookUrl">Webhook URL</Label>
+                  <Input
+                    id="webhookUrl"
+                    name="webhookUrl"
+                    type="url"
+                    defaultValue={editingSlack?.webhookUrl || ""}
+                    placeholder="https://hooks.slack.com/services/..."
+                    required
+                    data-testid="input-webhook-url"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Must start with https://hooks.slack.com/
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="channelName">Channel Name (Optional)</Label>
+                  <Input
+                    id="channelName"
+                    name="channelName"
+                    defaultValue={editingSlack?.channelName || ""}
+                    placeholder="#stipend-approvals"
+                    data-testid="input-channel-name"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For documentation purposes (e.g., #stipend-approvals)
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Input
+                    id="description"
+                    name="description"
+                    defaultValue={editingSlack?.description || ""}
+                    placeholder="What this webhook is used for..."
+                    data-testid="input-description"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    defaultChecked={editingSlack?.isActive ?? true}
+                    data-testid="checkbox-is-active"
+                  />
+                  <Label htmlFor="isActive" className="cursor-pointer">
+                    Active (enable notifications)
+                  </Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setSlackDialogOpen(false);
+                    setEditingSlack(null);
+                  }}
+                  data-testid="button-cancel-slack"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  data-testid="button-save-slack"
+                >
+                  {editingSlack ? "Update" : "Create"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent data-testid="dialog-delete-confirm">
