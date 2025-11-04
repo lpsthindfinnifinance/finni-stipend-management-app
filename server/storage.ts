@@ -521,7 +521,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStipendPaid(practiceId: string): Promise<number> {
-    // Sum all 'paid' and 'opening_balance' transactions from the ledger (these are negative, so we take absolute value for display)
+    // Sum all 'paid' and 'opening_balance_stipend_paid' transactions from the ledger (these are negative, so we take absolute value for display)
     const result = await db
       .select({
         total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
@@ -532,7 +532,7 @@ export class DatabaseStorage implements IStorage {
           eq(practiceLedger.practiceId, practiceId),
           or(
             eq(practiceLedger.transactionType, 'paid'),
-            eq(practiceLedger.transactionType, 'opening_balance')
+            eq(practiceLedger.transactionType, 'opening_balance_stipend_paid')
           )
         )
       );
@@ -1498,7 +1498,7 @@ export class DatabaseStorage implements IStorage {
           or(...practiceIds.map(id => eq(practiceLedger.practiceId, id))),
           or(
             eq(practiceLedger.transactionType, 'paid'),
-            eq(practiceLedger.transactionType, 'opening_balance'),
+            eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
             eq(practiceLedger.transactionType, 'committed')
           )
         )
@@ -1507,7 +1507,7 @@ export class DatabaseStorage implements IStorage {
 
       // Sum up totals by transaction type
       for (const entry of ledgerTotals) {
-        if (entry.transactionType === 'paid' || entry.transactionType === 'opening_balance') {
+        if (entry.transactionType === 'paid' || entry.transactionType === 'opening_balance_stipend_paid') {
           totalStipendPaid += Number(entry.total);
         } else if (entry.transactionType === 'committed') {
           totalStipendCommitted += Number(entry.total);
@@ -1589,7 +1589,7 @@ export class DatabaseStorage implements IStorage {
     .from(practiceLedger)
     .where(or(
       eq(practiceLedger.transactionType, 'paid'),
-      eq(practiceLedger.transactionType, 'opening_balance'),
+      eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
       eq(practiceLedger.transactionType, 'committed')
     ))
     .groupBy(practiceLedger.practiceId, practiceLedger.transactionType);
@@ -1635,9 +1635,9 @@ export class DatabaseStorage implements IStorage {
           totalCap += parseFloat(metrics.stipendCapAvgFinal);
         }
 
-        // Get paid (including opening_balance) and committed from ledger
+        // Get paid (including opening_balance_stipend_paid) and committed from ledger
         const ledger = ledgerByPractice[practice.id] || {};
-        stipendPaid += (ledger['paid'] || 0) + (ledger['opening_balance'] || 0);
+        stipendPaid += (ledger['paid'] || 0) + (ledger['opening_balance_stipend_paid'] || 0);
         stipendCommitted += ledger['committed'] || 0;
       }
 
