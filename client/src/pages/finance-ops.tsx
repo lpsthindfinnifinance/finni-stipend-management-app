@@ -118,9 +118,22 @@ export default function FinanceOps() {
 
   // Helper to get period-specific payment status
   const getPeriodStatus = (req: any, periodFilter: string) => {
-    // If showing all periods or no breakdown available, use overall status
-    if (periodFilter === "all" || !req.paymentBreakdown || req.paymentBreakdown.length === 0) {
+    // If no breakdown available, use overall status
+    if (!req.paymentBreakdown || req.paymentBreakdown.length === 0) {
       return req.isFullyPaid ? "Paid" : "Committed";
+    }
+
+    // If showing all periods, check if all non-cancelled periods are paid
+    if (periodFilter === "all") {
+      const nonCancelledPeriods = req.paymentBreakdown.filter((p: any) => 
+        p.status?.toLowerCase() !== 'cancelled'
+      );
+      
+      // If all non-cancelled periods are paid, return "Paid"
+      const allPaid = nonCancelledPeriods.length > 0 && 
+        nonCancelledPeriods.every((p: any) => p.status?.toLowerCase() === 'paid');
+      
+      return allPaid ? "Paid" : "Committed";
     }
 
     // Check if the specific filtered period is paid
