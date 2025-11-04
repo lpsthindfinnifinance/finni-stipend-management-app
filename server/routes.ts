@@ -323,10 +323,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if PSM user has access to this practice (portfolio-based access control)
+      // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+      if (user && user.role === 'PSM') {
         if (user.portfolioId !== practice.portfolioId) {
           return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
         }
@@ -342,6 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/practices/:id/balance', isAuthenticated, async (req: any, res) => {
     try {
       // Check if PSM user has access to this practice
+      // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
       const practice = await storage.getPracticeById(req.params.id);
       if (!practice) {
         return res.status(404).json({ message: "Practice not found" });
@@ -350,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+      if (user && user.role === 'PSM') {
         if (user.portfolioId !== practice.portfolioId) {
           return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
         }
@@ -395,6 +397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/practices/:id/ledger', isAuthenticated, async (req: any, res) => {
     try {
       // Check if PSM user has access to this practice
+      // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
       const practice = await storage.getPracticeById(req.params.id);
       if (!practice) {
         return res.status(404).json({ message: "Practice not found" });
@@ -403,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+      if (user && user.role === 'PSM') {
         if (user.portfolioId !== practice.portfolioId) {
           return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
         }
@@ -434,6 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/practices/:id/pending-requests', isAuthenticated, async (req: any, res) => {
     try {
       // Check if PSM user has access to this practice
+      // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
       const practice = await storage.getPracticeById(req.params.id);
       if (!practice) {
         return res.status(404).json({ message: "Practice not found" });
@@ -442,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+      if (user && user.role === 'PSM') {
         if (user.portfolioId !== practice.portfolioId) {
           return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
         }
@@ -501,8 +505,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Filter by requestor
         let requests = await storage.getStipendRequests({ requestorId: requestorId as string });
         
-        // For PSM and Lead PSM, additionally filter by portfolio
-        if ((user.role === 'PSM' || user.role === 'Lead PSM') && user.portfolioId) {
+        // For PSM only, additionally filter by portfolio
+        // Lead PSM and Finance users can see all their requests across portfolios
+        if (user.role === 'PSM' && user.portfolioId) {
           // Get all practices in the user's portfolio
           const practices = await storage.getPractices({ portfolio: user.portfolioId });
           const practiceIds = new Set(practices.map(p => p.id));
@@ -633,10 +638,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if PSM user has access to this request (portfolio-based access control)
+      // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+      if (user && user.role === 'PSM') {
         // Get the practice to check its portfolio
         const practice = await storage.getPracticeById(request.practiceId);
         if (practice && user.portfolioId !== practice.portfolioId) {
