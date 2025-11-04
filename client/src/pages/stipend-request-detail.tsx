@@ -516,20 +516,41 @@ export default function StipendRequestDetail() {
             </div>
 
             <div data-testid="section-amount">
-              <p className="text-sm text-muted-foreground">Total Amount</p>
-              <p className="text-2xl font-mono font-bold text-primary" data-testid="text-amount">
-                {(() => {
-                  // Calculate total from pay period breakdown if available
-                  if (payPeriodBreakdown && payPeriodBreakdown.length > 0) {
-                    const total = payPeriodBreakdown
+              {(() => {
+                // Calculate total from pay period breakdown if available
+                const approvedTotal = payPeriodBreakdown && payPeriodBreakdown.length > 0
+                  ? payPeriodBreakdown
                       .filter((p: any) => p.status === 'paid' || p.status === 'committed')
-                      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-                    return formatCurrency(total);
-                  }
-                  // Fall back to request amount if breakdown not available
-                  return formatCurrency(request.amount);
-                })()}
-              </p>
+                      .reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+                  : 0;
+                
+                const isPending = ['pending_psm', 'pending_lead_psm', 'pending_finance'].includes(request.status);
+                
+                if (isPending) {
+                  // Show Pending Amount for unapproved requests
+                  return (
+                    <>
+                      <p className="text-sm text-muted-foreground">Pending Amount</p>
+                      <p className="text-2xl font-mono font-bold text-orange-600" data-testid="text-pending-amount">
+                        {formatCurrency(request.amount)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        (Awaiting approval)
+                      </p>
+                    </>
+                  );
+                } else {
+                  // Show Total Amount for approved requests
+                  return (
+                    <>
+                      <p className="text-sm text-muted-foreground">Total Amount</p>
+                      <p className="text-2xl font-mono font-bold text-primary" data-testid="text-amount">
+                        {formatCurrency(approvedTotal > 0 ? approvedTotal : request.amount)}
+                      </p>
+                    </>
+                  );
+                }
+              })()}
             </div>
 
             <div data-testid="section-type">
