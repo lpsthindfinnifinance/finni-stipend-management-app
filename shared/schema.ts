@@ -263,8 +263,8 @@ export const insertStipendRequestSchema = createInsertSchema(stipendRequests).om
   },
   { message: "Amount must be greater than 0", path: ["amount"] }
 ).refine(
-  (data) => data.justification && data.justification.length >= 50,
-  { message: "Justification must be at least 50 characters", path: ["justification"] }
+  (data) => data.justification && data.justification.length >= 10,
+  { message: "Justification must be at least 10 characters", path: ["justification"] }
 ).refine(
   (data) => data.effectivePayPeriod >= 1 && data.effectivePayPeriod <= 26,
   { message: "Pay period must be between 1 and 26", path: ["effectivePayPeriod"] }
@@ -394,7 +394,7 @@ export const insertNegativeEarningsCapRequestSchema = z.object({
   requestorId: z.string(),
   payPeriod: z.number(),
   requestedAmount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
-  justification: z.string().min(20, "Justification must be at least 20 characters"),
+  justification: z.string().min(10, "Justification must be at least 10 characters"),
 });
 
 export type InsertNegativeEarningsCapRequest = z.infer<typeof insertNegativeEarningsCapRequestSchema>;
