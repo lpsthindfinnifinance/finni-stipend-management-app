@@ -294,11 +294,15 @@ export class DatabaseStorage implements IStorage {
       id: practices.id,
       name: practices.name,
       portfolioId: practices.portfolioId,
+      isActive: practices.isActive,
       createdAt: practices.createdAt,
       updatedAt: practices.updatedAt,
     }).from(practices);
 
     const conditions = [];
+    // Only show active practices
+    conditions.push(eq(practices.isActive, true));
+    
     if (filters?.portfolio && filters.portfolio !== "all") {
       conditions.push(eq(practices.portfolioId, filters.portfolio));
     }
@@ -1183,7 +1187,7 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async getNegativeEarningsSummary(payPeriod: number): Promise<any[]> {
-    // Get all practices with their current period metrics
+    // Get all practices with their current period metrics (only active practices)
     // Note: practiceMetrics.clinicName (from BigQuery) matches practices.id (e.g., "P001")
     const result = await db
       .select({
@@ -1204,7 +1208,8 @@ export class DatabaseStorage implements IStorage {
           eq(practiceMetrics.clinicName, practices.id),
           eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
         )
-      );
+      )
+      .where(eq(practices.isActive, true));
 
     // Get approved negative earnings cap requests for CURRENT pay period only
     const requests = await db
