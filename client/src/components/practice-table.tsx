@@ -29,13 +29,27 @@ interface Practice {
 interface PracticeTableProps {
   practices: Practice[];
   onPracticeClick?: (practiceId: string) => void;
+  userRole?: string;
+  userPortfolioId?: string;
 }
 
 export function PracticeTable({
   practices,
   onPracticeClick,
+  userRole,
+  userPortfolioId,
 }: PracticeTableProps) {
   const [showAllocations, setShowAllocations] = useState(false);
+
+  // Helper function to check if a practice is clickable for the current user
+  const isPracticeClickable = (practice: Practice) => {
+    // PSM users can only click on practices in their portfolio
+    if (userRole === 'PSM' && userPortfolioId) {
+      return practice.portfolioId === userPortfolioId;
+    }
+    // All other roles can click any practice
+    return true;
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -86,12 +100,18 @@ export function PracticeTable({
                 </TableCell>
               </TableRow>
             ) : (
-              practices.map((practice) => (
+              practices.map((practice) => {
+                const isClickable = isPracticeClickable(practice);
+                return (
                 <TableRow
                   key={practice.id}
-                  className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
+                  className={`border-b transition-colors ${
+                    isClickable 
+                      ? 'hover:bg-muted/50 cursor-pointer' 
+                      : 'opacity-50 cursor-not-allowed'
+                  }`}
                   onClick={() => {
-                    if (onPracticeClick) {
+                    if (onPracticeClick && isClickable) {
                       onPracticeClick(practice.id);
                     }
                   }}
@@ -156,7 +176,8 @@ export function PracticeTable({
                       : "—"}
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             )}
           </TableBody>
         </table>

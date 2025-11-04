@@ -10,7 +10,7 @@ import { Search } from "lucide-react";
 
 export default function Practices() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [search, setSearch] = useState("");
   const [portfolioFilter, setPortfolioFilter] = useState("all");
 
@@ -109,6 +109,8 @@ export default function Practices() {
                   onPracticeClick={(id) => {
                     window.location.href = `/practices/${id}`;
                   }}
+                  userRole={user?.role ?? undefined}
+                  userPortfolioId={user?.portfolioId ?? undefined}
                 />
               </div>
             )}
