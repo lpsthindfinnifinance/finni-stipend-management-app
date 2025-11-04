@@ -1341,12 +1341,17 @@ export class DatabaseStorage implements IStorage {
     const currentPeriod = await this.getCurrentPayPeriod();
     const currentPeriodNumber = currentPeriod?.id || 21;
 
-    // Get practices based on role
+    // Get practices based on role (only active practices)
     let practicesList: Practice[] = [];
     if (role === "PSM" && portfolioId) {
-      practicesList = await db.select().from(practices).where(eq(practices.portfolioId, portfolioId));
+      practicesList = await db.select().from(practices).where(
+        and(
+          eq(practices.portfolioId, portfolioId),
+          eq(practices.isActive, true)
+        )
+      );
     } else {
-      practicesList = await db.select().from(practices);
+      practicesList = await db.select().from(practices).where(eq(practices.isActive, true));
     }
 
     // Calculate metrics
@@ -1447,9 +1452,9 @@ export class DatabaseStorage implements IStorage {
     const currentPeriod = await this.getCurrentPayPeriod();
     const currentPeriodNumber = currentPeriod?.id || 21;
     
-    // Fetch all data in bulk to avoid N+1 queries
+    // Fetch all data in bulk to avoid N+1 queries (only active practices)
     const [allPractices, allMetrics, allUsers] = await Promise.all([
-      db.select().from(practices),
+      db.select().from(practices).where(eq(practices.isActive, true)),
       db.select().from(practiceMetrics).where(eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)),
       db.select().from(users),
     ]);
