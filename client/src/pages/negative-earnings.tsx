@@ -16,12 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
 import { useState } from "react";
 
 export default function NegativeEarnings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [hideZeroCap, setHideZeroCap] = useState(true);
 
   const { data: summary = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/negative-earnings/summary"],
@@ -63,7 +66,9 @@ export default function NegativeEarnings() {
       practice.group === groupFilter ||
       practice.portfolioName === groupFilter;
 
-    return matchesSearch && matchesGroup;
+    const matchesCap = !hideZeroCap || practice.negativeEarningsCap > 0;
+
+    return matchesSearch && matchesGroup && matchesCap;
   });
 
   const formatCurrency = (value: number) => {
@@ -204,32 +209,45 @@ export default function NegativeEarnings() {
       </div>
 
       {/* Filters and Search */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search practices..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            data-testid="input-search-practices"
-          />
+      <div className="space-y-4">
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search practices..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-search-practices"
+            />
+          </div>
+          <Select value={groupFilter} onValueChange={setGroupFilter}>
+            <SelectTrigger className="w-48" data-testid="select-group-filter">
+              <SelectValue placeholder="All Groups" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Groups</SelectItem>
+              {Array.from(new Set(summary.map((p) => p.group || p.portfolioName))).map(
+                (group) => (
+                  <SelectItem key={group} value={group}>
+                    {group}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-48" data-testid="select-group-filter">
-            <SelectValue placeholder="All Groups" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Groups</SelectItem>
-            {Array.from(new Set(summary.map((p) => p.group || p.portfolioName))).map(
-              (group) => (
-                <SelectItem key={group} value={group}>
-                  {group}
-                </SelectItem>
-              )
-            )}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="hide-zero-cap-ne"
+            checked={hideZeroCap}
+            onCheckedChange={(checked) => setHideZeroCap(checked === true)}
+            data-testid="checkbox-hide-zero-cap-ne"
+          />
+          <Label htmlFor="hide-zero-cap-ne" className="text-sm cursor-pointer">
+            Hide zero cap practices
+          </Label>
+        </div>
       </div>
 
       {/* Practice Details Table */}
