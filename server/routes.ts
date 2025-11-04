@@ -15,18 +15,48 @@ import {
 import axios from "axios";
 
 // Slack notification helper
-async function sendSlackNotification(message: string) {
-  if (!process.env.SLACK_WEBHOOK_URL) {
-    console.log("Slack webhook not configured");
+async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any) {
+  let webhookUrl: string | null = null;
+  
+  // Try to get webhook from database first
+  if (storage) {
+    try {
+      const settings = await storage.getSlackSettings();
+      const activeSetting = settings.find((s: any) => 
+        s.notificationType === notificationType && s.isActive
+      );
+      
+      if (activeSetting) {
+        webhookUrl = activeSetting.webhookUrl;
+        console.log(`Using database webhook for ${notificationType}`);
+      } else {
+        console.log(`No active webhook found in database for ${notificationType}`);
+      }
+    } catch (error) {
+      console.error("Error fetching Slack settings from database:", error);
+    }
+  }
+  
+  // Fall back to environment variable if no database config found
+  if (!webhookUrl) {
+    webhookUrl = process.env.SLACK_WEBHOOK_URL || null;
+    if (webhookUrl) {
+      console.log(`Using environment variable webhook for ${notificationType}`);
+    }
+  }
+  
+  if (!webhookUrl) {
+    console.log(`Slack webhook not configured for ${notificationType}`);
     return;
   }
 
   try {
-    await axios.post(process.env.SLACK_WEBHOOK_URL, {
+    await axios.post(webhookUrl, {
       text: message,
     });
+    console.log(`✓ Slack notification sent for ${notificationType}`);
   } catch (error) {
-    console.error("Failed to send Slack notification:", error);
+    console.error(`Failed to send Slack notification for ${notificationType}:`, error);
   }
 }
 
@@ -557,7 +587,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Amount:* $${parseFloat(validatedData.amount).toFixed(2)}\n` +
         `*Description:* ${validatedData.stipendDescription}\n` +
         payPeriodInfo +
-        `*View Request:* ${requestUrl}`
+        `*View Request:* ${requestUrl}`,
+        'request_submitted',
+        storage
       );
       
       res.json(request);
@@ -845,7 +877,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo +
         `*Approved by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*New Status:* ${newStatus}\n` +
-        `*View Request:* ${requestUrl}`
+        `*View Request:* ${requestUrl}`,
+        'request_approved',
+        storage
       );
       
       res.json(updated);
@@ -910,7 +944,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo +
         `*Rejected by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*Reason:* ${reason || "No reason provided"}\n` +
-        `*View Request:* ${requestUrl}`
+        `*View Request:* ${requestUrl}`,
+        'request_rejected',
+        storage
       );
       
       res.json(updated);
@@ -951,7 +987,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `Committed stipend for request #${requestId} cancelled for PP${payPeriod} by ${user.firstName} ${user.lastName}`
+        `Committed stipend for request #${requestId} cancelled for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
+        'general',
+        storage
       );
 
       res.json({ success: true, message: `Cancelled committed period PP${payPeriod}` });
@@ -985,7 +1023,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `Stipend amount for request #${requestId} updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`
+        `Stipend amount for request #${requestId} updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
+        'general',
+        storage
       );
 
       res.json({ success: true, message: `Updated period PP${payPeriod} amount to $${newAmount.toFixed(2)}` });
@@ -1044,7 +1084,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         `*Marked by:* ${user.firstName} ${user.lastName}\n` +
-        `*View Request:* ${requestUrl}`
+        `*View Request:* ${requestUrl}`,
+        'period_paid',
+        storage
       );
 
       res.json({ success: true, message: `Marked period PP${payPeriod} as paid` });
@@ -1091,7 +1133,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `Stipend request #${requestId} deleted by ${user.firstName} ${user.lastName}`
+        `Stipend request #${requestId} deleted by ${user.firstName} ${user.lastName}`,
+        'general',
+        storage
       );
 
       res.json({ success: true, message: "Request deleted successfully" });
@@ -1180,7 +1224,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `New Negative Earnings Cap request #${newRequest.id} for $${amount} (PP${currentPeriod.id}) pending Finance approval`
+        `New Negative Earnings Cap request #${newRequest.id} for $${amount} (PP${currentPeriod.id}) pending Finance approval`,
+        'general',
+        storage
       );
 
       res.status(201).json(newRequest);
@@ -1207,7 +1253,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send Slack notification
       const amount = approvedAmount || updated.requestedAmount;
       await sendSlackNotification(
-        `Negative Earnings Cap request #${requestId} approved by Finance for $${amount} (PP${updated.payPeriod})`
+        `Negative Earnings Cap request #${requestId} approved by Finance for $${amount} (PP${updated.payPeriod})`,
+        'general',
+        storage
       );
 
       res.json(updated);
@@ -1233,7 +1281,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `Negative Earnings Cap request #${requestId} (PP${updated.payPeriod}) rejected by Finance. ${notes ? 'Reason: ' + notes : ''}`
+        `Negative Earnings Cap request #${requestId} (PP${updated.payPeriod}) rejected by Finance. ${notes ? 'Reason: ' + notes : ''}`,
+        'general',
+        storage
       );
 
       res.json(updated);
@@ -1977,7 +2027,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification
       await sendSlackNotification(
-        `💸 Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`
+        `💸 Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`,
+        'general',
+        storage
       );
       
       // Mark allocations as completed immediately
