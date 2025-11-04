@@ -526,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const request = await storage.createStipendRequest(validatedData);
       
       // Get practice details for portfolio information
-      const practice = await storage.getPractice(validatedData.practiceId);
+      const practice = await storage.getPracticeById(validatedData.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
@@ -813,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestor = await storage.getUser(request.requestorId);
       
       // Get practice details for portfolio information
-      const practice = await storage.getPractice(request.practiceId);
+      const practice = await storage.getPracticeById(request.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
@@ -878,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestor = await storage.getUser(request.requestorId);
       
       // Get practice details for portfolio information
-      const practice = await storage.getPractice(request.practiceId);
+      const practice = await storage.getPracticeById(request.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
@@ -1023,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestor = await storage.getUser(request.requestorId);
       
       // Get practice details for portfolio information
-      const practice = await storage.getPractice(request.practiceId);
+      const practice = await storage.getPracticeById(request.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
