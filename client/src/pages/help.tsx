@@ -117,7 +117,7 @@ export default function Help() {
                   <div>
                     <strong className="text-sm">Stipend Cap:</strong>
                     <p className="text-sm text-muted-foreground">
-                      Maximum stipend amount calculated from BigQuery data: 0.6 × Gross Margin % + 0.4 × Collections %
+                      Average of (1) Year to Date Finni's Net Revenue × Stipend Cap % based on stipend metric, and (2) Last 6 pay periods Finni's Net Revenue × Stipend Cap % based on stipend metric
                     </p>
                   </div>
                   <div>
