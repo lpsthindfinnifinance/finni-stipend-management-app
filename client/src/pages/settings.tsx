@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { Portfolio, Practice, User } from "@shared/schema";
 
@@ -306,6 +307,52 @@ export default function Settings() {
     },
   });
 
+  // Toggle isActive mutations
+  const togglePortfolioActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest("PATCH", `/api/settings/portfolios/${id}`, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/portfolios"] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update portfolio status",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const togglePracticeActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest("PATCH", `/api/settings/practices/${id}`, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/practices"] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update practice status",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const toggleUserActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest("PATCH", `/api/settings/users/${id}`, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/users"] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update user status",
+        variant: "destructive" 
+      });
+    },
+  });
+
   // Handle functions
   const handlePortfolioSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -416,13 +463,14 @@ export default function Settings() {
                       <TableRow>
                         <TableHead>ID</TableHead>
                         <TableHead>Name</TableHead>
+                        <TableHead>Active</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {portfolios.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
                             No portfolios found
                           </TableCell>
                         </TableRow>
@@ -431,6 +479,18 @@ export default function Settings() {
                           <TableRow key={portfolio.id} data-testid={`row-portfolio-${portfolio.id}`}>
                             <TableCell className="font-mono">{portfolio.id}</TableCell>
                             <TableCell>{portfolio.name}</TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={portfolio.isActive ?? true}
+                                onCheckedChange={(checked) => {
+                                  togglePortfolioActiveMutation.mutate({
+                                    id: portfolio.id,
+                                    isActive: checked
+                                  });
+                                }}
+                                data-testid={`switch-portfolio-active-${portfolio.id}`}
+                              />
+                            </TableCell>
                             <TableCell className="text-right space-x-2">
                               <Button
                                 variant="ghost"
@@ -495,13 +555,14 @@ export default function Settings() {
                           <TableHead>Clinic ID</TableHead>
                           <TableHead>Display Name</TableHead>
                           <TableHead>Group</TableHead>
+                          <TableHead>Active</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {practices.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">
                               No practices found
                             </TableCell>
                           </TableRow>
@@ -511,6 +572,18 @@ export default function Settings() {
                               <TableCell className="font-mono">{practice.id}</TableCell>
                               <TableCell>{practice.name}</TableCell>
                               <TableCell><span className="font-semibold">{practice.portfolioId}</span></TableCell>
+                              <TableCell>
+                                <Switch
+                                  checked={practice.isActive ?? true}
+                                  onCheckedChange={(checked) => {
+                                    togglePracticeActiveMutation.mutate({
+                                      id: practice.id,
+                                      isActive: checked
+                                    });
+                                  }}
+                                  data-testid={`switch-practice-active-${practice.id}`}
+                                />
+                              </TableCell>
                               <TableCell className="text-right space-x-2">
                                 <Button
                                   variant="ghost"
@@ -578,13 +651,14 @@ export default function Settings() {
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Portfolio</TableHead>
+                        <TableHead>Active</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {users.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center text-muted-foreground">
                             No users found
                           </TableCell>
                         </TableRow>
@@ -599,6 +673,18 @@ export default function Settings() {
                             <TableCell>{user.email}</TableCell>
                             <TableCell>{user.role}</TableCell>
                             <TableCell>{user.portfolioId || "-"}</TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={user.isActive ?? true}
+                                onCheckedChange={(checked) => {
+                                  toggleUserActiveMutation.mutate({
+                                    id: user.id,
+                                    isActive: checked
+                                  });
+                                }}
+                                data-testid={`switch-user-active-${user.id}`}
+                              />
+                            </TableCell>
                             <TableCell className="text-right space-x-2">
                               <Button
                                 variant="ghost"
