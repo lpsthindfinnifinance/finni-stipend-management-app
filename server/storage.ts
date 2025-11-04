@@ -1448,8 +1448,11 @@ export class DatabaseStorage implements IStorage {
     let totalStipendPaid = 0;
     let totalStipendCommitted = 0;
 
+    // Get practice IDs for efficient ledger query
+    const practiceIds = practicesList.map(p => p.id);
+
+    // Calculate stipend cap from metrics
     for (const practice of practicesList) {
-      // Get stipend cap from current period metrics
       const metrics = await db.select()
         .from(practiceMetrics)
         .where(
@@ -1463,22 +1466,33 @@ export class DatabaseStorage implements IStorage {
       if (metrics[0]?.stipendCapAvgFinal) {
         totalStipendCap += parseFloat(metrics[0].stipendCapAvgFinal);
       }
+    }
 
-      // Calculate Stipend Paid and Committed from ledger entries
-      // Paid = ledger entries with transactionType "paid" (these are negative debits, so take absolute value)
-      // Committed = ledger entries with transactionType "committed" (also negative debits)
-      const ledgerEntries = await db.select()
-        .from(practiceLedger)
-        .where(eq(practiceLedger.practiceId, practice.id));
-      
-      for (const entry of ledgerEntries) {
-        const amount = parseFloat(entry.amount);
+    // Get ledger totals efficiently using SUM then ABS (handles cancellations correctly)
+    if (practiceIds.length > 0) {
+      const ledgerTotals = await db.select({
+        practiceId: practiceLedger.practiceId,
+        transactionType: practiceLedger.transactionType,
+        total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
+      })
+      .from(practiceLedger)
+      .where(
+        and(
+          or(...practiceIds.map(id => eq(practiceLedger.practiceId, id))),
+          or(
+            eq(practiceLedger.transactionType, 'paid'),
+            eq(practiceLedger.transactionType, 'committed')
+          )
+        )
+      )
+      .groupBy(practiceLedger.practiceId, practiceLedger.transactionType);
+
+      // Sum up totals by transaction type
+      for (const entry of ledgerTotals) {
         if (entry.transactionType === 'paid') {
-          // Paid entries are negative (debits), so take absolute value
-          totalStipendPaid += Math.abs(amount);
+          totalStipendPaid += Number(entry.total);
         } else if (entry.transactionType === 'committed') {
-          // Committed entries are also negative (debits), so take absolute value
-          totalStipendCommitted += Math.abs(amount);
+          totalStipendCommitted += Number(entry.total);
         }
       }
     }
