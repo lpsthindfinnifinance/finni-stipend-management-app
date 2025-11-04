@@ -56,8 +56,20 @@ export function RoleSwitcher() {
   const assignedRoles = user.roles || [user.role];
   const availableRoles = ROLES.filter(role => assignedRoles.includes(role.value));
   
-  // Don't show the switcher if user has only one role
-  if (availableRoles.length <= 1) return null;
+  // If user has only one role, show it as a badge (non-interactive)
+  if (availableRoles.length <= 1) {
+    return (
+      <div className="flex items-center gap-2">
+        <UserCog className="w-4 h-4 text-muted-foreground" />
+        <Badge variant="secondary" className="h-8 px-3" data-testid="badge-current-role">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${currentRole?.color || 'bg-gray-500'}`} />
+            <span className="text-sm">{user.role}</span>
+          </div>
+        </Badge>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">
