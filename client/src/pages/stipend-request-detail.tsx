@@ -518,8 +518,8 @@ export default function StipendRequestDetail() {
                         <td className="p-4 align-middle">
                           <Badge 
                             variant={
-                              period.status === 'paid' ? 'default' : 
-                              period.status === 'committed' ? 'secondary' : 
+                              period.status === 'paid' ? 'success' : 
+                              period.status === 'committed' ? 'default' : 
                               period.status === 'cancelled' ? 'destructive' : 
                               'outline'
                             }

@@ -87,7 +87,7 @@ export default function FinanceOps() {
   const getPeriodStatus = (req: any, periodFilter: string) => {
     // If showing all periods or no breakdown available, use overall status
     if (periodFilter === "all" || !req.paymentBreakdown || req.paymentBreakdown.length === 0) {
-      return req.isFullyPaid ? "Paid" : "Approved";
+      return req.isFullyPaid ? "Paid" : "Committed";
     }
 
     // Check if the specific filtered period is paid
@@ -95,11 +95,11 @@ export default function FinanceOps() {
     const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum);
     
     if (periodPayment) {
-      return periodPayment.status === "paid" ? "Paid" : "Approved";
+      return periodPayment.status === "paid" ? "Paid" : "Committed";
     }
 
-    // If period not found in breakdown (shouldn't happen with proper filtering), default to Approved
-    return "Approved";
+    // If period not found in breakdown (shouldn't happen with proper filtering), default to Committed
+    return "Committed";
   };
 
   const { data: periods, isLoading: periodsLoading } = useQuery<any[]>({
@@ -678,12 +678,8 @@ export default function FinanceOps() {
                                     <Badge
                                       variant={
                                         periodStatus === "Paid"
-                                          ? "default"
-                                          : req.status === "approved"
-                                          ? "default"
-                                          : req.status === "rejected"
-                                          ? "destructive"
-                                          : "secondary"
+                                          ? "success"
+                                          : "default"
                                       }
                                     >
                                       {periodStatus}
