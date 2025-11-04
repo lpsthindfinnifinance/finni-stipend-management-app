@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, Clock, XCircle, CheckCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, XCircle, CheckCircle, Trash2, DollarSign } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatters";
 import { StatusBadge } from "@/components/status-badge";
 import { useParams, useLocation } from "wouter";
@@ -35,6 +36,11 @@ export default function StipendRequestDetail() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Edit amount state
+  const [editPayPeriod, setEditPayPeriod] = useState<number | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [isEditAmountDialogOpen, setIsEditAmountDialogOpen] = useState(false);
 
   const { data: request, isLoading, error: requestError } = useQuery<StipendRequestWithDetails>({
     queryKey: ["/api/stipend-requests", id],
@@ -230,6 +236,74 @@ export default function StipendRequestDetail() {
       });
     },
   });
+
+  const editAmountMutation = useMutation({
+    mutationFn: async ({ payPeriod, newAmount }: { payPeriod: number; newAmount: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/update-period-amount`, { payPeriod, newAmount });
+    },
+    onSuccess: (_, variables) => {
+      toast({
+        title: "Success",
+        description: `Updated stipend amount to ${formatCurrency(variables.newAmount)} for PP${variables.payPeriod}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/all-approved"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolios"] });
+      setIsEditAmountDialogOpen(false);
+      setEditPayPeriod(null);
+      setEditAmount("");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update stipend amount",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditAmount = (payPeriod: number, currentAmount: number) => {
+    setEditPayPeriod(payPeriod);
+    setEditAmount(currentAmount.toString());
+    setIsEditAmountDialogOpen(true);
+  };
+
+  const handleSubmitEditAmount = () => {
+    if (!editPayPeriod || !editAmount) {
+      toast({
+        title: "Error",
+        description: "Invalid input",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newAmount = parseFloat(editAmount);
+    if (isNaN(newAmount) || newAmount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    editAmountMutation.mutate({ payPeriod: editPayPeriod, newAmount });
+  };
 
   const canApprove = () => {
     if (!request) return false;
@@ -558,6 +632,15 @@ export default function StipendRequestDetail() {
                             <div className="flex items-center justify-center gap-2">
                               <Button
                                 size="sm"
+                                variant="outline"
+                                onClick={() => handleEditAmount(period.payPeriod, period.amount)}
+                                data-testid={`button-edit-amount-${period.payPeriod}`}
+                              >
+                                <DollarSign className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
                                 variant="default"
                                 onClick={() => markPeriodPaidMutation.mutate({ payPeriod: period.payPeriod })}
                                 disabled={markPeriodPaidMutation.isPending}
@@ -818,6 +901,53 @@ export default function StipendRequestDetail() {
               data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Amount Dialog */}
+      <Dialog open={isEditAmountDialogOpen} onOpenChange={setIsEditAmountDialogOpen}>
+        <DialogContent data-testid="dialog-edit-amount">
+          <DialogHeader>
+            <DialogTitle>Edit Stipend Amount</DialogTitle>
+            <DialogDescription>
+              Update the stipend amount for Pay Period {editPayPeriod}. This will only affect this specific pay period.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-amount">New Amount</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                placeholder="Enter amount"
+                data-testid="input-edit-amount"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditAmountDialogOpen(false);
+                setEditPayPeriod(null);
+                setEditAmount("");
+              }}
+              data-testid="button-cancel-edit-amount"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitEditAmount}
+              disabled={editAmountMutation.isPending}
+              data-testid="button-submit-edit-amount"
+            >
+              {editAmountMutation.isPending ? "Updating..." : "Update Amount"}
             </Button>
           </DialogFooter>
         </DialogContent>
