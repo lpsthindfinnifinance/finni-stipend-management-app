@@ -227,17 +227,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent Activity (placeholder for future) */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground py-8">
-                No recent activity to display
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
