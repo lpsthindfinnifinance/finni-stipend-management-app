@@ -1,0 +1,13 @@
+# This file specifies files that are not uploaded to Google Cloud
+.git
+.gitignore
+node_modules
+.env
+.env.local
+*.md
+.replit
+replit.nix
+attached_assets
+dist
+build
+*.log

@@ -1,0 +1,53 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:$COMMIT_SHA'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:latest'
+      - '.'
+    timeout: 1200s
+
+  # Push the versioned image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:$COMMIT_SHA'
+
+  # Push the latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'finni-health-app'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances=$PROJECT_ID:us-central1:finni-health-db'
+      - '--set-secrets=DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,OIDC_CLIENT_ID=OIDC_CLIENT_ID:latest,OIDC_CLIENT_SECRET=OIDC_CLIENT_SECRET:latest,OIDC_ISSUER_URL=OIDC_ISSUER_URL:latest'
+      - '--set-env-vars=NODE_ENV=production'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--timeout=300'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/finni-health/app:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: 1800s
