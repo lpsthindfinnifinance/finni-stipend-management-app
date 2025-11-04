@@ -656,7 +656,29 @@ export default function FinanceOps() {
                               <TableCell>
                                 <div className="font-medium">{req.practice?.clinicName || req.practiceId}</div>
                               </TableCell>
-                              <TableCell className="font-mono">{formatCurrency(parseFloat(req.amount))}</TableCell>
+                              <TableCell className="font-mono">
+                                {(() => {
+                                  // If "All Pay Periods" is selected, show total of all paid + committed
+                                  if (selectedPayPeriod === "all" && req.paymentBreakdown && req.paymentBreakdown.length > 0) {
+                                    const total = req.paymentBreakdown
+                                      .filter((p: any) => p.status === 'paid' || p.status === 'committed')
+                                      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+                                    return formatCurrency(total);
+                                  }
+                                  
+                                  // If a specific period is selected, show only that period's amount
+                                  if (selectedPayPeriod !== "all" && req.paymentBreakdown) {
+                                    const periodNum = parseInt(selectedPayPeriod);
+                                    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum);
+                                    if (periodPayment && (periodPayment.status === 'paid' || periodPayment.status === 'committed')) {
+                                      return formatCurrency(Number(periodPayment.amount));
+                                    }
+                                  }
+                                  
+                                  // Fall back to request amount
+                                  return formatCurrency(parseFloat(req.amount));
+                                })()}
+                              </TableCell>
                               <TableCell>
                                 <Badge variant="outline">{req.stipendType}</Badge>
                               </TableCell>
