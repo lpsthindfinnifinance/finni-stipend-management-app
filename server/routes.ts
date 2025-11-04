@@ -895,11 +895,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Valid pay period is required" });
       }
 
+      // Get request details for Slack notification
+      const request = await storage.getStipendRequestById(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
       await storage.markPeriodAsPaid(requestId, payPeriod);
 
-      // Send Slack notification
+      // Construct URL to the stipend request
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
+
+      // Send Slack notification with enhanced details
       await sendSlackNotification(
-        `Stipend for request #${requestId} marked as paid for PP${payPeriod} by ${user.firstName} ${user.lastName}`
+        `✅ *Stipend Request #${requestId} Marked as Paid*\n` +
+        `*Pay Period:* PP${payPeriod}\n` +
+        `*Clinic ID:* ${request.practiceId}\n` +
+        `*Description:* ${request.stipendDescription}\n` +
+        `*Marked by:* ${user.firstName} ${user.lastName}\n` +
+        `*View Request:* ${requestUrl}`
       );
 
       res.json({ success: true, message: `Marked period PP${payPeriod} as paid` });
