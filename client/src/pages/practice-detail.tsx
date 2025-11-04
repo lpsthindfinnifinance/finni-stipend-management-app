@@ -39,7 +39,7 @@ export default function PracticeDetail() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const { data: practice, isLoading: practiceLoading } = useQuery({
+  const { data: practice, isLoading: practiceLoading, error: practiceError } = useQuery({
     queryKey: ["/api/practices", practiceId],
     enabled: isAuthenticated && !!practiceId,
   });
@@ -59,8 +59,30 @@ export default function PracticeDetail() {
     enabled: isAuthenticated && !!practiceId,
   });
 
+  // Check for 403 (access denied) error
+  useEffect(() => {
+    if (practiceError) {
+      const errorMessage = String(practiceError);
+      if (errorMessage.includes("403")) {
+        toast({
+          title: "Access Denied",
+          description: "You can only view practices in your portfolio",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          setLocation("/dashboard");
+        }, 1500);
+      }
+    }
+  }, [practiceError, toast, setLocation]);
+
   if (authLoading || !isAuthenticated) {
     return null;
+  }
+
+  // If there's a 403 error, show a blank page while redirecting
+  if (practiceError && String(practiceError).includes("403")) {
+    return <div className="p-8"></div>;
   }
 
   const isLoading = practiceLoading || balanceLoading || ledgerLoading || pendingRequestsLoading;

@@ -314,12 +314,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/practices/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/practices/:id', isAuthenticated, async (req: any, res) => {
     try {
       const practice = await storage.getPracticeById(req.params.id);
       
       if (!practice) {
         return res.status(404).json({ message: "Practice not found" });
+      }
+
+      // Check if PSM user has access to this practice (portfolio-based access control)
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+        if (user.portfolioId !== practice.portfolioId) {
+          return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
+        }
       }
 
       res.json(practice);
@@ -329,8 +339,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/practices/:id/balance', isAuthenticated, async (req, res) => {
+  app.get('/api/practices/:id/balance', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if PSM user has access to this practice
+      const practice = await storage.getPracticeById(req.params.id);
+      if (!practice) {
+        return res.status(404).json({ message: "Practice not found" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+        if (user.portfolioId !== practice.portfolioId) {
+          return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
+        }
+      }
+      
       const currentPeriod = await storage.getCurrentPayPeriod();
       const [balance, stipendPaid, stipendCommitted, metrics, allocatedIn, allocatedOut] = await Promise.all([
         storage.getPracticeBalance(req.params.id),
@@ -367,8 +392,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/practices/:id/ledger', isAuthenticated, async (req, res) => {
+  app.get('/api/practices/:id/ledger', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if PSM user has access to this practice
+      const practice = await storage.getPracticeById(req.params.id);
+      if (!practice) {
+        return res.status(404).json({ message: "Practice not found" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+        if (user.portfolioId !== practice.portfolioId) {
+          return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
+        }
+      }
+      
       const ledger = await storage.getPracticeLedger(req.params.id);
       
       // Reverse first to get oldest to newest order for correct running balance calculation
@@ -391,8 +431,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/practices/:id/pending-requests', isAuthenticated, async (req, res) => {
+  app.get('/api/practices/:id/pending-requests', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if PSM user has access to this practice
+      const practice = await storage.getPracticeById(req.params.id);
+      if (!practice) {
+        return res.status(404).json({ message: "Practice not found" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+        if (user.portfolioId !== practice.portfolioId) {
+          return res.status(403).json({ message: "Access denied: You can only view practices in your portfolio" });
+        }
+      }
+      
       const pendingRequests = await storage.getPendingStipendRequestsForPractice(req.params.id);
       res.json(pendingRequests);
     } catch (error) {
@@ -551,13 +606,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/stipend-requests/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/stipend-requests/:id', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
       const request = await storage.getStipendRequestById(requestId);
       
       if (!request) {
         return res.status(404).json({ message: "Request not found" });
+      }
+      
+      // Check if PSM user has access to this request (portfolio-based access control)
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user && (user.role === 'PSM' || user.role === 'Lead PSM')) {
+        // Get the practice to check its portfolio
+        const practice = await storage.getPracticeById(request.practiceId);
+        if (practice && user.portfolioId !== practice.portfolioId) {
+          return res.status(403).json({ message: "Access denied: You can only view requests for practices in your portfolio" });
+        }
       }
       
       res.json(request);

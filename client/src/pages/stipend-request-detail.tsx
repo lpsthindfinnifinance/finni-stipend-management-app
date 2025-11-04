@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +36,7 @@ export default function StipendRequestDetail() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const { data: request, isLoading } = useQuery<StipendRequestWithDetails>({
+  const { data: request, isLoading, error: requestError } = useQuery<StipendRequestWithDetails>({
     queryKey: ["/api/stipend-requests", id],
     enabled: isAuthenticated && !!id,
   });
@@ -45,6 +45,23 @@ export default function StipendRequestDetail() {
     queryKey: ["/api/stipend-requests", id, "pay-period-breakdown"],
     enabled: isAuthenticated && !!id,
   });
+
+  // Check for 403 (access denied) error
+  useEffect(() => {
+    if (requestError) {
+      const errorMessage = String(requestError);
+      if (errorMessage.includes("403")) {
+        toast({
+          title: "Access Denied",
+          description: "You can only view requests for practices in your portfolio",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          setLocation("/my-requests");
+        }, 1500);
+      }
+    }
+  }, [requestError, toast, setLocation]);
 
   const approveMutation = useMutation({
     mutationFn: async ({ comment }: { comment?: string }) => {
@@ -277,6 +294,11 @@ export default function StipendRequestDetail() {
 
   if (authLoading || !isAuthenticated) {
     return null;
+  }
+
+  // If there's a 403 error, show a blank page while redirecting
+  if (requestError && String(requestError).includes("403")) {
+    return <div className="p-8"></div>;
   }
 
   if (isLoading) {
