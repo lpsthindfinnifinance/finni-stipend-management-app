@@ -631,7 +631,6 @@ export default function FinanceOps() {
                             <TableHead>Request Type</TableHead>
                             <TableHead>Periods</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Approved By</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -686,14 +685,6 @@ export default function FinanceOps() {
                                     </Badge>
                                   );
                                 })()}
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-xs">
-                                  <div>{req.financeApprover?.name || "—"}</div>
-                                  <div className="text-muted-foreground">
-                                    {req.financeApprovedAt ? formatDate(req.financeApprovedAt) : ""}
-                                  </div>
-                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
