@@ -34,6 +34,7 @@ import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Downl
 import { formatDate, formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function FinanceOps() {
   const { toast } = useToast();
@@ -47,6 +48,9 @@ export default function FinanceOps() {
   // Filters for stipend requests table
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<string>("all");
   const [selectedPractice, setSelectedPractice] = useState<string>("all");
+  
+  // Selection state for bulk payment marking
+  const [selectedRequests, setSelectedRequests] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -73,6 +77,11 @@ export default function FinanceOps() {
       hasSetDefaultPeriod.current = true;
     }
   }, [currentPeriod]);
+
+  // Clear selections when pay period filter changes
+  useEffect(() => {
+    setSelectedRequests(new Set());
+  }, [selectedPayPeriod, selectedPractice]);
 
   const { data: periods, isLoading: periodsLoading } = useQuery<any[]>({
     queryKey: ["/api/pay-periods"],
@@ -134,6 +143,31 @@ export default function FinanceOps() {
       toast({
         title: "Error",
         description: error.message || "Failed to update current period",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: async ({ requestIds, payPeriod }: { requestIds: number[], payPeriod: number }) => {
+      // Mark each request as paid for the specific pay period
+      const promises = requestIds.map(requestId =>
+        apiRequest("POST", `/api/stipend-requests/${requestId}/mark-period-paid`, { payPeriod })
+      );
+      await Promise.all(promises);
+    },
+    onSuccess: (_, variables) => {
+      toast({
+        title: "Success",
+        description: `Marked ${variables.requestIds.length} stipend(s) as paid for PP${variables.payPeriod}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/all-approved"] });
+      setSelectedRequests(new Set());
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark stipends as paid",
         variant: "destructive",
       });
     },
@@ -263,6 +297,50 @@ export default function FinanceOps() {
     toast({
       title: "Export Successful",
       description: `${filteredStipends.length} stipend requests exported`,
+    });
+  };
+
+  // Selection handlers
+  const handleToggleRequest = (requestId: number) => {
+    const newSelected = new Set(selectedRequests);
+    if (newSelected.has(requestId)) {
+      newSelected.delete(requestId);
+    } else {
+      newSelected.add(requestId);
+    }
+    setSelectedRequests(newSelected);
+  };
+
+  const handleToggleAll = (requests: any[]) => {
+    if (selectedRequests.size === requests.length) {
+      setSelectedRequests(new Set());
+    } else {
+      setSelectedRequests(new Set(requests.map(r => r.id)));
+    }
+  };
+
+  const handleMarkAsPaid = () => {
+    if (selectedRequests.size === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select at least one stipend request",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedPayPeriod === "all") {
+      toast({
+        title: "Invalid Selection",
+        description: "Please select a specific pay period to mark stipends as paid",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    markAsPaidMutation.mutate({
+      requestIds: Array.from(selectedRequests),
+      payPeriod: parseInt(selectedPayPeriod),
     });
   };
 
@@ -513,93 +591,112 @@ export default function FinanceOps() {
                 {stipendsLoading ? (
                   <p className="text-sm text-muted-foreground">Loading stipend requests...</p>
                 ) : filteredStipends.length > 0 ? (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Practice</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Request Type</TableHead>
-                          <TableHead>Periods</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Approved By</TableHead>
-                          <TableHead className="text-center">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredStipends.map((req: any) => (
-                          <TableRow
-                            key={req.id}
-                            className="cursor-pointer hover-elevate"
-                            onClick={() => window.location.href = `/requests/${req.id}`}
-                            data-testid={`row-stipend-${req.id}`}
-                          >
-                            <TableCell className="font-medium">#{req.id}</TableCell>
-                            <TableCell>
-                              <div className="font-medium">{req.practice?.clinicName || req.practiceId}</div>
-                            </TableCell>
-                            <TableCell className="font-mono">{formatCurrency(parseFloat(req.amount))}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{req.stipendType}</Badge>
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate">{req.stipendDescription || "—"}</TableCell>
-                            <TableCell>
-                              <Badge variant={req.requestType === "one_time" ? "secondary" : "default"}>
-                                {req.requestType === "one_time" ? "One-time" : "Recurring"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm font-medium">
-                              {req.requestType === "recurring" && req.effectivePayPeriod && req.recurringEndPeriod
-                                ? `PP${req.effectivePayPeriod}-PP${req.recurringEndPeriod}`
-                                : req.effectivePayPeriod
-                                ? `PP${req.effectivePayPeriod}`
-                                : <span className="text-muted-foreground">—</span>
-                              }
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  req.isFullyPaid
-                                    ? "default"
-                                    : req.status === "approved"
-                                    ? "default"
-                                    : req.status === "rejected"
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                              >
-                                {req.isFullyPaid ? "Paid" : req.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs">
-                                <div>{req.financeApprover?.name || "—"}</div>
-                                <div className="text-muted-foreground">
-                                  {req.financeApprovedAt ? formatDate(req.financeApprovedAt) : ""}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                              {!req.isFullyPaid && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => window.location.href = `/requests/${req.id}`}
-                                  data-testid={`button-manage-payments-${req.id}`}
-                                >
-                                  <DollarSign className="h-3 w-3 mr-1" />
-                                  Manage Payments
-                                </Button>
-                              )}
-                            </TableCell>
+                  <>
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12">
+                              <Checkbox
+                                checked={selectedRequests.size === filteredStipends.length && filteredStipends.length > 0}
+                                onCheckedChange={() => handleToggleAll(filteredStipends)}
+                                data-testid="checkbox-select-all"
+                              />
+                            </TableHead>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Practice</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Request Type</TableHead>
+                            <TableHead>Periods</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Approved By</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStipends.map((req: any) => (
+                            <TableRow
+                              key={req.id}
+                              className="cursor-pointer hover-elevate"
+                              onClick={() => window.location.href = `/requests/${req.id}`}
+                              data-testid={`row-stipend-${req.id}`}
+                            >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={selectedRequests.has(req.id)}
+                                  onCheckedChange={() => handleToggleRequest(req.id)}
+                                  data-testid={`checkbox-request-${req.id}`}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">#{req.id}</TableCell>
+                              <TableCell>
+                                <div className="font-medium">{req.practice?.clinicName || req.practiceId}</div>
+                              </TableCell>
+                              <TableCell className="font-mono">{formatCurrency(parseFloat(req.amount))}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{req.stipendType}</Badge>
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate">{req.stipendDescription || "—"}</TableCell>
+                              <TableCell>
+                                <Badge variant={req.requestType === "one_time" ? "secondary" : "default"}>
+                                  {req.requestType === "one_time" ? "One-time" : "Recurring"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm font-medium">
+                                {req.requestType === "recurring" && req.effectivePayPeriod && req.recurringEndPeriod
+                                  ? `PP${req.effectivePayPeriod}-PP${req.recurringEndPeriod}`
+                                  : req.effectivePayPeriod
+                                  ? `PP${req.effectivePayPeriod}`
+                                  : <span className="text-muted-foreground">—</span>
+                                }
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    req.isFullyPaid
+                                      ? "default"
+                                      : req.status === "approved"
+                                      ? "default"
+                                      : req.status === "rejected"
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                >
+                                  {req.isFullyPaid ? "Paid" : req.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs">
+                                  <div>{req.financeApprover?.name || "—"}</div>
+                                  <div className="text-muted-foreground">
+                                    {req.financeApprovedAt ? formatDate(req.financeApprovedAt) : ""}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {selectedRequests.size > 0 && selectedPayPeriod !== "all" && (
+                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">
+                          {selectedRequests.size} stipend{selectedRequests.size > 1 ? 's' : ''} selected
+                        </div>
+                        <Button
+                          onClick={handleMarkAsPaid}
+                          disabled={markAsPaidMutation.isPending}
+                          data-testid="button-mark-paid"
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          {markAsPaidMutation.isPending 
+                            ? "Processing..." 
+                            : `Mark as Paid for PP${selectedPayPeriod}`}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-8">
                     No stipend requests found matching the selected filters
