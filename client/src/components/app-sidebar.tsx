@@ -89,15 +89,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            Finni Health
-          </h2>
-          <p className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Stipend Management</p>
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
+        <SidebarHeader className="border-b border-sidebar-border p-4">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+              Finni Health
+            </h2>
+            <p className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Stipend Management</p>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-medium uppercase tracking-wide px-3">
             Navigation
@@ -110,6 +110,7 @@ export function AppSidebar() {
                     asChild
                     isActive={location === item.url}
                     data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    tooltip={item.title}
                   >
                     <a href={item.url}>
                       <item.icon className="h-4 w-4" />
@@ -134,6 +135,7 @@ export function AppSidebar() {
                     asChild
                     isActive={location === "/finance-ops"}
                     data-testid="nav-finance-ops"
+                    tooltip="Finance Ops"
                   >
                     <a href="/finance-ops">
                       <Calendar className="h-4 w-4" />
@@ -146,6 +148,7 @@ export function AppSidebar() {
                     asChild
                     isActive={location === "/settings"}
                     data-testid="nav-settings"
+                    tooltip="Settings"
                   >
                     <a href="/settings">
                       <Settings className="h-4 w-4" />
