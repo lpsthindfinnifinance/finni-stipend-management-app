@@ -17,31 +17,38 @@ import axios from "axios";
 // Slack notification helper
 async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any) {
   let webhookUrl: string | null = null;
+  let hasAnyDatabaseSettings = false;
   
   // Try to get webhook from database first
   if (storage) {
     try {
       const settings = await storage.getSlackSettings();
-      const activeSetting = settings.find((s: any) => 
-        s.notificationType === notificationType && s.isActive
-      );
+      hasAnyDatabaseSettings = settings && settings.length > 0;
       
-      if (activeSetting) {
-        webhookUrl = activeSetting.webhookUrl;
-        console.log(`Using database webhook for ${notificationType}`);
-      } else {
-        console.log(`No active webhook found in database for ${notificationType}`);
+      if (hasAnyDatabaseSettings) {
+        // If database settings exist, ONLY use database webhooks (no fallback to env)
+        const activeSetting = settings.find((s: any) => 
+          s.notificationType === notificationType && s.isActive
+        );
+        
+        if (activeSetting) {
+          webhookUrl = activeSetting.webhookUrl;
+          console.log(`Using database webhook for ${notificationType}`);
+        } else {
+          console.log(`No active webhook found in database for ${notificationType} - notification skipped`);
+          return; // Don't send if disabled in database settings
+        }
       }
     } catch (error) {
       console.error("Error fetching Slack settings from database:", error);
     }
   }
   
-  // Fall back to environment variable if no database config found
-  if (!webhookUrl) {
+  // Fall back to environment variable ONLY if no database settings exist at all
+  if (!webhookUrl && !hasAnyDatabaseSettings) {
     webhookUrl = process.env.SLACK_WEBHOOK_URL || null;
     if (webhookUrl) {
-      console.log(`Using environment variable webhook for ${notificationType}`);
+      console.log(`Using environment variable webhook for ${notificationType} (no database settings found)`);
     }
   }
   
