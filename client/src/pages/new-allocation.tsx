@@ -226,10 +226,25 @@ export default function NewAllocation() {
   const totalDonorAmount = donorPractices.reduce((sum, p) => sum + p.amount, 0);
   const totalRecipientAmount = recipientPractices.reduce((sum, p) => sum + p.amount, 0);
 
-  // Get available recipient practices (exclude practices already selected as donors)
-  const availableRecipientPractices = (portfolioPractices as any[] || []).filter((p: any) => 
-    !donorPractices.some(dp => dp.practiceId === p.id)
-  );
+  // Sort function: Portfolio (G1-G5) first, then Practice ID
+  const sortPractices = (a: any, b: any) => {
+    // First sort by portfolio
+    const portfolioA = a.portfolioId || '';
+    const portfolioB = b.portfolioId || '';
+    if (portfolioA !== portfolioB) {
+      return portfolioA.localeCompare(portfolioB);
+    }
+    // Then sort by practice ID
+    return (a.id || '').localeCompare(b.id || '');
+  };
+
+  // Sort donor practices
+  const sortedDonorPractices = [...(myPractices as any[] || [])].sort(sortPractices);
+
+  // Get available recipient practices (exclude practices already selected as donors) and sort
+  const availableRecipientPractices = (portfolioPractices as any[] || [])
+    .filter((p: any) => !donorPractices.some(dp => dp.practiceId === p.id))
+    .sort(sortPractices);
 
   // Check for validation errors
   const hasZeroOrNegative = donorPractices.some(dp => dp.amount <= 0);
@@ -293,7 +308,7 @@ export default function NewAllocation() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(myPractices as any[]).map((practice: any) => {
+                      {sortedDonorPractices.map((practice: any) => {
                         const isSelected = donorPractices.some(p => p.practiceId === practice.id);
                         const selectedPractice = donorPractices.find(p => p.practiceId === practice.id);
                         const availableBalance = practice.currentBalance || 0;
