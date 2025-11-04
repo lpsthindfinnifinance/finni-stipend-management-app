@@ -8,6 +8,7 @@ import {
   Calendar,
   ArrowRightLeft,
   TrendingDown,
+  FilePlus,
 } from "lucide-react";
 import {
   Sidebar,
@@ -54,7 +55,7 @@ export function AppSidebar() {
     {
       title: "Submit Request",
       url: "/requests/new",
-      icon: FileText,
+      icon: FilePlus,
       roles: ["PSM", "Finance", "Admin"],
     },
     {
@@ -114,7 +115,7 @@ export function AppSidebar() {
                     data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     tooltip={item.title}
                   >
-                    <a href={item.url} className="flex items-center gap-2">
+                    <a href={item.url} className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
                       <item.icon className="h-4 w-4 shrink-0" />
                       {state === "expanded" && <span className="truncate">{item.title}</span>}
                     </a>
@@ -139,7 +140,7 @@ export function AppSidebar() {
                     data-testid="nav-finance-ops"
                     tooltip="Finance Ops"
                   >
-                    <a href="/finance-ops" className="flex items-center gap-2">
+                    <a href="/finance-ops" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
                       <Calendar className="h-4 w-4 shrink-0" />
                       {state === "expanded" && <span className="truncate">Finance Ops</span>}
                     </a>
@@ -152,7 +153,7 @@ export function AppSidebar() {
                     data-testid="nav-settings"
                     tooltip="Settings"
                   >
-                    <a href="/settings" className="flex items-center gap-2">
+                    <a href="/settings" className={`flex items-center gap-2 ${state === "collapsed" ? "justify-center" : ""}`}>
                       <Settings className="h-4 w-4 shrink-0" />
                       {state === "expanded" && <span className="truncate">Settings</span>}
                     </a>
