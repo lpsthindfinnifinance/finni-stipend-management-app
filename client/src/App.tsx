@@ -77,7 +77,7 @@ function AppContent() {
       {isLoading || !isAuthenticated ? (
         <Router />
       ) : (
-        <SidebarProvider style={sidebarStyle}>
+        <SidebarProvider defaultOpen={true} style={sidebarStyle}>
           <div className="flex h-screen w-full">
             <AppSidebar />
             <div className="flex flex-col flex-1 overflow-hidden">

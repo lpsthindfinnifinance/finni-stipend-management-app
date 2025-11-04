@@ -88,13 +88,13 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-sidebar-foreground">
+          <h2 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
             Finni Health
           </h2>
-          <p className="text-xs text-muted-foreground">Stipend Management</p>
+          <p className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Stipend Management</p>
         </div>
       </SidebarHeader>
       <SidebarContent>
