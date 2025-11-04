@@ -531,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `🆕 *New Stipend Request Submitted*\n` +
         `*Request ID:* #${request.id}\n` +
         `*Clinic ID:* ${validatedData.practiceId}\n` +
-        `*Amount:* $${validatedData.amount.toFixed(2)}\n` +
+        `*Amount:* $${parseFloat(validatedData.amount).toFixed(2)}\n` +
         `*Description:* ${validatedData.stipendDescription}\n` +
         `*View Request:* ${requestUrl}`
       );
