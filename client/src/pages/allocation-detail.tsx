@@ -106,10 +106,10 @@ export default function AllocationDetail() {
             </CardContent>
           </Card>
 
-        {/* Donor Practices Table */}
+        {/* Contributor Practices Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Donor Practices</CardTitle>
+            <CardTitle>Contributor Practices</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
