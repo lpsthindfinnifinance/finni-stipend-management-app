@@ -490,14 +490,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/stipend-requests', isAuthenticated, async (req: any, res) => {
     try {
       const { requestorId } = req.query;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
       
       if (requestorId) {
         // Filter by requestor
-        const requests = await storage.getStipendRequests({ requestorId: requestorId as string });
+        let requests = await storage.getStipendRequests({ requestorId: requestorId as string });
+        
+        // For PSM and Lead PSM, additionally filter by portfolio
+        if ((user.role === 'PSM' || user.role === 'Lead PSM') && user.portfolioId) {
+          // Get all practices in the user's portfolio
+          const practices = await storage.getPractices({ portfolio: user.portfolioId });
+          const practiceIds = new Set(practices.map(p => p.id));
+          
+          // Filter requests to only include those for practices in the user's portfolio
+          requests = requests.filter(req => practiceIds.has(req.practiceId));
+        }
+        
         return res.json(requests);
       }
 
-      // Return all requests if no filter
+      // Return all requests if no filter (Finance/Admin only)
       const requests = await storage.getStipendRequests({});
       res.json(requests);
     } catch (error) {
