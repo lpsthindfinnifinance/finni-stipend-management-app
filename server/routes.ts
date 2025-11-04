@@ -1557,11 +1557,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Create ledger entry for opening balance (negative like stipend_paid)
+        // Create ledger entry for opening balance stipend paid (negative like stipend_paid)
         await storage.createLedgerEntry({
           practiceId: practice.id,
           payPeriod: importData.payPeriodNumber,
-          transactionType: 'opening_balance',
+          transactionType: 'opening_balance_stipend_paid',
           amount: (-Math.abs(importData.amount)).toString(), // Negative value
           description: `Opening Balance - Stipend Paid (PP${importData.payPeriodNumber})`,
         });

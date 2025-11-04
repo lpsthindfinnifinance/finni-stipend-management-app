@@ -193,7 +193,7 @@ export const practiceLedger = pgTable("practice_ledger", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   practiceId: varchar("practice_id").notNull(),
   payPeriod: integer("pay_period").notNull(),
-  transactionType: varchar("transaction_type").notNull(), // opening_balance, remeasurement, paid, committed, allocation_in, allocation_out, suspense_in, suspense_out
+  transactionType: varchar("transaction_type").notNull(), // opening_balance, opening_balance_stipend_paid, remeasurement, paid, committed, allocation_in, allocation_out, suspense_in, suspense_out
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(), // Can be positive or negative
   description: text("description"),
   relatedRequestId: integer("related_request_id"), // Reference to stipend_requests.id if applicable
