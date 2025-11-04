@@ -1171,10 +1171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Map BigQuery column names to database column names (complete mapping for all 40+ columns)
       const columnMapping: Record<string, string> = {
-        // Practice identification
+        // Practice identification (only ClinicName required)
         'ClinicName': 'clinicName',
-        'DisplayName': 'displayName',
-        'Group': 'group',
         'PayPeriod': 'payPeriod', // Simplified template format
         'Practice_DisplayName_Group': 'practiceDisplayNameGroup',
         'IsActivePractice': 'isActivePractice',
@@ -1279,10 +1277,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Build import data object with ALL BigQuery columns
         const importData: any = {
-          // Practice identification
+          // Practice identification (only ClinicName required)
           clinicName,
-          displayName: getValue('DisplayName'),
-          group: getValue('Group'),
           practiceDisplayNameGroup: getValue('Practice_DisplayName_Group'),
           isActivePractice: parseIntValue(getValue('IsActivePractice')),
           // Support both simplified template (PayPeriod) and full BigQuery format (CurrentPayPeriod_Number)
@@ -1849,11 +1845,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CSV Template Download
   app.get('/api/templates/metrics', isAuthenticated, isFinance, async (req, res) => {
     try {
-      // Generate CSV template with headers
+      // Generate CSV template with headers (only Practice ID required)
       const headers = [
         'ClinicName',
-        'DisplayName',
-        'Group',
         'PayPeriod',
         'StipendCap',
         'NegativeEarningsCap',
