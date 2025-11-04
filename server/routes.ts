@@ -2192,6 +2192,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // SLACK SETTINGS API ENDPOINTS
+  // ============================================================================
+
+  app.get('/api/settings/slack', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const settings = await storage.getSlackSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching Slack settings:", error);
+      res.status(500).json({ message: "Failed to fetch Slack settings" });
+    }
+  });
+
+  app.post('/api/settings/slack', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { insertSlackSettingSchema } = await import("@shared/schema");
+      const result = insertSlackSettingSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+
+      const newSetting = await storage.createSlackSetting(result.data);
+      res.status(201).json(newSetting);
+    } catch (error) {
+      console.error("Error creating Slack setting:", error);
+      res.status(500).json({ message: "Failed to create Slack setting" });
+    }
+  });
+
+  app.put('/api/settings/slack/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { updateSlackSettingSchema } = await import("@shared/schema");
+      const result = updateSlackSettingSchema.safeParse({ id, ...req.body });
+      if (!result.success) {
+        return res.status(400).json({ message: "Validation error", errors: result.error.errors });
+      }
+
+      const updated = await storage.updateSlackSetting(id, result.data);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating Slack setting:", error);
+      res.status(500).json({ message: "Failed to update Slack setting" });
+    }
+  });
+
+  app.delete('/api/settings/slack/:id', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const { id} = req.params;
+      const result = await storage.deleteSlackSetting(id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error deleting Slack setting:", error);
+      res.status(500).json({ message: "Failed to delete Slack setting" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

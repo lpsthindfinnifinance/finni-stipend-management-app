@@ -9,6 +9,7 @@ import {
   payPeriods,
   practiceReassignments,
   negativeEarningsCapRequests,
+  slack_settings,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -34,6 +35,9 @@ import {
   type InsertPracticeReassignment,
   type NegativeEarningsCapRequest,
   type InsertNegativeEarningsCapRequest,
+  type SlackSetting,
+  type InsertSlackSetting,
+  type UpdateSlackSetting,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, inArray, or } from "drizzle-orm";
@@ -121,6 +125,14 @@ export interface IStorage {
   // Dashboard/reporting operations
   getDashboardSummary(userId: string, role: string, portfolioId?: string): Promise<any>;
   getPortfolioSummaries(): Promise<any[]>;
+  
+  // Slack settings operations
+  getSlackSettings(): Promise<SlackSetting[]>;
+  getSlackSettingById(id: string): Promise<SlackSetting | undefined>;
+  getSlackSettingByType(notificationType: string): Promise<SlackSetting | undefined>;
+  createSlackSetting(setting: InsertSlackSetting): Promise<SlackSetting>;
+  updateSlackSetting(id: string, setting: Partial<UpdateSlackSetting>): Promise<SlackSetting>;
+  deleteSlackSetting(id: string): Promise<{ success: boolean; message?: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1715,6 +1727,48 @@ export class DatabaseStorage implements IStorage {
     });
     
     return summaries;
+  }
+
+  // ============================================================================
+  // SLACK SETTINGS OPERATIONS
+  // ============================================================================
+
+  async getSlackSettings(): Promise<SlackSetting[]> {
+    return await db.select().from(slack_settings).orderBy(slack_settings.notificationType);
+  }
+
+  async getSlackSettingById(id: string): Promise<SlackSetting | undefined> {
+    const [setting] = await db.select().from(slack_settings).where(eq(slack_settings.id, id));
+    return setting;
+  }
+
+  async getSlackSettingByType(notificationType: string): Promise<SlackSetting | undefined> {
+    const [setting] = await db.select()
+      .from(slack_settings)
+      .where(and(
+        eq(slack_settings.notificationType, notificationType),
+        eq(slack_settings.isActive, true)
+      ));
+    return setting;
+  }
+
+  async createSlackSetting(setting: InsertSlackSetting): Promise<SlackSetting> {
+    const [newSetting] = await db.insert(slack_settings).values(setting).returning();
+    return newSetting;
+  }
+
+  async updateSlackSetting(id: string, setting: Partial<UpdateSlackSetting>): Promise<SlackSetting> {
+    const [updated] = await db
+      .update(slack_settings)
+      .set({ ...setting, updatedAt: new Date() })
+      .where(eq(slack_settings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSlackSetting(id: string): Promise<{ success: boolean; message?: string }> {
+    await db.delete(slack_settings).where(eq(slack_settings.id, id));
+    return { success: true };
   }
 }
 

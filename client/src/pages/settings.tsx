@@ -43,7 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import type { Portfolio, Practice, User } from "@shared/schema";
+import type { Portfolio, Practice, User, SlackSetting } from "@shared/schema";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -54,12 +54,14 @@ export default function Settings() {
   const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
   const [practiceDialogOpen, setPracticeDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [slackDialogOpen, setSlackDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   // State for editing
   const [editingPortfolio, setEditingPortfolio] = useState<Portfolio | null>(null);
   const [editingPractice, setEditingPractice] = useState<Practice | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingSlack, setEditingSlack] = useState<SlackSetting | null>(null);
   const [deletingItem, setDeletingItem] = useState<{ type: string; id: string; name: string } | null>(null);
   
   // State for user form fields
@@ -81,6 +83,11 @@ export default function Settings() {
 
   const { data: users = [], isLoading: loadingUsers } = useQuery<User[]>({
     queryKey: ["/api/settings/users"],
+    enabled: isAuthenticated && (role === "Finance" || role === "Admin"),
+  });
+
+  const { data: slackSettings = [], isLoading: loadingSlack } = useQuery<SlackSetting[]>({
+    queryKey: ["/api/settings/slack"],
     enabled: isAuthenticated && (role === "Finance" || role === "Admin"),
   });
 
@@ -440,6 +447,7 @@ export default function Settings() {
             <TabsTrigger value="portfolios" data-testid="tab-portfolios">Portfolios</TabsTrigger>
             <TabsTrigger value="practices" data-testid="tab-practices">Practices</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
+            <TabsTrigger value="slack" data-testid="tab-slack">Slack Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="portfolios" className="space-y-4">
@@ -719,6 +727,107 @@ export default function Settings() {
                                   setDeleteDialogOpen(true);
                                 }}
                                 data-testid={`button-delete-user-${user.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="slack" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle>Slack Notifications</CardTitle>
+                  <CardDescription>Configure Slack webhook URLs for different notification types</CardDescription>
+                </div>
+                <Button 
+                  onClick={() => {
+                    setEditingSlack(null);
+                    setSlackDialogOpen(true);
+                  }}
+                  data-testid="button-create-slack"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Webhook
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loadingSlack ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Notification Type</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {slackSettings.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground">
+                            No Slack webhooks configured
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        slackSettings.map((setting) => (
+                          <TableRow key={setting.id} data-testid={`row-slack-${setting.id}`}>
+                            <TableCell className="font-medium capitalize">
+                              {setting.notificationType.replace(/_/g, ' ')}
+                            </TableCell>
+                            <TableCell>{setting.channelName || '-'}</TableCell>
+                            <TableCell className="max-w-xs truncate">{setting.description || '-'}</TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={setting.isActive ?? true}
+                                onCheckedChange={(checked) => {
+                                  apiRequest("PUT", `/api/settings/slack/${setting.id}`, { isActive: checked })
+                                    .then(() => {
+                                      queryClient.invalidateQueries({ queryKey: ["/api/settings/slack"] });
+                                      toast({ title: "Success", description: "Status updated" });
+                                    })
+                                    .catch((error) => {
+                                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                                    });
+                                }}
+                                data-testid={`switch-slack-active-${setting.id}`}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingSlack(setting);
+                                  setSlackDialogOpen(true);
+                                }}
+                                data-testid={`button-edit-slack-${setting.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeletingItem({ 
+                                    type: "slack", 
+                                    id: setting.id, 
+                                    name: setting.notificationType 
+                                  });
+                                  setDeleteDialogOpen(true);
+                                }}
+                                data-testid={`button-delete-slack-${setting.id}`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

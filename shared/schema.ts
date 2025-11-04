@@ -462,6 +462,42 @@ export const interPsmAllocationsRelations = relations(interPsmAllocations, ({ on
   ledgerEntries: many(practiceLedger),
 }));
 
+// ============================================================================
+// SLACK SETTINGS TABLE
+// ============================================================================
+
+export const slack_settings = pgTable("slack_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  notificationType: varchar("notification_type").notNull(), // e.g., "request_submitted", "request_approved", "request_rejected", "period_paid"
+  webhookUrl: text("webhook_url").notNull(),
+  channelName: varchar("channel_name"), // Display name like "#stipend-approvals"
+  description: text("description"), // What this webhook is for
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSlackSettingSchema = createInsertSchema(slack_settings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  notificationType: z.enum(["request_submitted", "request_approved", "request_rejected", "period_paid", "general"], 
+    { required_error: "Notification type is required" }),
+  webhookUrl: z.string().url("Must be a valid webhook URL").startsWith("https://hooks.slack.com/", "Must be a valid Slack webhook URL"),
+  channelName: z.string().optional(),
+  description: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const updateSlackSettingSchema = insertSlackSettingSchema.partial().extend({
+  id: z.string(),
+});
+
+export type InsertSlackSetting = z.infer<typeof insertSlackSettingSchema>;
+export type UpdateSlackSetting = z.infer<typeof updateSlackSettingSchema>;
+export type SlackSetting = typeof slack_settings.$inferSelect;
+
 export const practiceReassignmentsRelations = relations(practiceReassignments, ({ one }) => ({
   practice: one(practices, {
     fields: [practiceReassignments.practiceId],
