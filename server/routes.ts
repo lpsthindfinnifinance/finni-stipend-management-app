@@ -501,6 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
             ...request,
             isFullyPaid: allPaid,
+            paymentBreakdown: breakdown, // Include full breakdown for period-specific status
           };
         })
       );

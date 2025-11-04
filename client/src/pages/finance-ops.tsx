@@ -83,6 +83,25 @@ export default function FinanceOps() {
     setSelectedRequests(new Set());
   }, [selectedPayPeriod, selectedPractice]);
 
+  // Helper to get period-specific payment status
+  const getPeriodStatus = (req: any, periodFilter: string) => {
+    // If showing all periods or no breakdown available, use overall status
+    if (periodFilter === "all" || !req.paymentBreakdown || req.paymentBreakdown.length === 0) {
+      return req.isFullyPaid ? "Paid" : "Approved";
+    }
+
+    // Check if the specific filtered period is paid
+    const periodNum = parseInt(periodFilter);
+    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum);
+    
+    if (periodPayment) {
+      return periodPayment.status === "paid" ? "Paid" : "Approved";
+    }
+
+    // If period not found in breakdown (shouldn't happen with proper filtering), default to Approved
+    return "Approved";
+  };
+
   const { data: periods, isLoading: periodsLoading } = useQuery<any[]>({
     queryKey: ["/api/pay-periods"],
     enabled: isAuthenticated,
@@ -262,6 +281,7 @@ export default function FinanceOps() {
     const csvRows = [headers.join(",")];
     
     filteredStipends.forEach((req: any) => {
+      const periodStatus = getPeriodStatus(req, selectedPayPeriod);
       const row = [
         req.id,
         req.practiceId,
@@ -272,7 +292,7 @@ export default function FinanceOps() {
         req.requestType,
         req.effectivePayPeriod || "",
         req.recurringEndPeriod || "",
-        req.status,
+        periodStatus,
         req.requestor?.name || "",
         req.leadPsmApprover?.name || "",
         req.leadPsmApprovedAt ? formatDateTime(req.leadPsmApprovedAt) : "",
@@ -652,19 +672,24 @@ export default function FinanceOps() {
                                 }
                               </TableCell>
                               <TableCell>
-                                <Badge
-                                  variant={
-                                    req.isFullyPaid
-                                      ? "default"
-                                      : req.status === "approved"
-                                      ? "default"
-                                      : req.status === "rejected"
-                                      ? "destructive"
-                                      : "secondary"
-                                  }
-                                >
-                                  {req.isFullyPaid ? "Paid" : req.status}
-                                </Badge>
+                                {(() => {
+                                  const periodStatus = getPeriodStatus(req, selectedPayPeriod);
+                                  return (
+                                    <Badge
+                                      variant={
+                                        periodStatus === "Paid"
+                                          ? "default"
+                                          : req.status === "approved"
+                                          ? "default"
+                                          : req.status === "rejected"
+                                          ? "destructive"
+                                          : "secondary"
+                                      }
+                                    >
+                                      {periodStatus}
+                                    </Badge>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <div className="text-xs">
