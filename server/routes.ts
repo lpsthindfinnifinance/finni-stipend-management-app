@@ -460,13 +460,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Get pending requests based on role
+      // Role-based pending logic:
+      // - PSM: See pending_finance (requests awaiting Finance approval, even though Lead PSM approved)
+      // - Lead PSM: See pending_lead_psm (requests awaiting their approval)
+      // - Finance: See pending_finance (requests awaiting their approval)
+      // - Admin: See pending_lead_psm (same as Lead PSM)
       let status: string | undefined;
-      if (user.role === "Lead PSM") status = "pending_lead_psm";
+      if (user.role === "PSM") status = "pending_finance";
+      else if (user.role === "Lead PSM") status = "pending_lead_psm";
       else if (user.role === "Finance") status = "pending_finance";
-      else if (user.role === "Admin") status = "pending_lead_psm"; // Admins can see Lead PSM pending requests
+      else if (user.role === "Admin") status = "pending_lead_psm";
       
-      // PSM role users cannot approve requests, so return empty array
       if (!status) {
         return res.json([]);
       }
@@ -479,9 +483,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/stipend-requests/approved', isAuthenticated, async (req, res) => {
+  app.get('/api/stipend-requests/approved', isAuthenticated, async (req: any, res) => {
     try {
-      const requests = await storage.getStipendRequests({ status: "approved" });
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Role-based approved logic:
+      // - PSM: See only fully approved (approved) requests
+      // - Lead PSM: See both pending_finance AND approved (they've done their part)
+      // - Finance: See only fully approved (approved) requests
+      // - Admin: See only fully approved (approved) requests
+      let requests;
+      if (user.role === "Lead PSM") {
+        // Lead PSM sees both pending_finance and approved in the "Approved" tab
+        const [pendingFinance, approved] = await Promise.all([
+          storage.getStipendRequests({ status: "pending_finance" }),
+          storage.getStipendRequests({ status: "approved" }),
+        ]);
+        requests = [...pendingFinance, ...approved];
+      } else {
+        // All other roles see only fully approved requests
+        requests = await storage.getStipendRequests({ status: "approved" });
+      }
+      
       res.json(requests);
     } catch (error) {
       console.error("Error fetching approved requests:", error);
