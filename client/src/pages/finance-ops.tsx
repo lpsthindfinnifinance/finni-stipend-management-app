@@ -37,6 +37,38 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 
+// Helper function to check if a request should be shown for a specific pay period
+function shouldShowRequestForPeriod(req: any, selectedPayPeriod: string): boolean {
+  // If "All Periods" is selected, show all requests
+  if (selectedPayPeriod === "all") {
+    return true;
+  }
+  
+  const periodNum = parseInt(selectedPayPeriod);
+  
+  // Check if request is active for this period based on effectivePayPeriod and recurringEndPeriod
+  const isPeriodInRange = req.requestType === "one_time"
+    ? req.effectivePayPeriod === periodNum
+    : (req.effectivePayPeriod <= periodNum && 
+       (!req.recurringEndPeriod || req.recurringEndPeriod >= periodNum));
+  
+  if (!isPeriodInRange) {
+    return false;
+  }
+  
+  // If period is in range, check if it's cancelled in the payment breakdown
+  if (req.paymentBreakdown) {
+    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum);
+    
+    // If we found the period breakdown and it's cancelled, exclude it
+    if (periodPayment && periodPayment.status?.toLowerCase() === 'cancelled') {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 export default function FinanceOps() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading, role } = useAuth();
@@ -251,12 +283,7 @@ export default function FinanceOps() {
 
   const handleExportStipends = () => {
     const filteredStipends = allStipendRequests.filter((req: any) => {
-      const periodMatch = selectedPayPeriod === "all" || 
-        (req.requestType === "one_time"
-          ? req.effectivePayPeriod === parseInt(selectedPayPeriod)
-          : (req.effectivePayPeriod <= parseInt(selectedPayPeriod) && 
-             (!req.recurringEndPeriod || req.recurringEndPeriod >= parseInt(selectedPayPeriod)))
-        );
+      const periodMatch = shouldShowRequestForPeriod(req, selectedPayPeriod);
       const practiceMatch = selectedPractice === "all" || req.practiceId === selectedPractice;
       return periodMatch && practiceMatch;
     });
@@ -371,12 +398,7 @@ export default function FinanceOps() {
   }
 
   const filteredStipends = allStipendRequests.filter((req: any) => {
-    const periodMatch = selectedPayPeriod === "all" || 
-      (req.requestType === "one_time"
-        ? req.effectivePayPeriod === parseInt(selectedPayPeriod)
-        : (req.effectivePayPeriod <= parseInt(selectedPayPeriod) && 
-           (!req.recurringEndPeriod || req.recurringEndPeriod >= parseInt(selectedPayPeriod)))
-      );
+    const periodMatch = shouldShowRequestForPeriod(req, selectedPayPeriod);
     const practiceMatch = selectedPractice === "all" || req.practiceId === selectedPractice;
     return periodMatch && practiceMatch;
   });
