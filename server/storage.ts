@@ -289,7 +289,7 @@ export class DatabaseStorage implements IStorage {
   // PRACTICE OPERATIONS
   // ============================================================================
   
-  async getPractices(filters?: { search?: string; portfolio?: string }): Promise<any[]> {
+  async getPractices(filters?: { search?: string; portfolio?: string; includeInactive?: boolean }): Promise<any[]> {
     let query = db.select({
       id: practices.id,
       name: practices.name,
@@ -300,8 +300,10 @@ export class DatabaseStorage implements IStorage {
     }).from(practices);
 
     const conditions = [];
-    // Only show active practices
-    conditions.push(eq(practices.isActive, true));
+    // Only show active practices unless includeInactive is true
+    if (!filters?.includeInactive) {
+      conditions.push(eq(practices.isActive, true));
+    }
     
     if (filters?.portfolio && filters.portfolio !== "all") {
       conditions.push(eq(practices.portfolioId, filters.portfolio));

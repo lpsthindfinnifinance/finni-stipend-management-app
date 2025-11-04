@@ -1640,7 +1640,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Practices CRUD
   app.get('/api/settings/practices', isAuthenticated, isFinance, async (req, res) => {
     try {
-      const practices = await storage.getPractices();
+      // Include inactive practices for Settings page management
+      const practices = await storage.getPractices({ includeInactive: true });
       res.json(practices);
     } catch (error) {
       console.error("Error fetching practices:", error);
