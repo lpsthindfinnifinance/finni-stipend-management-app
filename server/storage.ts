@@ -508,6 +508,16 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async deleteOpeningBalanceStipendPaid(practiceId: string, payPeriod: number): Promise<void> {
+    await db.delete(practiceLedger).where(
+      and(
+        eq(practiceLedger.practiceId, practiceId),
+        eq(practiceLedger.payPeriod, payPeriod),
+        eq(practiceLedger.transactionType, 'opening_balance_stipend_paid')
+      )
+    );
+  }
+
   async getPracticeBalance(practiceId: string): Promise<number> {
     const result = await db
       .select({

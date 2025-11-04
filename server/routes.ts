@@ -1557,14 +1557,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Create ledger entry for opening balance stipend paid (negative like stipend_paid)
-        await storage.createLedgerEntry({
-          practiceId: practice.id,
-          payPeriod: importData.payPeriodNumber,
-          transactionType: 'opening_balance_stipend_paid',
-          amount: (-Math.abs(importData.amount)).toString(), // Negative value
-          description: `Opening Balance - Stipend Paid (PP${importData.payPeriodNumber})`,
-        });
+        // Delete existing opening_balance_stipend_paid entries for this practice/period (to allow updates/zeroing)
+        await storage.deleteOpeningBalanceStipendPaid(practice.id, importData.payPeriodNumber);
+
+        // Only create new entry if amount is non-zero
+        if (importData.amount !== 0) {
+          await storage.createLedgerEntry({
+            practiceId: practice.id,
+            payPeriod: importData.payPeriodNumber,
+            transactionType: 'opening_balance_stipend_paid',
+            amount: (-Math.abs(importData.amount)).toString(), // Negative value
+            description: `Opening Balance - Stipend Paid (PP${importData.payPeriodNumber})`,
+          });
+        }
         
         createdCount++;
       }
