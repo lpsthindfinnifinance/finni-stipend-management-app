@@ -106,6 +106,7 @@ export interface IStorage {
   createPayPeriod(period: InsertPayPeriod): Promise<PayPeriod>;
   advancePayPeriod(currentId: number, nextId: number): Promise<void>;
   updatePayPeriodCsvData(periodId: number, csvData: string): Promise<void>;
+  setCurrentPayPeriod(periodId: number): Promise<void>;
   
   // Practice reassignment operations
   createPracticeReassignment(reassignment: InsertPracticeReassignment): Promise<PracticeReassignment>;
@@ -1273,6 +1274,16 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(payPeriods)
       .set({ csvData })
+      .where(eq(payPeriods.id, periodId));
+  }
+
+  async setCurrentPayPeriod(periodId: number): Promise<void> {
+    // Set all periods to not current
+    await db.update(payPeriods).set({ isCurrent: 0 });
+    // Set the specified period as current
+    await db
+      .update(payPeriods)
+      .set({ isCurrent: 1 })
       .where(eq(payPeriods.id, periodId));
   }
 

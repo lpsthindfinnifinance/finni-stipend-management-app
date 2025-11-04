@@ -1122,6 +1122,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/pay-periods/:id/set-current', isAuthenticated, isFinance, async (req, res) => {
+    try {
+      const periodId = parseInt(req.params.id);
+      if (isNaN(periodId)) {
+        return res.status(400).json({ message: "Invalid pay period ID" });
+      }
+
+      await storage.setCurrentPayPeriod(periodId);
+      res.json({ message: "Current pay period updated successfully" });
+    } catch (error) {
+      console.error("Error setting current pay period:", error);
+      res.status(500).json({ message: "Failed to set current pay period" });
+    }
+  });
+
   app.get('/api/pay-periods/:id/csv', isAuthenticated, isFinance, async (req, res) => {
     try {
       const periodId = parseInt(req.params.id);
@@ -1439,8 +1454,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Save CSV data to pay period for future downloads
-      await storage.updatePayPeriodCsvData(currentPeriod.id, csvData);
+      // Save CSV data to the pay period specified in the CSV (not necessarily the current period)
+      // Extract the pay period from the first data row to determine which period this CSV is for
+      const firstImportPeriod = imports.length > 0 ? imports[0].currentPayPeriodNumber : currentPeriod.id;
+      await storage.updatePayPeriodCsvData(firstImportPeriod, csvData);
 
       const balanceMsg = openingBalanceCount > 0 ? `, ${openingBalanceCount} opening balances` : '';
       const warningMsg = skippedNullStipendCap > 0 ? ` ⚠️ WARNING: ${skippedNullStipendCap} practices skipped - StipendCapAvgFinal column is empty or missing in your CSV!` : '';
