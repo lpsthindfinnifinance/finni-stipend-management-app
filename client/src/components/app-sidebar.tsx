@@ -20,15 +20,23 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function AppSidebar() {
   const { user, role } = useAuth();
   const [location] = useLocation();
+  const { state } = useSidebar();
 
   const mainItems = [
     {
@@ -151,43 +159,87 @@ export function AppSidebar() {
         )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            {user?.profileImageUrl ? (
-              <img
-                src={user.profileImageUrl}
-                alt="Profile"
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
-                {user?.firstName?.[0] || user?.email?.[0] || "U"}
+        {state === "collapsed" ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                data-testid="button-user-menu-collapsed"
+              >
+                {user?.profileImageUrl ? (
+                  <img
+                    src={user.profileImageUrl}
+                    alt="Profile"
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
+                    {user?.firstName?.[0] || user?.email?.[0] || "U"}
+                  </div>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="end" className="w-56">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.email || "User"}
+                </p>
+                <p className="text-xs text-muted-foreground">{role}</p>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.firstName && user?.lastName
-                  ? `${user.firstName} ${user.lastName}`
-                  : user?.email || "User"}
-              </p>
-              <Badge variant="secondary" className="text-xs mt-1">
-                {role}
-              </Badge>
+              <DropdownMenuItem
+                onClick={() => {
+                  window.location.href = "/api/logout";
+                }}
+                data-testid="menu-item-logout"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              {user?.profileImageUrl ? (
+                <img
+                  src={user.profileImageUrl}
+                  alt="Profile"
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
+                  {user?.firstName?.[0] || user?.email?.[0] || "U"}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.email || "User"}
+                </p>
+                <Badge variant="secondary" className="text-xs mt-1">
+                  {role}
+                </Badge>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                window.location.href = "/api/logout";
+              }}
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => {
-              window.location.href = "/api/logout";
-            }}
-            data-testid="button-logout"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
