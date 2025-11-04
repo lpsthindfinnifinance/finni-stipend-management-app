@@ -888,13 +888,6 @@ export class DatabaseStorage implements IStorage {
           : `Stipend committed for PP${payPeriod} - Amount: $${newAmount.toFixed(2)} (Request #${requestId})`,
       })
       .where(eq(practiceLedger.id, ledgerEntry.id));
-    
-    // Also update the stipend request amount if this is a recurring request
-    // (we update the main request amount to match the new period amount)
-    await db
-      .update(stipendRequests)
-      .set({ amount: newAmount.toString() })
-      .where(eq(stipendRequests.id, requestId));
   }
 
   async markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void> {
