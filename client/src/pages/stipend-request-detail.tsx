@@ -516,9 +516,19 @@ export default function StipendRequestDetail() {
             </div>
 
             <div data-testid="section-amount">
-              <p className="text-sm text-muted-foreground">Amount</p>
+              <p className="text-sm text-muted-foreground">Total Amount</p>
               <p className="text-2xl font-mono font-bold text-primary" data-testid="text-amount">
-                {formatCurrency(request.amount)}
+                {(() => {
+                  // Calculate total from pay period breakdown if available
+                  if (payPeriodBreakdown && payPeriodBreakdown.length > 0) {
+                    const total = payPeriodBreakdown
+                      .filter((p: any) => p.status === 'paid' || p.status === 'committed')
+                      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+                    return formatCurrency(total);
+                  }
+                  // Fall back to request amount if breakdown not available
+                  return formatCurrency(request.amount);
+                })()}
               </p>
             </div>
 
