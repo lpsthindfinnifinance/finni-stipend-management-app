@@ -57,6 +57,7 @@ export interface IStorage {
   
   // Practice operations
   getPractices(filters?: { search?: string; portfolio?: string }): Promise<any[]>;
+  getActivePractices(): Promise<Practice[]>;
   getPracticeById(id: string): Promise<any | undefined>;
   getPracticeByClinicName(clinicName: string): Promise<Practice | undefined>;
   createPractice(practice: InsertPractice): Promise<Practice>;
@@ -88,6 +89,7 @@ export interface IStorage {
   updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest>;
   getPayPeriodBreakdown(requestId: number): Promise<any[]>;
   cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void>;
+  updateCommittedPeriodAmount(requestId: number, payPeriod: number, newAmount: number): Promise<void>;
   markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void>;
   deleteStipendRequest(requestId: number): Promise<{ success: boolean; message?: string }>;
   
@@ -325,6 +327,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     return result;
+  }
+
+  async getActivePractices(): Promise<Practice[]> {
+    return await db.select().from(practices).where(eq(practices.isActive, true));
   }
 
   async getPracticeById(id: string): Promise<any | undefined> {
@@ -832,7 +838,87 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async updateCommittedPeriodAmount(requestId: number, payPeriod: number, newAmount: number): Promise<void> {
+    // First, get the pay period breakdown to check the current status
+    const breakdown = await this.getPayPeriodBreakdown(requestId);
+    const periodInfo = breakdown.find(p => p.payPeriod === payPeriod);
+    
+    if (!periodInfo) {
+      throw new Error('Pay period not found for this request');
+    }
+    
+    // Only allow editing if the current status is 'committed'
+    if (periodInfo.status === 'cancelled') {
+      throw new Error('Cannot edit a cancelled period');
+    }
+    
+    if (periodInfo.status === 'paid') {
+      throw new Error('Cannot edit a period that has already been paid');
+    }
+    
+    if (periodInfo.status !== 'committed') {
+      throw new Error('Can only edit committed periods');
+    }
+    
+    // Find the committed ledger entry for this request and pay period
+    const [ledgerEntry] = await db
+      .select()
+      .from(practiceLedger)
+      .where(
+        and(
+          eq(practiceLedger.relatedRequestId, requestId),
+          eq(practiceLedger.payPeriod, payPeriod),
+          eq(practiceLedger.transactionType, 'committed')
+        )
+      );
+
+    if (!ledgerEntry) {
+      throw new Error('No committed entry found for this pay period');
+    }
+    
+    // Update the amount (as a negative value since it's a debit)
+    const newLedgerAmount = -Math.abs(newAmount);
+    
+    await db
+      .update(practiceLedger)
+      .set({
+        amount: newLedgerAmount.toString(),
+        description: ledgerEntry.description 
+          ? ledgerEntry.description.replace(/\$[\d,]+\.\d{2}/, `$${newAmount.toFixed(2)}`)
+          : `Stipend committed for PP${payPeriod} - Amount: $${newAmount.toFixed(2)} (Request #${requestId})`,
+      })
+      .where(eq(practiceLedger.id, ledgerEntry.id));
+    
+    // Also update the stipend request amount if this is a recurring request
+    // (we update the main request amount to match the new period amount)
+    await db
+      .update(stipendRequests)
+      .set({ amount: newAmount.toString() })
+      .where(eq(stipendRequests.id, requestId));
+  }
+
   async markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void> {
+    // First, get the pay period breakdown to check the current status
+    const breakdown = await this.getPayPeriodBreakdown(requestId);
+    const periodInfo = breakdown.find(p => p.payPeriod === payPeriod);
+    
+    if (!periodInfo) {
+      throw new Error('Pay period not found for this request');
+    }
+    
+    // Only allow marking as paid if the current status is 'committed'
+    if (periodInfo.status === 'cancelled') {
+      throw new Error('Cannot mark a cancelled period as paid');
+    }
+    
+    if (periodInfo.status === 'paid') {
+      throw new Error('This period is already marked as paid');
+    }
+    
+    if (periodInfo.status !== 'committed') {
+      throw new Error('Can only mark committed periods as paid');
+    }
+    
     // Find the committed ledger entry for this request and pay period
     const [ledgerEntry] = await db
       .select()

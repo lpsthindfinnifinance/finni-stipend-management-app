@@ -33,6 +33,7 @@ import {
 import { Calendar, Upload, RefreshCw, AlertCircle, CheckCircle2, FileText, Download, Filter, DollarSign } from "lucide-react";
 import { formatDate, formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -51,6 +52,12 @@ export default function FinanceOps() {
   
   // Selection state for bulk payment marking
   const [selectedRequests, setSelectedRequests] = useState<Set<number>>(new Set());
+  
+  // Edit amount dialog state
+  const [showEditAmountDialog, setShowEditAmountDialog] = useState(false);
+  const [editRequestId, setEditRequestId] = useState<number | null>(null);
+  const [editPayPeriod, setEditPayPeriod] = useState<number | null>(null);
+  const [editAmount, setEditAmount] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -191,6 +198,63 @@ export default function FinanceOps() {
       });
     },
   });
+
+  const editAmountMutation = useMutation({
+    mutationFn: async ({ requestId, payPeriod, newAmount }: { requestId: number, payPeriod: number, newAmount: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${requestId}/update-period-amount`, { payPeriod, newAmount });
+    },
+    onSuccess: (_, variables) => {
+      toast({
+        title: "Success",
+        description: `Updated stipend amount to ${formatCurrency(variables.newAmount)} for PP${variables.payPeriod}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/all-approved"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/practices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portfolios"] });
+      setShowEditAmountDialog(false);
+      setEditRequestId(null);
+      setEditPayPeriod(null);
+      setEditAmount("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update stipend amount",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditAmount = (requestId: number, payPeriod: number, currentAmount: number) => {
+    setEditRequestId(requestId);
+    setEditPayPeriod(payPeriod);
+    setEditAmount(currentAmount.toString());
+    setShowEditAmountDialog(true);
+  };
+
+  const handleSubmitEditAmount = () => {
+    if (!editRequestId || !editPayPeriod || !editAmount) {
+      toast({
+        title: "Error",
+        description: "Invalid input",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newAmount = parseFloat(editAmount);
+    if (isNaN(newAmount) || newAmount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    editAmountMutation.mutate({ requestId: editRequestId, payPeriod: editPayPeriod, newAmount });
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -631,10 +695,18 @@ export default function FinanceOps() {
                             <TableHead>Request Type</TableHead>
                             <TableHead>Periods</TableHead>
                             <TableHead>Status</TableHead>
+                            {selectedPayPeriod !== "all" && <TableHead>Actions</TableHead>}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredStipends.map((req: any) => (
+                          {filteredStipends.map((req: any) => {
+                            const periodNum = selectedPayPeriod !== "all" ? parseInt(selectedPayPeriod) : null;
+                            const periodPayment = periodNum && req.paymentBreakdown 
+                              ? req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum)
+                              : null;
+                            const canEditAmount = periodPayment && periodPayment.status === 'committed';
+                            
+                            return (
                             <TableRow
                               key={req.id}
                               className="cursor-pointer hover-elevate"
@@ -686,8 +758,27 @@ export default function FinanceOps() {
                                   );
                                 })()}
                               </TableCell>
+                              {selectedPayPeriod !== "all" && (
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  {canEditAmount && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditAmount(req.id, periodNum!, parseFloat(req.amount));
+                                      }}
+                                      data-testid={`button-edit-amount-${req.id}`}
+                                    >
+                                      <DollarSign className="h-3 w-3 mr-1" />
+                                      Edit Amount
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              )}
                             </TableRow>
-                          ))}
+                          );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
@@ -781,6 +872,53 @@ export default function FinanceOps() {
                 data-testid="button-confirm-import"
               >
                 {importMutation.isPending ? "Importing..." : "Import Data"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Amount Dialog */}
+        <Dialog open={showEditAmountDialog} onOpenChange={setShowEditAmountDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Stipend Amount</DialogTitle>
+              <DialogDescription>
+                Update the stipend amount for Pay Period {editPayPeriod}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-amount">New Amount</Label>
+                <Input
+                  id="edit-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  data-testid="input-edit-amount"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditAmountDialog(false);
+                  setEditRequestId(null);
+                  setEditPayPeriod(null);
+                  setEditAmount("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitEditAmount}
+                disabled={editAmountMutation.isPending}
+                data-testid="button-submit-edit-amount"
+              >
+                {editAmountMutation.isPending ? "Updating..." : "Update Amount"}
               </Button>
             </DialogFooter>
           </DialogContent>

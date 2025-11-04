@@ -633,9 +633,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const requests = await storage.getStipendRequests({ status: "approved" });
       
+      // Filter out requests for inactive practices
+      const activePractices = await storage.getActivePractices();
+      const activePracticeIds = new Set(activePractices.map(p => p.id));
+      const activeRequests = requests.filter(request => activePracticeIds.has(request.practiceId));
+      
       // Enrich each request with payment status information
       const enrichedRequests = await Promise.all(
-        requests.map(async (request) => {
+        activeRequests.map(async (request) => {
           const breakdown = await storage.getPayPeriodBreakdown(request.id);
           const allPaid = breakdown.length > 0 && breakdown.every(period => period.status === 'paid');
           return {
@@ -833,6 +838,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error cancelling committed period:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to cancel committed period" });
+    }
+  });
+
+  app.post('/api/stipend-requests/:id/update-period-amount', isAuthenticated, isFinance, async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { payPeriod, newAmount } = req.body;
+      
+      if (!payPeriod || typeof payPeriod !== 'number') {
+        return res.status(400).json({ message: "Valid pay period is required" });
+      }
+      
+      if (!newAmount || typeof newAmount !== 'number' || newAmount <= 0) {
+        return res.status(400).json({ message: "Valid amount is required" });
+      }
+
+      await storage.updateCommittedPeriodAmount(requestId, payPeriod, newAmount);
+
+      // Send Slack notification
+      await sendSlackNotification(
+        `Stipend amount for request #${requestId} updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`
+      );
+
+      res.json({ success: true, message: `Updated period PP${payPeriod} amount to $${newAmount.toFixed(2)}` });
+    } catch (error) {
+      console.error("Error updating period amount:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update period amount" });
     }
   });
 
