@@ -1,5 +1,11 @@
 import connectPg from "connect-pg-simple";
-import type { Express, RequestHandler } from "express";
+import type {
+	Express,
+	NextFunction,
+	Request,
+	RequestHandler,
+	Response,
+} from "express";
 import session from "express-session";
 import memoize from "memoizee";
 import * as client from "openid-client";
@@ -148,7 +154,11 @@ export async function setupAuth(app: Express) {
 	passport.serializeUser((user: Express.User, cb) => cb(null, user));
 	passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-	app.get("/api/login", (req, res, next) => {
+	app.get("/api/login", (req: Request, res: Response, next: NextFunction) => {
+		const domains = process.env.REPLIT_DOMAINS!.split(",");
+		if (!domains.includes(req.hostname)) {
+			return res.status(400).json({ error: "Invalid hostname" });
+		}
 		passport.authenticate(`replitauth:${req.hostname}`, {
 			prompt: "login consent",
 			scope: [
@@ -161,14 +171,20 @@ export async function setupAuth(app: Express) {
 
 	app.get(
 		"/api/callback",
-		(req, res, next) => {
+		(req: Request, res: Response, next: NextFunction) => {
+			const domains = process.env.REPLIT_DOMAINS!.split(",");
+			if (!domains.includes(req.hostname)) {
+				console.log(req.hostname);
+				console.error("Invalid hostname");
+				return res.status(400).json({ error: "Invalid hostname" });
+			}
 			passport.authenticate(`replitauth:${req.hostname}`, {
 				successReturnToOrRedirect: "/dashboard",
 				failureRedirect: "/unauthorized",
 				failureMessage: true,
 			})(req, res, next);
 		},
-		(err: any, req: any, res: any, next: any) => {
+		(err: any, req: Request, res: Response, next: NextFunction) => {
 			if (err) {
 				console.error("OAuth callback error:", err.message, err.stack);
 			}
