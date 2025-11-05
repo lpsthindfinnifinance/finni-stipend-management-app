@@ -1584,7 +1584,8 @@ export class DatabaseStorage implements IStorage {
   async getDashboardSummary(userId: string, role: string, portfolioId?: string): Promise<any> {
     // Get current pay period
     const currentPeriod = await this.getCurrentPayPeriod();
-    const currentPeriodNumber = currentPeriod?.id || 21;
+    const currentPeriodNumber = currentPeriod?.payPeriodNumber || 21;
+    const currentYear = currentPeriod?.year || 2025;
 
     // Get ALL practices regardless of role (only active practices)
     // Dashboard KPIs always show totals across all portfolios
@@ -1598,14 +1599,15 @@ export class DatabaseStorage implements IStorage {
     // Get practice IDs for efficient ledger query
     const practiceIds = practicesList.map(p => p.id);
 
-    // Calculate stipend cap from metrics
+    // Calculate stipend cap from metrics for the current year
     for (const practice of practicesList) {
       const metrics = await db.select()
         .from(practiceMetrics)
         .where(
           and(
             eq(practiceMetrics.clinicName, practice.id),
-            eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)
+            eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber),
+            eq(practiceMetrics.year, currentYear)
           )
         )
         .limit(1);
@@ -1615,7 +1617,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Get ledger totals efficiently using SUM then ABS (handles cancellations correctly)
+    // Get ledger totals for PP1-PP26 of current year only
     if (practiceIds.length > 0) {
       const ledgerTotals = await db.select({
         practiceId: practiceLedger.practiceId,
@@ -1626,6 +1628,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           or(...practiceIds.map(id => eq(practiceLedger.practiceId, id))),
+          eq(practiceLedger.year, currentYear),
+          sql`${practiceLedger.payPeriod} >= 1 AND ${practiceLedger.payPeriod} <= 26`,
           or(
             eq(practiceLedger.transactionType, 'paid'),
             eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
@@ -1645,7 +1649,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Calculate Available Balance
+    // Calculate Available Balance (scoped to current year PP1-PP26)
     const availableBalanceTillPP26 = totalStipendCap - totalStipendPaid - totalStipendCommitted;
     const remainingPeriods = Math.max(26 - currentPeriodNumber, 1);
     const availableBalancePerPP = availableBalanceTillPP26 / remainingPeriods;
