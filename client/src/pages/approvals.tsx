@@ -236,9 +236,9 @@ export default function Approvals() {
               </TableCell>
               <TableCell className="text-sm font-medium">
                 {request.requestType === "recurring" && request.effectivePayPeriod && request.recurringEndPeriod
-                  ? `PP${request.effectivePayPeriod}-PP${request.recurringEndPeriod}`
+                  ? `PP${request.effectivePayPeriod}'${request.effectiveYear || 2025}-PP${request.recurringEndPeriod}'${request.recurringEndYear || request.effectiveYear || 2025}`
                   : request.effectivePayPeriod
-                  ? `PP${request.effectivePayPeriod}`
+                  ? `PP${request.effectivePayPeriod}'${request.effectiveYear || 2025}`
                   : <span className="text-muted-foreground">—</span>
                 }
               </TableCell>
