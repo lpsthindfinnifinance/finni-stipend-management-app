@@ -23,6 +23,7 @@ const getOidcConfig = memoize(
 			return await client.discovery(
 				new URL(process.env.OIDC_ISSUER_URL ?? "https://replit.com/oidc"),
 				process.env.OIDC_CLIENT_ID!,
+				{ client_secret: process.env.OIDC_CLIENT_SECRET },
 			);
 		} catch (error) {
 			console.error("OIDC discovery error:", error);
