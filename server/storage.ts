@@ -912,8 +912,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async cancelCommittedPeriod(requestId: number, payPeriod: number, year: number): Promise<void> {
-    // Find the committed ledger entry for this request and pay period
-    const [ledgerEntry] = await db
+    // Find ALL committed ledger entries for this request and pay period
+    const ledgerEntries = await db
       .select()
       .from(practiceLedger)
       .where(
@@ -925,16 +925,24 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    if (!ledgerEntry) {
+    if (ledgerEntries.length === 0) {
       throw new Error('No committed entry found for this pay period');
     }
 
-    // Create a reversal entry (negative amount to cancel the commitment)
-    // Use 'committed' type with negative amount to maintain proper transaction type
-    const reversalAmount = -Number(ledgerEntry.amount);
+    // Sum all committed entries to check current status
+    const committedSum = ledgerEntries.reduce((sum, entry) => sum + Number(entry.amount), 0);
+    
+    // If sum is already ~0, it's already cancelled
+    if (Math.abs(committedSum) < 0.01) {
+      throw new Error('This period is already cancelled');
+    }
+    
+    // Create a reversal entry that cancels the net committed amount
+    // Use 'committed' type with opposite sign to cancel
+    const reversalAmount = -committedSum;
     
     await db.insert(practiceLedger).values({
-      practiceId: ledgerEntry.practiceId,
+      practiceId: ledgerEntries[0].practiceId,
       payPeriod: payPeriod,
       year: year,
       transactionType: 'committed',
