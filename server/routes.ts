@@ -833,16 +833,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const endPeriod = request.recurringEndPeriod || 26;
           const endYear = request.recurringEndYear || effectiveYear;
           
-          // Calculate which periods belong to which year
+          // Create ledger entries for all pay periods in the range
           let currentYear = effectiveYear;
-          for (let period = effectivePeriod; period <= 26 || (currentYear < endYear && period <= endPeriod); period++) {
-            if (period > 26) {
-              // Move to next year
-              currentYear++;
-              period = 1;
-              if (currentYear > endYear) break;
-            }
-            
+          let period = effectivePeriod;
+          
+          while (true) {
+            // Check if we've reached the end
+            if (currentYear > endYear) break;
             if (currentYear === endYear && period > endPeriod) break;
             
             // All periods start as "committed" - Finance marks as "paid" when processed
@@ -856,6 +853,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               relatedRequestId: requestId,
               relatedAllocationId: null,
             });
+            
+            // Move to next period
+            period++;
+            if (period > 26) {
+              // Move to next year
+              period = 1;
+              currentYear++;
+            }
           }
         }
       } else {
