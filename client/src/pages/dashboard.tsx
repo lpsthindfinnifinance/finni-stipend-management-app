@@ -5,8 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortfolioCard } from "@/components/portfolio-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/formatters";
-import { TrendingUp, DollarSign, Clock, CheckCircle } from "lucide-react";
+import { TrendingUp, DollarSign, Clock, CheckCircle, Info } from "lucide-react";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -73,9 +74,24 @@ export default function Dashboard() {
               {/* Total Portfolio Cap (till PP26) */}
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Total Portfolio Cap
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Portfolio Cap
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors" data-testid="info-total-cap">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>Total Portfolio Cap:</strong> Sum of all practice stipend caps for the current year (PP1-PP26). 
+                          Calculated from BigQuery metrics imported via CSV.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
                     <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
@@ -93,9 +109,24 @@ export default function Dashboard() {
               {/* Stipend Paid (till current PP) */}
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Stipend Paid
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Stipend Paid
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors" data-testid="info-stipend-paid">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>Stipend Paid:</strong> Total stipends that have been marked as "Paid" from PP1 to PP26 of the current year only. 
+                          Year-scoped to prevent cross-year data mixing.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
                     <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
@@ -115,9 +146,24 @@ export default function Dashboard() {
               {/* Stipend Committed */}
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Stipend Committed
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Stipend Committed
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors" data-testid="info-stipend-committed">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>Stipend Committed:</strong> Total approved stipends not yet paid, from PP1 to PP26 of the current year. 
+                          Includes all "Committed" ledger entries for the current year only.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-10 w-10 rounded-md bg-purple-500/10 flex items-center justify-center shrink-0">
                     <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   </div>
@@ -127,7 +173,7 @@ export default function Dashboard() {
                     {formatCurrency(summary?.stipendCommitted || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    For upcoming pay periods
+                    For upcoming pay periods till PP26 this year
                   </p>
                 </CardContent>
               </Card>
@@ -135,9 +181,24 @@ export default function Dashboard() {
               {/* Available Balance (till PP26) */}
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Available Balance
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Available Balance
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors" data-testid="info-available-balance">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>Available Balance:</strong> Remaining capacity through PP26 of current year. 
+                          Calculated as: Total Cap - Stipend Paid (PP1-PP26) - Stipend Committed (PP1-PP26).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-10 w-10 rounded-md bg-green-500/10 flex items-center justify-center shrink-0">
                     <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
@@ -155,9 +216,24 @@ export default function Dashboard() {
               {/* Available Balance (per Pay Period) */}
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Available Balance (per PP)
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Available Balance (per PP)
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors" data-testid="info-available-per-pp">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>Available per Pay Period:</strong> Average available balance per remaining period. 
+                          Calculated as: Available Balance ÷ Remaining Periods (through PP26 of current year).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-10 w-10 rounded-md bg-teal-500/10 flex items-center justify-center shrink-0">
                     <TrendingUp className="h-5 w-5 text-teal-600 dark:text-teal-400" />
                   </div>
@@ -175,9 +251,24 @@ export default function Dashboard() {
               {/* Pending Approvals */}
               <Card>
                 <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Pending Approvals
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Pending Approvals
+                    </CardTitle>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors" data-testid="info-pending-approvals">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>Pending Approvals:</strong> Number of stipend requests awaiting your approval action. 
+                          For Lead PSMs: requests pending first approval. For Finance: requests pending final approval.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-10 w-10 rounded-md bg-yellow-500/10 flex items-center justify-center shrink-0">
                     <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
