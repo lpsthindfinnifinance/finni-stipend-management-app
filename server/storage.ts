@@ -115,6 +115,7 @@ export interface IStorage {
   setCurrentPayPeriod(periodId: number): Promise<void>;
   deleteRemeasurementEntries(practiceId: string, payPeriod: number, year: number): Promise<void>;
   deleteOpeningBalanceStipendPaid(practiceId: string, payPeriod: number, year: number): Promise<void>;
+  deleteOpeningBalanceEntries(practiceId: string, payPeriod: number, year: number): Promise<void>;
   
   // Practice reassignment operations
   createPracticeReassignment(reassignment: InsertPracticeReassignment): Promise<PracticeReassignment>;
@@ -558,6 +559,17 @@ export class DatabaseStorage implements IStorage {
         eq(practiceLedger.payPeriod, payPeriod),
         eq(practiceLedger.year, year),
         eq(practiceLedger.transactionType, 'opening_balance_stipend_paid')
+      )
+    );
+  }
+
+  async deleteOpeningBalanceEntries(practiceId: string, payPeriod: number, year: number): Promise<void> {
+    await db.delete(practiceLedger).where(
+      and(
+        eq(practiceLedger.practiceId, practiceId),
+        eq(practiceLedger.payPeriod, payPeriod),
+        eq(practiceLedger.year, year),
+        eq(practiceLedger.transactionType, 'opening_balance')
       )
     );
   }

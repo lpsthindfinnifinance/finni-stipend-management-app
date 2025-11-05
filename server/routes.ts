@@ -1643,6 +1643,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!previousMetrics && importData.stipendCapAvgFinal !== null) {
             const openingBalance = Number(importData.stipendCapAvgFinal);
             if (openingBalance > 0.01) {
+              // Delete existing opening balance entries for this practice/period/year (to prevent duplicates)
+              await storage.deleteOpeningBalanceEntries(practice.id, currentPeriodNum, currentYear);
+              
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
@@ -1681,6 +1684,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (importData.stipendCapAvgFinal !== null) {
             const openingBalance = Number(importData.stipendCapAvgFinal);
             if (openingBalance > 0.01) {
+              // Delete existing opening balance entries for this practice/period/year (to prevent duplicates)
+              await storage.deleteOpeningBalanceEntries(practice.id, currentPeriodNum, currentYear);
+              
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
