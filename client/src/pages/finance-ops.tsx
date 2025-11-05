@@ -690,7 +690,7 @@ export default function FinanceOps() {
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription className="text-xs">
-                      CSV format: ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid
+                      CSV format: ClinicID, PayPeriodNumber, Year, OpeningBalanceStipendPaid
                     </AlertDescription>
                   </Alert>
                 </CardContent>
@@ -1054,10 +1054,10 @@ export default function FinanceOps() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium">CSV Format Requirements</Label>
                 <div className="bg-muted/50 p-3 rounded-md">
-                  <p className="text-xs font-mono mb-2">ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid</p>
+                  <p className="text-xs font-mono mb-2">ClinicID, PayPeriodNumber, Year, OpeningBalanceStipendPaid</p>
                   <p className="text-xs text-muted-foreground">Example:</p>
-                  <p className="text-xs font-mono text-muted-foreground">P001, 1, 5000.00</p>
-                  <p className="text-xs font-mono text-muted-foreground">P002, 1, 3200.50</p>
+                  <p className="text-xs font-mono text-muted-foreground">P001, 1, 2025, 5000.00</p>
+                  <p className="text-xs font-mono text-muted-foreground">P002, 1, 2025, 3200.50</p>
                 </div>
               </div>
 
