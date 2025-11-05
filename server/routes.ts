@@ -815,9 +815,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (request.requestType === "one_time") {
           // One-time request: Create single "committed" entry for the effective pay period
           const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
+          const effectiveYear = request.effectiveYear || currentPeriod?.year || 2025;
           await storage.createLedgerEntry({
             practiceId: request.practiceId,
             payPeriod: effectivePeriod,
+            year: effectiveYear,
             transactionType: "committed",
             amount,
             description: `Stipend request #${requestId} approved`,
@@ -827,16 +829,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (request.requestType === "recurring") {
           // Recurring request: Create "committed" entries for all periods from effective to end
           const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
+          const effectiveYear = request.effectiveYear || currentPeriod?.year || 2025;
           const endPeriod = request.recurringEndPeriod || 26;
+          const endYear = request.recurringEndYear || effectiveYear;
           
-          for (let period = effectivePeriod; period <= endPeriod; period++) {
+          // Calculate which periods belong to which year
+          let currentYear = effectiveYear;
+          for (let period = effectivePeriod; period <= 26 || (currentYear < endYear && period <= endPeriod); period++) {
+            if (period > 26) {
+              // Move to next year
+              currentYear++;
+              period = 1;
+              if (currentYear > endYear) break;
+            }
+            
+            if (currentYear === endYear && period > endPeriod) break;
+            
             // All periods start as "committed" - Finance marks as "paid" when processed
             await storage.createLedgerEntry({
               practiceId: request.practiceId,
               payPeriod: period,
+              year: currentYear,
               transactionType: "committed",
               amount,
-              description: `Recurring stipend request #${requestId} (PP${period})`,
+              description: `Recurring stipend request #${requestId} (PP${period}'${currentYear})`,
               relatedRequestId: requestId,
               relatedAllocationId: null,
             });
