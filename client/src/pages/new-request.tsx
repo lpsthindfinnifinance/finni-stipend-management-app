@@ -31,7 +31,9 @@ export default function NewRequest() {
   const [stipendDescription, setStipendDescription] = useState("");
   const [staffEmails, setStaffEmails] = useState("");
   const [effectivePayPeriod, setEffectivePayPeriod] = useState<string | undefined>(undefined);
+  const [effectiveYear, setEffectiveYear] = useState<string>("2025");
   const [recurringEndPeriod, setRecurringEndPeriod] = useState<string | undefined>(undefined);
+  const [recurringEndYear, setRecurringEndYear] = useState<string>("2025");
   const [justification, setJustification] = useState("");
 
   useEffect(() => {
@@ -57,10 +59,18 @@ export default function NewRequest() {
     enabled: !!practiceId,
   });
 
-  const { data: currentPayPeriod } = useQuery<{ id: number }>({
+  const { data: currentPayPeriod } = useQuery<{ id: number; payPeriodNumber: number; year: number }>({
     queryKey: ["/api/pay-periods/current"],
     enabled: isAuthenticated,
   });
+
+  // Set default year to current pay period's year
+  useEffect(() => {
+    if (currentPayPeriod?.year) {
+      setEffectiveYear(currentPayPeriod.year.toString());
+      setRecurringEndYear(currentPayPeriod.year.toString());
+    }
+  }, [currentPayPeriod]);
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -80,7 +90,10 @@ export default function NewRequest() {
       setStipendDescription("");
       setStaffEmails("");
       setRequestType("one_time");
+      setEffectivePayPeriod(undefined);
+      setEffectiveYear(currentPayPeriod?.year?.toString() || "2025");
       setRecurringEndPeriod(undefined);
+      setRecurringEndYear(currentPayPeriod?.year?.toString() || "2025");
       setJustification("");
       window.location.href = "/requests";
     },
@@ -171,7 +184,9 @@ export default function NewRequest() {
       staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails.trim() : null,
       requestType,
       effectivePayPeriod: parseInt(effectivePayPeriod),
+      effectiveYear: parseInt(effectiveYear),
       recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
+      recurringEndYear: requestType === "recurring" && recurringEndYear ? parseInt(recurringEndYear) : null,
       justification,
     });
   };
@@ -334,50 +349,22 @@ export default function NewRequest() {
                   </RadioGroup>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="effectivePeriod">
-                    {requestType === "recurring" ? "Start Pay Period *" : "Pay Period *"}
-                  </Label>
-                  <Select value={effectivePayPeriod} onValueChange={setEffectivePayPeriod}>
-                    <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
-                      <SelectValue placeholder="Select pay period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {!currentPayPeriod ? (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
-                      ) : Math.max(0, 26 - currentPayPeriod.id) === 0 ? (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
-                      ) : (
-                        Array.from({ length: Math.max(0, 26 - currentPayPeriod.id) }, (_, i) => currentPayPeriod.id + i + 1).map((period) => (
-                          <SelectItem key={period} value={period.toString()}>
-                            Pay Period {period}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {requestType === "recurring" 
-                      ? "The pay period when this recurring stipend starts"
-                      : "The pay period when this stipend will be paid"
-                    }
-                  </p>
-                </div>
-
-                {requestType === "recurring" && (
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="endPeriod">End Pay Period *</Label>
-                    <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
-                      <SelectTrigger id="endPeriod" data-testid="select-end-period">
-                        <SelectValue placeholder="Select end period" />
+                    <Label htmlFor="effectivePeriod">
+                      {requestType === "recurring" ? "Start Pay Period *" : "Pay Period *"}
+                    </Label>
+                    <Select value={effectivePayPeriod} onValueChange={setEffectivePayPeriod}>
+                      <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
+                        <SelectValue placeholder="Select pay period" />
                       </SelectTrigger>
                       <SelectContent>
                         {!currentPayPeriod ? (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
-                        ) : Math.max(0, 26 - currentPayPeriod.id) === 0 ? (
+                        ) : Math.max(0, 26 - currentPayPeriod.payPeriodNumber) === 0 ? (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
                         ) : (
-                          Array.from({ length: Math.max(0, 26 - currentPayPeriod.id) }, (_, i) => currentPayPeriod.id + i + 1).map((period) => (
+                          Array.from({ length: Math.max(0, 26 - currentPayPeriod.payPeriodNumber) }, (_, i) => currentPayPeriod.payPeriodNumber + i + 1).map((period) => (
                             <SelectItem key={period} value={period.toString()}>
                               Pay Period {period}
                             </SelectItem>
@@ -385,10 +372,70 @@ export default function NewRequest() {
                         )}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      The last pay period for this recurring stipend
-                    </p>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="effectiveYear">Year *</Label>
+                    <Select value={effectiveYear} onValueChange={setEffectiveYear}>
+                      <SelectTrigger id="effectiveYear" data-testid="select-effective-year">
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  {requestType === "recurring" 
+                    ? "The pay period and year when this recurring stipend starts"
+                    : "The pay period and year when this stipend will be paid"
+                  }
+                </p>
+
+                {requestType === "recurring" && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="endPeriod">End Pay Period *</Label>
+                        <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
+                          <SelectTrigger id="endPeriod" data-testid="select-end-period">
+                            <SelectValue placeholder="Select end period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {!currentPayPeriod ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
+                            ) : Math.max(0, 26 - currentPayPeriod.payPeriodNumber) === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
+                            ) : (
+                              Array.from({ length: Math.max(0, 26 - currentPayPeriod.payPeriodNumber) }, (_, i) => currentPayPeriod.payPeriodNumber + i + 1).map((period) => (
+                                <SelectItem key={period} value={period.toString()}>
+                                  Pay Period {period}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="endYear">End Year *</Label>
+                        <Select value={recurringEndYear} onValueChange={setRecurringEndYear}>
+                          <SelectTrigger id="endYear" data-testid="select-end-year">
+                            <SelectValue placeholder="Select year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2025">2025</SelectItem>
+                            <SelectItem value="2026">2026</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                      The last pay period and year for this recurring stipend
+                    </p>
+                  </>
                 )}
 
                 <div className="space-y-2">
