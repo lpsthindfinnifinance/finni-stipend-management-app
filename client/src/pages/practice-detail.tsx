@@ -310,10 +310,10 @@ export default function PracticeDetail() {
                     </div>
                     <p className="text-xs text-muted-foreground">Per Pay Period</p>
                   </div>
-                  {/* Till PP26 - Secondary/Smaller */}
+                  {/* Till PP26 - Secondary/Smaller (Year-scoped) */}
                   <div>
                     <div className="text-sm font-mono font-semibold text-muted-foreground">
-                      {formatCurrency((balance as any)?.currentBalance || 0)}
+                      {formatCurrency((balance as any)?.available || 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">Till PP26</p>
                   </div>
