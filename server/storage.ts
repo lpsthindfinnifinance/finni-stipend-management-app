@@ -71,10 +71,11 @@ export interface IStorage {
   deletePractice(id: string): Promise<{ success: boolean; message?: string }>;
   
   // Practice metrics operations
-  getPracticeMetrics(practiceId: string, payPeriod?: number): Promise<PracticeMetrics[]>;
+  getPracticeMetrics(practiceId: string, payPeriod?: number, year?: number): Promise<PracticeMetrics[]>;
   upsertPracticeMetrics(metrics: InsertPracticeMetrics): Promise<PracticeMetrics>;
-  getCurrentMetrics(practiceId: string, payPeriod: number): Promise<PracticeMetrics | undefined>;
-  getPreviousMetricsByClinicName(clinicName: string, payPeriod: number): Promise<PracticeMetrics | undefined>;
+  getCurrentMetrics(practiceId: string, payPeriod: number, year: number): Promise<PracticeMetrics | undefined>;
+  getPreviousMetricsByClinicName(clinicName: string, payPeriod: number, year: number): Promise<PracticeMetrics | undefined>;
+  getAllPracticeMetricsByPeriod(payPeriod: number, year: number): Promise<PracticeMetrics[]>;
   
   // Practice ledger operations
   getPracticeLedger(practiceId: string): Promise<any[]>;
@@ -93,9 +94,9 @@ export interface IStorage {
   createStipendRequest(request: InsertStipendRequest): Promise<StipendRequest>;
   updateStipendRequestStatus(id: number, status: string, userId: string, notes?: string): Promise<StipendRequest>;
   getPayPeriodBreakdown(requestId: number): Promise<any[]>;
-  cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void>;
-  updateCommittedPeriodAmount(requestId: number, payPeriod: number, newAmount: number): Promise<void>;
-  markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void>;
+  cancelCommittedPeriod(requestId: number, payPeriod: number, year: number): Promise<void>;
+  updateCommittedPeriodAmount(requestId: number, payPeriod: number, year: number, newAmount: number): Promise<void>;
+  markPeriodAsPaid(requestId: number, payPeriod: number, year: number): Promise<void>;
   deleteStipendRequest(requestId: number): Promise<{ success: boolean; message?: string }>;
   
   // Inter-PSM allocation operations
@@ -107,10 +108,13 @@ export interface IStorage {
   // Pay period operations
   getCurrentPayPeriod(): Promise<PayPeriod | undefined>;
   getPayPeriods(): Promise<PayPeriod[]>;
+  getPayPeriodByNumber(payPeriodNumber: number, year: number): Promise<PayPeriod | undefined>;
   createPayPeriod(period: InsertPayPeriod): Promise<PayPeriod>;
   advancePayPeriod(currentId: number, nextId: number): Promise<void>;
-  updatePayPeriodCsvData(periodId: number, csvData: string): Promise<void>;
+  updatePayPeriodCsvData(payPeriodNumber: number, year: number, csvData: string): Promise<void>;
   setCurrentPayPeriod(periodId: number): Promise<void>;
+  deleteRemeasurementEntries(practiceId: string, payPeriod: number, year: number): Promise<void>;
+  deleteOpeningBalanceStipendPaid(practiceId: string, payPeriod: number, year: number): Promise<void>;
   
   // Practice reassignment operations
   createPracticeReassignment(reassignment: InsertPracticeReassignment): Promise<PracticeReassignment>;
@@ -435,28 +439,42 @@ export class DatabaseStorage implements IStorage {
   // PRACTICE METRICS OPERATIONS
   // ============================================================================
   
-  async getPracticeMetrics(practiceId: string, payPeriod?: number): Promise<PracticeMetrics[]> {
-    // Note: This method is deprecated as the new schema uses clinicName instead of practiceId
-    // Keeping for backward compatibility - returns all metrics
+  async getPracticeMetrics(practiceId: string, payPeriod?: number, year?: number): Promise<PracticeMetrics[]> {
+    // Note: practiceId parameter is actually clinicName in the new schema
+    if (payPeriod && year) {
+      return await db
+        .select()
+        .from(practiceMetrics)
+        .where(and(
+          eq(practiceMetrics.clinicName, practiceId),
+          eq(practiceMetrics.currentPayPeriodNumber, payPeriod),
+          eq(practiceMetrics.year, year)
+        ));
+    }
     if (payPeriod) {
       return await db
         .select()
         .from(practiceMetrics)
-        .where(eq(practiceMetrics.currentPayPeriodNumber, payPeriod));
+        .where(and(
+          eq(practiceMetrics.clinicName, practiceId),
+          eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
+        ));
     }
+    // Return all metrics for this practice
     return await db
       .select()
       .from(practiceMetrics)
-      .orderBy(desc(practiceMetrics.currentPayPeriodNumber));
+      .where(eq(practiceMetrics.clinicName, practiceId))
+      .orderBy(desc(practiceMetrics.year), desc(practiceMetrics.currentPayPeriodNumber));
   }
 
   async upsertPracticeMetrics(metrics: InsertPracticeMetrics): Promise<PracticeMetrics> {
-    // Upsert based on clinicName + currentPayPeriodNumber (unique combination)
+    // Upsert based on clinicName + currentPayPeriodNumber + year (unique combination)
     const [result] = await db
       .insert(practiceMetrics)
       .values(metrics)
       .onConflictDoUpdate({
-        target: [practiceMetrics.clinicName, practiceMetrics.currentPayPeriodNumber],
+        target: [practiceMetrics.clinicName, practiceMetrics.currentPayPeriodNumber, practiceMetrics.year],
         set: {
           ...metrics,
           updatedAt: new Date(),
@@ -466,31 +484,36 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getAllPracticeMetricsByPeriod(payPeriod: number): Promise<PracticeMetrics[]> {
+  async getAllPracticeMetricsByPeriod(payPeriod: number, year: number): Promise<PracticeMetrics[]> {
     return await db
       .select()
       .from(practiceMetrics)
-      .where(eq(practiceMetrics.currentPayPeriodNumber, payPeriod));
+      .where(and(
+        eq(practiceMetrics.currentPayPeriodNumber, payPeriod),
+        eq(practiceMetrics.year, year)
+      ));
   }
 
-  async getCurrentMetrics(practiceId: string, payPeriod: number): Promise<PracticeMetrics | undefined> {
+  async getCurrentMetrics(practiceId: string, payPeriod: number, year: number): Promise<PracticeMetrics | undefined> {
     const [metrics] = await db
       .select()
       .from(practiceMetrics)
       .where(and(
         eq(practiceMetrics.clinicName, practiceId),
-        eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
+        eq(practiceMetrics.currentPayPeriodNumber, payPeriod),
+        eq(practiceMetrics.year, year)
       ));
     return metrics;
   }
 
-  async getPreviousMetricsByClinicName(clinicName: string, payPeriod: number): Promise<PracticeMetrics | undefined> {
+  async getPreviousMetricsByClinicName(clinicName: string, payPeriod: number, year: number): Promise<PracticeMetrics | undefined> {
     const [metrics] = await db
       .select()
       .from(practiceMetrics)
       .where(and(
         eq(practiceMetrics.clinicName, clinicName),
-        eq(practiceMetrics.currentPayPeriodNumber, payPeriod)
+        eq(practiceMetrics.currentPayPeriodNumber, payPeriod),
+        eq(practiceMetrics.year, year)
       ));
     return metrics;
   }
@@ -528,21 +551,23 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async deleteOpeningBalanceStipendPaid(practiceId: string, payPeriod: number): Promise<void> {
+  async deleteOpeningBalanceStipendPaid(practiceId: string, payPeriod: number, year: number): Promise<void> {
     await db.delete(practiceLedger).where(
       and(
         eq(practiceLedger.practiceId, practiceId),
         eq(practiceLedger.payPeriod, payPeriod),
+        eq(practiceLedger.year, year),
         eq(practiceLedger.transactionType, 'opening_balance_stipend_paid')
       )
     );
   }
 
-  async deleteRemeasurementEntries(practiceId: string, payPeriod: number): Promise<void> {
+  async deleteRemeasurementEntries(practiceId: string, payPeriod: number, year: number): Promise<void> {
     await db.delete(practiceLedger).where(
       and(
         eq(practiceLedger.practiceId, practiceId),
         eq(practiceLedger.payPeriod, payPeriod),
+        eq(practiceLedger.year, year),
         or(
           eq(practiceLedger.transactionType, 'remeasurement_increase'),
           eq(practiceLedger.transactionType, 'remeasurement_decrease')
@@ -863,7 +888,7 @@ export class DatabaseStorage implements IStorage {
     return breakdown;
   }
 
-  async cancelCommittedPeriod(requestId: number, payPeriod: number): Promise<void> {
+  async cancelCommittedPeriod(requestId: number, payPeriod: number, year: number): Promise<void> {
     // Find the committed ledger entry for this request and pay period
     const [ledgerEntry] = await db
       .select()
@@ -872,6 +897,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(practiceLedger.relatedRequestId, requestId),
           eq(practiceLedger.payPeriod, payPeriod),
+          eq(practiceLedger.year, year),
           eq(practiceLedger.transactionType, 'committed')
         )
       );
@@ -887,6 +913,7 @@ export class DatabaseStorage implements IStorage {
     await db.insert(practiceLedger).values({
       practiceId: ledgerEntry.practiceId,
       payPeriod: payPeriod,
+      year: year,
       transactionType: 'committed',
       amount: reversalAmount.toString(),
       description: `Cancelled: Stipend commitment reversal for PP${payPeriod} (Request #${requestId})`,
@@ -894,10 +921,10 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updateCommittedPeriodAmount(requestId: number, payPeriod: number, newAmount: number): Promise<void> {
+  async updateCommittedPeriodAmount(requestId: number, payPeriod: number, year: number, newAmount: number): Promise<void> {
     // First, get the pay period breakdown to check the current status
     const breakdown = await this.getPayPeriodBreakdown(requestId);
-    const periodInfo = breakdown.find(p => p.payPeriod === payPeriod);
+    const periodInfo = breakdown.find(p => p.payPeriod === payPeriod && p.year === year);
     
     if (!periodInfo) {
       throw new Error('Pay period not found for this request');
@@ -924,6 +951,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(practiceLedger.relatedRequestId, requestId),
           eq(practiceLedger.payPeriod, payPeriod),
+          eq(practiceLedger.year, year),
           eq(practiceLedger.transactionType, 'committed')
         )
       );
@@ -941,15 +969,15 @@ export class DatabaseStorage implements IStorage {
         amount: newLedgerAmount.toString(),
         description: ledgerEntry.description 
           ? ledgerEntry.description.replace(/\$[\d,]+\.\d{2}/, `$${newAmount.toFixed(2)}`)
-          : `Stipend committed for PP${payPeriod} - Amount: $${newAmount.toFixed(2)} (Request #${requestId})`,
+          : `Stipend committed for PP${payPeriod}'${year} - Amount: $${newAmount.toFixed(2)} (Request #${requestId})`,
       })
       .where(eq(practiceLedger.id, ledgerEntry.id));
   }
 
-  async markPeriodAsPaid(requestId: number, payPeriod: number): Promise<void> {
+  async markPeriodAsPaid(requestId: number, payPeriod: number, year: number): Promise<void> {
     // First, get the pay period breakdown to check the current status
     const breakdown = await this.getPayPeriodBreakdown(requestId);
-    const periodInfo = breakdown.find(p => p.payPeriod === payPeriod);
+    const periodInfo = breakdown.find(p => p.payPeriod === payPeriod && p.year === year);
     
     if (!periodInfo) {
       throw new Error('Pay period not found for this request');
@@ -976,6 +1004,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(practiceLedger.relatedRequestId, requestId),
           eq(practiceLedger.payPeriod, payPeriod),
+          eq(practiceLedger.year, year),
           eq(practiceLedger.transactionType, 'committed')
         )
       );
@@ -987,7 +1016,7 @@ export class DatabaseStorage implements IStorage {
     // Update the transaction type from 'committed' to 'paid'
     const updatedDescription = ledgerEntry.description 
       ? ledgerEntry.description.replace('approved', 'paid').replace('(PP', 'paid (PP')
-      : `Stipend paid for PP${payPeriod} (Request #${requestId})`;
+      : `Stipend paid for PP${payPeriod}'${year} (Request #${requestId})`;
     
     await db
       .update(practiceLedger)
@@ -1302,11 +1331,25 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updatePayPeriodCsvData(periodId: number, csvData: string): Promise<void> {
+  async getPayPeriodByNumber(payPeriodNumber: number, year: number): Promise<PayPeriod | undefined> {
+    const [period] = await db
+      .select()
+      .from(payPeriods)
+      .where(and(
+        eq(payPeriods.payPeriodNumber, payPeriodNumber),
+        eq(payPeriods.year, year)
+      ));
+    return period;
+  }
+
+  async updatePayPeriodCsvData(payPeriodNumber: number, year: number, csvData: string): Promise<void> {
     await db
       .update(payPeriods)
       .set({ csvData })
-      .where(eq(payPeriods.id, periodId));
+      .where(and(
+        eq(payPeriods.payPeriodNumber, payPeriodNumber),
+        eq(payPeriods.year, year)
+      ));
   }
 
   async setCurrentPayPeriod(periodId: number): Promise<void> {

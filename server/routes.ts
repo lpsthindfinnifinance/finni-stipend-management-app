@@ -296,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             storage.getPracticeBalance(practice.id),
             storage.getStipendPaid(practice.id),
             storage.getStipendCommitted(practice.id),
-            currentPeriod ? storage.getCurrentMetrics(practice.id, currentPeriod.id) : Promise.resolve(undefined),
+            currentPeriod ? storage.getCurrentMetrics(practice.id, currentPeriod.payPeriodNumber, currentPeriod.year) : Promise.resolve(undefined),
             storage.getUnapprovedStipend(practice.id),
             storage.getAllocatedIn(practice.id),
             storage.getAllocatedOut(practice.id),
@@ -439,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getPracticeBalance(req.params.id),
         storage.getStipendPaid(req.params.id),
         storage.getStipendCommitted(req.params.id),
-        currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.id) : Promise.resolve(undefined),
+        currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.payPeriodNumber, currentPeriod.year) : Promise.resolve(undefined),
         storage.getAllocatedIn(req.params.id),
         storage.getAllocatedOut(req.params.id),
       ]);
@@ -984,13 +984,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { payPeriod } = req.body;
+      const { payPeriod, year } = req.body;
       
       if (!payPeriod || typeof payPeriod !== 'number') {
         return res.status(400).json({ message: "Valid pay period is required" });
       }
+      
+      if (!year || typeof year !== 'number') {
+        return res.status(400).json({ message: "Valid year is required" });
+      }
 
-      await storage.cancelCommittedPeriod(requestId, payPeriod);
+      await storage.cancelCommittedPeriod(requestId, payPeriod, year);
 
       // Send Slack notification
       await sendSlackNotification(
@@ -1016,17 +1020,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { payPeriod, newAmount } = req.body;
+      const { payPeriod, year, newAmount } = req.body;
       
       if (!payPeriod || typeof payPeriod !== 'number') {
         return res.status(400).json({ message: "Valid pay period is required" });
+      }
+      
+      if (!year || typeof year !== 'number') {
+        return res.status(400).json({ message: "Valid year is required" });
       }
       
       if (!newAmount || typeof newAmount !== 'number' || newAmount <= 0) {
         return res.status(400).json({ message: "Valid amount is required" });
       }
 
-      await storage.updateCommittedPeriodAmount(requestId, payPeriod, newAmount);
+      await storage.updateCommittedPeriodAmount(requestId, payPeriod, year, newAmount);
 
       // Send Slack notification
       await sendSlackNotification(
@@ -1052,10 +1060,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { payPeriod } = req.body;
+      const { payPeriod, year } = req.body;
       
       if (!payPeriod || typeof payPeriod !== 'number') {
         return res.status(400).json({ message: "Valid pay period is required" });
+      }
+      
+      if (!year || typeof year !== 'number') {
+        return res.status(400).json({ message: "Valid year is required" });
       }
 
       // Get request details for Slack notification
@@ -1064,7 +1076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Request not found" });
       }
 
-      await storage.markPeriodAsPaid(requestId, payPeriod);
+      await storage.markPeriodAsPaid(requestId, payPeriod, year);
 
       // Get requestor details
       const requestor = await storage.getUser(request.requestorId);
@@ -1687,7 +1699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const disappearedPractices: string[] = [];
       if (previousPeriodNum > 0) {
         // Get all practices with metrics from previous period
-        const allPreviousMetrics = await storage.getAllPracticeMetricsByPeriod(previousPeriodNum);
+        const allPreviousMetrics = await storage.getAllPracticeMetricsByPeriod(previousPeriodNum, previousYear);
         const currentCsvPractices = new Set(imports.map(imp => imp.clinicName));
         
         for (const prevMetric of allPreviousMetrics) {
