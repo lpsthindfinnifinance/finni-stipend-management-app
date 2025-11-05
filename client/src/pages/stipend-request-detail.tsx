@@ -530,13 +530,32 @@ export default function StipendRequestDetail() {
                 
                 const isPending = ['pending_psm', 'pending_lead_psm', 'pending_finance'].includes(request.status);
                 
+                // Calculate total amount for recurring requests
+                let totalPendingAmount = parseFloat(request.amount);
+                if (request.requestType === "recurring" && request.recurringEndPeriod && request.recurringEndYear) {
+                  const startPP = request.effectivePayPeriod;
+                  const startYear = request.effectiveYear;
+                  const endPP = request.recurringEndPeriod;
+                  const endYear = request.recurringEndYear;
+                  
+                  let periodCount = 1;
+                  if (startYear === endYear) {
+                    periodCount = endPP - startPP + 1;
+                  } else {
+                    const periodsInStartYear = 26 - startPP + 1;
+                    const periodsInEndYear = endPP;
+                    periodCount = periodsInStartYear + periodsInEndYear;
+                  }
+                  totalPendingAmount = parseFloat(request.amount) * periodCount;
+                }
+                
                 if (isPending) {
                   // Show Pending Amount for unapproved requests
                   return (
                     <>
                       <p className="text-sm text-muted-foreground">Pending Amount</p>
                       <p className="text-2xl font-mono font-bold text-orange-600" data-testid="text-pending-amount">
-                        {formatCurrency(request.amount)}
+                        {formatCurrency(totalPendingAmount)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         (Awaiting approval)
