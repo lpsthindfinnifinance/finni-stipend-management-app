@@ -117,7 +117,8 @@ export async function setupAuth(app: Express) {
 			{
 				name: `replitauth:${domain}`,
 				config,
-				scope: "openid email profile",
+				scope:
+					"openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
 				callbackURL: `https://${domain}/api/callback`,
 			},
 			verify,
@@ -131,7 +132,11 @@ export async function setupAuth(app: Express) {
 	app.get("/api/login", (req, res, next) => {
 		passport.authenticate(`replitauth:${req.hostname}`, {
 			prompt: "login consent",
-			scope: ["openid", "email", "profile"],
+			scope: [
+				"openid",
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			],
 		})(req, res, next);
 	});
 
