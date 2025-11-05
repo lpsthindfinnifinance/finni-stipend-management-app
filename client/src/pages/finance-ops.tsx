@@ -269,17 +269,17 @@ export default function FinanceOps() {
   });
 
   const markAsPaidMutation = useMutation({
-    mutationFn: async ({ requestIds, payPeriod }: { requestIds: number[], payPeriod: number }) => {
+    mutationFn: async ({ requestIds, payPeriod, year }: { requestIds: number[], payPeriod: number, year: number }) => {
       // Mark each request as paid for the specific pay period
       const promises = requestIds.map(requestId =>
-        apiRequest("POST", `/api/stipend-requests/${requestId}/mark-period-paid`, { payPeriod })
+        apiRequest("POST", `/api/stipend-requests/${requestId}/mark-period-paid`, { payPeriod, year })
       );
       await Promise.all(promises);
     },
     onSuccess: (_, variables) => {
       toast({
         title: "Success",
-        description: `Marked ${variables.requestIds.length} stipend(s) as paid for PP${variables.payPeriod}`,
+        description: `Marked ${variables.requestIds.length} stipend(s) as paid for PP${variables.payPeriod}'${variables.year}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/stipend-requests/all-approved"] });
       setSelectedRequests(new Set());
@@ -489,9 +489,15 @@ export default function FinanceOps() {
       return;
     }
 
+    // Parse the selected period format "24-2025" into period number and year
+    const [periodNumStr, yearStr] = selectedPayPeriod.split("-");
+    const payPeriod = parseInt(periodNumStr);
+    const year = parseInt(yearStr);
+
     markAsPaidMutation.mutate({
       requestIds: Array.from(selectedRequests),
-      payPeriod: parseInt(selectedPayPeriod),
+      payPeriod,
+      year,
     });
   };
 
