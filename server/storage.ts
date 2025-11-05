@@ -40,7 +40,7 @@ import {
   type UpdateSlackSetting,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, inArray, or } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (Required for Replit Auth)
@@ -602,7 +602,7 @@ export class DatabaseStorage implements IStorage {
 
   async getStipendPaid(practiceId: string, year?: number): Promise<number> {
     // Sum all 'paid' and 'opening_balance_stipend_paid' transactions from the ledger (these are negative, so we take absolute value for display)
-    // If year is provided, only sum PP1-PP26 of that year
+    // If year is provided, only sum PP1-PP26 of that year (excludes any periods beyond PP26)
     const conditions = [
       eq(practiceLedger.practiceId, practiceId),
       or(
@@ -613,7 +613,8 @@ export class DatabaseStorage implements IStorage {
     
     if (year !== undefined) {
       conditions.push(eq(practiceLedger.year, year));
-      conditions.push(sql`${practiceLedger.payPeriod} >= 1 AND ${practiceLedger.payPeriod} <= 26`);
+      conditions.push(gte(practiceLedger.payPeriod, 1));
+      conditions.push(lte(practiceLedger.payPeriod, 26));
     }
     
     const result = await db
@@ -628,7 +629,7 @@ export class DatabaseStorage implements IStorage {
 
   async getStipendCommitted(practiceId: string, year?: number): Promise<number> {
     // Sum all 'committed' transactions from the ledger (these are negative, so we take absolute value for display)
-    // If year is provided, only sum PP1-PP26 of that year
+    // If year is provided, only sum PP1-PP26 of that year (excludes any periods beyond PP26)
     const conditions = [
       eq(practiceLedger.practiceId, practiceId),
       eq(practiceLedger.transactionType, 'committed')
@@ -636,7 +637,8 @@ export class DatabaseStorage implements IStorage {
     
     if (year !== undefined) {
       conditions.push(eq(practiceLedger.year, year));
-      conditions.push(sql`${practiceLedger.payPeriod} >= 1 AND ${practiceLedger.payPeriod} <= 26`);
+      conditions.push(gte(practiceLedger.payPeriod, 1));
+      conditions.push(lte(practiceLedger.payPeriod, 26));
     }
     
     const result = await db
@@ -1617,7 +1619,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Get ledger totals for PP1-PP26 of current year only
+    // Get ledger totals for PP1-PP26 of current year only (excludes any periods beyond PP26)
     if (practiceIds.length > 0) {
       const ledgerTotals = await db.select({
         practiceId: practiceLedger.practiceId,
@@ -1629,7 +1631,8 @@ export class DatabaseStorage implements IStorage {
         and(
           or(...practiceIds.map(id => eq(practiceLedger.practiceId, id))),
           eq(practiceLedger.year, currentYear),
-          sql`${practiceLedger.payPeriod} >= 1 AND ${practiceLedger.payPeriod} <= 26`,
+          gte(practiceLedger.payPeriod, 1),
+          lte(practiceLedger.payPeriod, 26),
           or(
             eq(practiceLedger.transactionType, 'paid'),
             eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
