@@ -290,12 +290,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentPeriod = await storage.getCurrentPayPeriod();
       
       // Enrich with balance data and latest metrics
+      const currentYear = currentPeriod?.year || 2025;
       const enrichedPractices = await Promise.all(
         practices.map(async (practice) => {
           const [balance, stipendPaid, stipendCommitted, metrics, unapprovedStipend, allocatedIn, allocatedOut] = await Promise.all([
             storage.getPracticeBalance(practice.id),
-            storage.getStipendPaid(practice.id),
-            storage.getStipendCommitted(practice.id),
+            storage.getStipendPaid(practice.id, currentYear),
+            storage.getStipendCommitted(practice.id, currentYear),
             currentPeriod ? storage.getCurrentMetrics(practice.id, currentPeriod.payPeriodNumber, currentPeriod.year) : Promise.resolve(undefined),
             storage.getUnapprovedStipend(practice.id),
             storage.getAllocatedIn(practice.id),
@@ -303,8 +304,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ]);
           
           const stipendCap = metrics?.stipendCapAvgFinal ? parseFloat(metrics.stipendCapAvgFinal) : 0;
-          const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.id, 1) : 1;
+          const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
           const availablePerPP = balance / remainingPeriods;
+          // Utilization scoped to current year PP1-PP26
           const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
           
           return {
@@ -435,21 +437,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const currentPeriod = await storage.getCurrentPayPeriod();
+      const currentYear = currentPeriod?.year || 2025;
       const [balance, stipendPaid, stipendCommitted, metrics, allocatedIn, allocatedOut] = await Promise.all([
         storage.getPracticeBalance(req.params.id),
-        storage.getStipendPaid(req.params.id),
-        storage.getStipendCommitted(req.params.id),
+        storage.getStipendPaid(req.params.id, currentYear),
+        storage.getStipendCommitted(req.params.id, currentYear),
         currentPeriod ? storage.getCurrentMetrics(req.params.id, currentPeriod.payPeriodNumber, currentPeriod.year) : Promise.resolve(undefined),
         storage.getAllocatedIn(req.params.id),
         storage.getAllocatedOut(req.params.id),
       ]);
       
       const stipendCap = Number(metrics?.stipendCapAvgFinal ?? 0);
-      // Utilization = (Paid + Committed) / Cap, not Available / Cap
+      // Utilization = (Paid + Committed) / Cap (scoped to current year PP1-PP26)
       const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
       
       // Calculate available per pay period
-      const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.id, 1) : 1;
+      const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
       const availablePerPP = balance / remainingPeriods;
       
       res.json({
