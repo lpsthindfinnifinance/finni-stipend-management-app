@@ -187,7 +187,15 @@ export async function setupAuth(app: Express) {
 		},
 		(err: any, req: Request, res: Response, next: NextFunction) => {
 			if (err) {
-				console.error("OAuth callback error:", err.message, err.stack);
+				console.error("OAuth callback error:", err.message);
+				console.error("Error stack:", err.stack);
+				console.error("Error name:", err.name);
+				console.error("Error code:", err.code);
+				console.error("Error status:", err.status);
+				console.error("Error body:", err.body || (err.response && err.response.body));
+				console.error("Request URL:", req.url);
+				console.error("Request query:", JSON.stringify(req.query));
+				console.error("Request hostname:", req.hostname);
 			}
 			next(err);
 		},
