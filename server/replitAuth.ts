@@ -179,6 +179,7 @@ export async function setupAuth(app: Express) {
 				console.error("Invalid hostname");
 				return res.status(400).json({ error: "Invalid hostname" });
 			}
+			console.log("host:::::::", req.hostname);
 			passport.authenticate(`replitauth:${req.hostname}`, {
 				successReturnToOrRedirect: "/dashboard",
 				failureRedirect: "/unauthorized",
@@ -187,12 +188,16 @@ export async function setupAuth(app: Express) {
 		},
 		(err: any, req: Request, res: Response, next: NextFunction) => {
 			if (err) {
+				console.error("full Error", JSON.stringify(err, null, 2));
 				console.error("OAuth callback error:", err.message);
 				console.error("Error stack:", err.stack);
 				console.error("Error name:", err.name);
 				console.error("Error code:", err.code);
 				console.error("Error status:", err.status);
-				console.error("Error body:", err.body || (err.response && err.response.body));
+				console.error(
+					"Error body:",
+					err.body || (err.response && err.response.body),
+				);
 				console.error("Request URL:", req.url);
 				console.error("Request query:", JSON.stringify(req.query));
 				console.error("Request hostname:", req.hostname);
