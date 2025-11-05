@@ -85,7 +85,7 @@ export default function Dashboard() {
                     {formatCurrency(summary?.totalCap || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {role === "PSM" ? `For your portfolio (${user?.portfolioId})` : "Across all portfolios"}
+                    Across all portfolios
                   </p>
                 </CardContent>
               </Card>

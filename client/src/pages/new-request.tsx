@@ -30,10 +30,8 @@ export default function NewRequest() {
   const [stipendType, setStipendType] = useState("lease_stipend");
   const [stipendDescription, setStipendDescription] = useState("");
   const [staffEmails, setStaffEmails] = useState("");
-  const [effectivePayPeriod, setEffectivePayPeriod] = useState<string | undefined>(undefined);
-  const [effectiveYear, setEffectiveYear] = useState<string>("2025");
-  const [recurringEndPeriod, setRecurringEndPeriod] = useState<string | undefined>(undefined);
-  const [recurringEndYear, setRecurringEndYear] = useState<string>("2025");
+  const [effectivePeriodYear, setEffectivePeriodYear] = useState<string | undefined>(undefined); // Format: "22-2025"
+  const [recurringEndPeriodYear, setRecurringEndPeriodYear] = useState<string | undefined>(undefined); // Format: "26-2025"
   const [justification, setJustification] = useState("");
 
   useEffect(() => {
@@ -64,13 +62,32 @@ export default function NewRequest() {
     enabled: isAuthenticated,
   });
 
-  // Set default year to current pay period's year
-  useEffect(() => {
-    if (currentPayPeriod?.year) {
-      setEffectiveYear(currentPayPeriod.year.toString());
-      setRecurringEndYear(currentPayPeriod.year.toString());
+  // Generate all available pay periods starting from current period
+  const availablePeriods: { value: string; label: string; periodNum: number; year: number }[] = [];
+  if (currentPayPeriod) {
+    const currentPPNum = currentPayPeriod.payPeriodNumber;
+    const currentYear = currentPayPeriod.year;
+    
+    // Add remaining periods in current year
+    for (let pp = currentPPNum + 1; pp <= 26; pp++) {
+      availablePeriods.push({
+        value: `${pp}-${currentYear}`,
+        label: `PP${pp}'${currentYear}`,
+        periodNum: pp,
+        year: currentYear
+      });
     }
-  }, [currentPayPeriod]);
+    
+    // Add all periods in next year
+    for (let pp = 1; pp <= 26; pp++) {
+      availablePeriods.push({
+        value: `${pp}-${currentYear + 1}`,
+        label: `PP${pp}'${currentYear + 1}`,
+        periodNum: pp,
+        year: currentYear + 1
+      });
+    }
+  }
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -90,10 +107,8 @@ export default function NewRequest() {
       setStipendDescription("");
       setStaffEmails("");
       setRequestType("one_time");
-      setEffectivePayPeriod(undefined);
-      setEffectiveYear(currentPayPeriod?.year?.toString() || "2025");
-      setRecurringEndPeriod(undefined);
-      setRecurringEndYear(currentPayPeriod?.year?.toString() || "2025");
+      setEffectivePeriodYear(undefined);
+      setRecurringEndPeriodYear(undefined);
       setJustification("");
       window.location.href = "/requests";
     },
@@ -120,7 +135,7 @@ export default function NewRequest() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!practiceId || !amount || !justification || !effectivePayPeriod) {
+    if (!practiceId || !amount || !justification || !effectivePeriodYear) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -156,7 +171,7 @@ export default function NewRequest() {
       return;
     }
 
-    if (requestType === "recurring" && !recurringEndPeriod) {
+    if (requestType === "recurring" && !recurringEndPeriodYear) {
       toast({
         title: "Validation Error",
         description: "Please select an end pay period for recurring stipends",
@@ -175,6 +190,10 @@ export default function NewRequest() {
       return;
     }
 
+    // Parse the period-year format
+    const [effectivePP, effectiveYr] = effectivePeriodYear.split('-').map(Number);
+    const recurringData = recurringEndPeriodYear ? recurringEndPeriodYear.split('-').map(Number) : [null, null];
+    
     submitMutation.mutate({
       practiceId,
       requestorId: user?.id,
@@ -183,10 +202,10 @@ export default function NewRequest() {
       stipendDescription: stipendDescription.trim(),
       staffEmails: stipendType === "staff_cost_reimbursement" ? staffEmails.trim() : null,
       requestType,
-      effectivePayPeriod: parseInt(effectivePayPeriod),
-      effectiveYear: parseInt(effectiveYear),
-      recurringEndPeriod: requestType === "recurring" && recurringEndPeriod ? parseInt(recurringEndPeriod) : null,
-      recurringEndYear: requestType === "recurring" && recurringEndYear ? parseInt(recurringEndYear) : null,
+      effectivePayPeriod: effectivePP,
+      effectiveYear: effectiveYr,
+      recurringEndPeriod: requestType === "recurring" && recurringData[0] ? recurringData[0] : null,
+      recurringEndYear: requestType === "recurring" && recurringData[1] ? recurringData[1] : null,
       justification,
     });
   };
@@ -349,93 +368,57 @@ export default function NewRequest() {
                   </RadioGroup>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="effectivePeriod">
+                    {requestType === "recurring" ? "Start Pay Period *" : "Pay Period *"}
+                  </Label>
+                  <Select value={effectivePeriodYear} onValueChange={setEffectivePeriodYear}>
+                    <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
+                      <SelectValue placeholder="Select pay period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!currentPayPeriod || availablePeriods.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
+                      ) : (
+                        availablePeriods.map((period) => (
+                          <SelectItem key={period.value} value={period.value}>
+                            {period.label}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {requestType === "recurring" 
+                      ? "The pay period when this recurring stipend starts"
+                      : "The pay period when this stipend will be paid"
+                    }
+                  </p>
+                </div>
+
+                {requestType === "recurring" && (
                   <div className="space-y-2">
-                    <Label htmlFor="effectivePeriod">
-                      {requestType === "recurring" ? "Start Pay Period *" : "Pay Period *"}
-                    </Label>
-                    <Select value={effectivePayPeriod} onValueChange={setEffectivePayPeriod}>
-                      <SelectTrigger id="effectivePeriod" data-testid="select-effective-period">
-                        <SelectValue placeholder="Select pay period" />
+                    <Label htmlFor="endPeriod">End Pay Period *</Label>
+                    <Select value={recurringEndPeriodYear} onValueChange={setRecurringEndPeriodYear}>
+                      <SelectTrigger id="endPeriod" data-testid="select-end-period">
+                        <SelectValue placeholder="Select end period" />
                       </SelectTrigger>
                       <SelectContent>
-                        {!currentPayPeriod ? (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
-                        ) : Math.max(0, 26 - currentPayPeriod.payPeriodNumber) === 0 ? (
+                        {!currentPayPeriod || availablePeriods.length === 0 ? (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
                         ) : (
-                          Array.from({ length: Math.max(0, 26 - currentPayPeriod.payPeriodNumber) }, (_, i) => currentPayPeriod.payPeriodNumber + i + 1).map((period) => (
-                            <SelectItem key={period} value={period.toString()}>
-                              Pay Period {period}
+                          availablePeriods.map((period) => (
+                            <SelectItem key={period.value} value={period.value}>
+                              {period.label}
                             </SelectItem>
                           ))
                         )}
                       </SelectContent>
                     </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="effectiveYear">Year *</Label>
-                    <Select value={effectiveYear} onValueChange={setEffectiveYear}>
-                      <SelectTrigger id="effectiveYear" data-testid="select-effective-year">
-                        <SelectValue placeholder="Select year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2025">2025</SelectItem>
-                        <SelectItem value="2026">2026</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground -mt-2">
-                  {requestType === "recurring" 
-                    ? "The pay period and year when this recurring stipend starts"
-                    : "The pay period and year when this stipend will be paid"
-                  }
-                </p>
-
-                {requestType === "recurring" && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="endPeriod">End Pay Period *</Label>
-                        <Select value={recurringEndPeriod} onValueChange={setRecurringEndPeriod}>
-                          <SelectTrigger id="endPeriod" data-testid="select-end-period">
-                            <SelectValue placeholder="Select end period" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {!currentPayPeriod ? (
-                              <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
-                            ) : Math.max(0, 26 - currentPayPeriod.payPeriodNumber) === 0 ? (
-                              <div className="px-2 py-1.5 text-sm text-muted-foreground">No future pay periods available</div>
-                            ) : (
-                              Array.from({ length: Math.max(0, 26 - currentPayPeriod.payPeriodNumber) }, (_, i) => currentPayPeriod.payPeriodNumber + i + 1).map((period) => (
-                                <SelectItem key={period} value={period.toString()}>
-                                  Pay Period {period}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="endYear">End Year *</Label>
-                        <Select value={recurringEndYear} onValueChange={setRecurringEndYear}>
-                          <SelectTrigger id="endYear" data-testid="select-end-year">
-                            <SelectValue placeholder="Select year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="2025">2025</SelectItem>
-                            <SelectItem value="2026">2026</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground -mt-2">
-                      The last pay period and year for this recurring stipend
+                    <p className="text-xs text-muted-foreground">
+                      The last pay period for this recurring stipend
                     </p>
-                  </>
+                  </div>
                 )}
 
                 <div className="space-y-2">

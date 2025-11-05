@@ -1566,18 +1566,9 @@ export class DatabaseStorage implements IStorage {
     const currentPeriod = await this.getCurrentPayPeriod();
     const currentPeriodNumber = currentPeriod?.id || 21;
 
-    // Get practices based on role (only active practices)
-    let practicesList: Practice[] = [];
-    if (role === "PSM" && portfolioId) {
-      practicesList = await db.select().from(practices).where(
-        and(
-          eq(practices.portfolioId, portfolioId),
-          eq(practices.isActive, true)
-        )
-      );
-    } else {
-      practicesList = await db.select().from(practices).where(eq(practices.isActive, true));
-    }
+    // Get ALL practices regardless of role (only active practices)
+    // Dashboard KPIs always show totals across all portfolios
+    const practicesList: Practice[] = await db.select().from(practices).where(eq(practices.isActive, true));
 
     // Calculate metrics
     let totalStipendCap = 0;
