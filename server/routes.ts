@@ -2076,10 +2076,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create ledger entries for donor practices (debit/allocation_out)
       const currentPeriod = await storage.getCurrentPayPeriod();
+      const currentYear = currentPeriod?.year || 2025;
       for (const donorPractice of donorPractices) {
         await storage.createLedgerEntry({
           practiceId: donorPractice.practiceId,
           payPeriod: currentPeriod?.id || 1,
+          year: currentYear,
           transactionType: "allocation_out",
           amount: (-Math.abs(donorPractice.amount)).toString(),
           description: `Allocation #${allocation.id} to ${recipientPracticeIds.length} recipient practice(s)`,
@@ -2093,6 +2095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createLedgerEntry({
           practiceId: recipientPractice.practiceId,
           payPeriod: currentPeriod?.id || 1,
+          year: currentYear,
           transactionType: "allocation_in",
           amount: Math.abs(recipientPractice.amount).toString(),
           description: `Allocation #${allocation.id} from ${donorPracticeIds.length} donor practice(s)`,
