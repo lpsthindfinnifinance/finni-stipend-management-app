@@ -180,11 +180,27 @@ export default function NewRequest() {
       return;
     }
 
-    const numAmount = parseFloat(amount);
-    if (practiceBalance && numAmount > practiceBalance.available) {
+    // Calculate total requested amount for validation
+    let totalAmount = parseFloat(amount);
+    if (requestType === "recurring" && effectivePeriodYear && recurringEndPeriodYear) {
+      const [startPP, startYear] = effectivePeriodYear.split('-').map(Number);
+      const [endPP, endYear] = recurringEndPeriodYear.split('-').map(Number);
+      
+      let periodCount = 1;
+      if (startYear === endYear) {
+        periodCount = endPP - startPP + 1;
+      } else {
+        const periodsInStartYear = 26 - startPP + 1;
+        const periodsInEndYear = endPP;
+        periodCount = periodsInStartYear + periodsInEndYear;
+      }
+      totalAmount = parseFloat(amount) * periodCount;
+    }
+    
+    if (practiceBalance && totalAmount > practiceBalance.available) {
       toast({
         title: "Validation Error",
-        description: "Amount exceeds available balance",
+        description: "Total requested amount exceeds available balance",
         variant: "destructive",
       });
       return;
@@ -214,8 +230,34 @@ export default function NewRequest() {
     return null;
   }
 
-  const numAmount = parseFloat(amount) || 0;
-  const isValid = numAmount > 0 && practiceBalance && numAmount <= practiceBalance.available;
+  // Calculate number of pay periods for the request
+  const calculatePeriodCount = () => {
+    if (requestType === "one_time") {
+      return 1;
+    }
+    
+    if (requestType === "recurring" && effectivePeriodYear && recurringEndPeriodYear) {
+      const [startPP, startYear] = effectivePeriodYear.split('-').map(Number);
+      const [endPP, endYear] = recurringEndPeriodYear.split('-').map(Number);
+      
+      // Calculate total periods across years
+      if (startYear === endYear) {
+        return endPP - startPP + 1;
+      } else {
+        // Periods remaining in start year + periods in end year
+        const periodsInStartYear = 26 - startPP + 1;
+        const periodsInEndYear = endPP;
+        return periodsInStartYear + periodsInEndYear;
+      }
+    }
+    
+    return 1; // Default to 1 if recurring end period not selected yet
+  };
+
+  const periodCount = calculatePeriodCount();
+  const perPeriodAmount = parseFloat(amount) || 0;
+  const totalRequestedAmount = perPeriodAmount * periodCount;
+  const isValid = totalRequestedAmount > 0 && practiceBalance && totalRequestedAmount <= practiceBalance.available;
   
 
   return (
@@ -477,14 +519,14 @@ export default function NewRequest() {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Requested Amount</span>
                         <span className="font-mono font-semibold">
-                          {formatCurrency(numAmount)}
+                          {formatCurrency(totalRequestedAmount)}
                         </span>
                       </div>
                       <div className="h-px bg-border my-2" />
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Remaining After</span>
                         <span className="font-mono font-semibold">
-                          {formatCurrency(practiceBalance.available - numAmount)}
+                          {formatCurrency(practiceBalance.available - totalRequestedAmount)}
                         </span>
                       </div>
                     </div>
@@ -496,7 +538,7 @@ export default function NewRequest() {
                           Request is within available balance
                         </AlertDescription>
                       </Alert>
-                    ) : numAmount > 0 ? (
+                    ) : totalRequestedAmount > 0 ? (
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
