@@ -1,152 +1,151 @@
+import connectPg from "connect-pg-simple";
+import type { Express, RequestHandler } from "express";
+import session from "express-session";
+import memoize from "memoizee";
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
-
 import passport from "passport";
-import session from "express-session";
-import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
-import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
 if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+	throw new Error("Environment variable REPLIT_DOMAINS not provided");
 }
 
 const getOidcConfig = memoize(
-  async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
-  },
-  { maxAge: 3600 * 1000 }
+	async () => {
+		return await client.discovery(
+			new URL(process.env.OIDC_ISSUER_URL ?? "https://replit.com/oidc"),
+			process.env.OIDC_CLIENT_ID!,
+		);
+	},
+	{ maxAge: 3600 * 1000 },
 );
 
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
-  return session({
-    secret: process.env.SESSION_SECRET!,
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: true,
-      maxAge: sessionTtl,
-    },
-  });
+	const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+	const pgStore = connectPg(session);
+	const sessionStore = new pgStore({
+		conString: process.env.DATABASE_URL,
+		createTableIfMissing: false,
+		ttl: sessionTtl,
+		tableName: "sessions",
+	});
+	return session({
+		secret: process.env.SESSION_SECRET!,
+		store: sessionStore,
+		resave: false,
+		saveUninitialized: false,
+		cookie: {
+			httpOnly: true,
+			secure: true,
+			maxAge: sessionTtl,
+		},
+	});
 }
 
 function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+	user: any,
+	tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
 ) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
+	user.claims = tokens.claims();
+	user.access_token = tokens.access_token;
+	user.refresh_token = tokens.refresh_token;
+	user.expires_at = user.claims?.exp;
 }
 
-async function verifyAndUpdateUser(
-  claims: any,
-): Promise<boolean> {
-  // Check if user exists by email (primary identifier for pre-registered users)
-  const email = claims["email"];
-  if (!email) {
-    console.log("Login attempt with no email claim");
-    return false;
-  }
+async function verifyAndUpdateUser(claims: any): Promise<boolean> {
+	// Check if user exists by email (primary identifier for pre-registered users)
+	const email = claims["email"];
+	if (!email) {
+		console.log("Login attempt with no email claim");
+		return false;
+	}
 
-  const existingUser = await storage.getUserByEmail(email);
-  
-  if (!existingUser) {
-    console.log(`Login denied: User with email ${email} not found in system`);
-    return false;
-  }
+	const existingUser = await storage.getUserByEmail(email);
 
-  // User exists - update their profile with latest OIDC data
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
+	if (!existingUser) {
+		console.log(`Login denied: User with email ${email} not found in system`);
+		return false;
+	}
 
-  return true;
+	// User exists - update their profile with latest OIDC data
+	await storage.upsertUser({
+		id: claims["sub"],
+		email: claims["email"],
+		firstName: claims["first_name"],
+		lastName: claims["last_name"],
+		profileImageUrl: claims["profile_image_url"],
+	});
+
+	return true;
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
+	app.set("trust proxy", 1);
+	app.use(getSession());
+	app.use(passport.initialize());
+	app.use(passport.session());
 
-  const config = await getOidcConfig();
+	const config = await getOidcConfig();
 
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const claims = tokens.claims();
-    
-    // Check if user is authorized (exists in Users table)
-    const isAuthorized = await verifyAndUpdateUser(claims);
-    
-    if (!isAuthorized) {
-      // User not found - reject login
-      verified(new Error("User not authorized. Please contact your administrator."), false);
-      return;
-    }
-    
-    // User authorized - proceed with login
-    const user = {};
-    updateUserSession(user, tokens);
-    verified(null, user);
-  };
+	const verify: VerifyFunction = async (
+		tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
+		verified: passport.AuthenticateCallback,
+	) => {
+		const claims = tokens.claims();
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    const strategy = new Strategy(
-      {
-        name: `replitauth:${domain}`,
-        config,
-        scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
-      },
-      verify,
-    );
-    passport.use(strategy);
-  }
+		// Check if user is authorized (exists in Users table)
+		const isAuthorized = await verifyAndUpdateUser(claims);
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+		if (!isAuthorized) {
+			// User not found - reject login
+			verified(
+				new Error("User not authorized. Please contact your administrator."),
+				false,
+			);
+			return;
+		}
 
-  app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
-  });
+		// User authorized - proceed with login
+		const user = {};
+		updateUserSession(user, tokens);
+		verified(null, user);
+	};
 
-  app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/dashboard",
-      failureRedirect: "/unauthorized",
-      failureMessage: true,
-    })(req, res, next);
-  });
+	for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
+		const strategy = new Strategy(
+			{
+				name: `replitauth:${domain}`,
+				config,
+				scope: "openid email profile offline_access",
+				callbackURL: `https://${domain}/api/callback`,
+			},
+			verify,
+		);
+		passport.use(strategy);
+	}
 
-  // Unauthorized access page
-  app.get("/unauthorized", (req, res) => {
-    res.status(403).send(`
+	passport.serializeUser((user: Express.User, cb) => cb(null, user));
+	passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+	app.get("/api/login", (req, res, next) => {
+		passport.authenticate(`replitauth:${req.hostname}`, {
+			prompt: "login consent",
+			scope: ["openid", "email", "profile", "offline_access"],
+		})(req, res, next);
+	});
+
+	app.get("/api/callback", (req, res, next) => {
+		passport.authenticate(`replitauth:${req.hostname}`, {
+			successReturnToOrRedirect: "/dashboard",
+			failureRedirect: "/unauthorized",
+			failureMessage: true,
+		})(req, res, next);
+	});
+
+	// Unauthorized access page
+	app.get("/unauthorized", (req, res) => {
+		res.status(403).send(`
       <!DOCTYPE html>
       <html>
         <head>
@@ -193,45 +192,45 @@ export async function setupAuth(app: Express) {
         </body>
       </html>
     `);
-  });
+	});
 
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
-    });
-  });
+	app.get("/api/logout", (req, res) => {
+		req.logout(() => {
+			res.redirect(
+				client.buildEndSessionUrl(config, {
+					client_id: process.env.OIDC_CLIENT_ID!,
+					post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+				}).href,
+			);
+		});
+	});
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
+	const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+	if (!req.isAuthenticated() || !user.expires_at) {
+		return res.status(401).json({ message: "Unauthorized" });
+	}
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
+	const now = Math.floor(Date.now() / 1000);
+	if (now <= user.expires_at) {
+		return next();
+	}
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+	const refreshToken = user.refresh_token;
+	if (!refreshToken) {
+		res.status(401).json({ message: "Unauthorized" });
+		return;
+	}
 
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+	try {
+		const config = await getOidcConfig();
+		const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+		updateUserSession(user, tokenResponse);
+		return next();
+	} catch (error) {
+		res.status(401).json({ message: "Unauthorized" });
+		return;
+	}
 };
