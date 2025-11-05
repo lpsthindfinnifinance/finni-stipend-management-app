@@ -23,8 +23,6 @@ COPY . .
 # Build frontend with Vite
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production
 
 # Cloud Run uses PORT environment variable (default 8080)
 ENV PORT=8080
