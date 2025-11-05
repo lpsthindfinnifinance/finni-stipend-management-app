@@ -636,12 +636,12 @@ export default function StipendRequestDetail() {
                   <tbody className="[&_tr:last-child]:border-0">
                     {payPeriodBreakdown.map((period: any) => (
                       <tr 
-                        key={period.payPeriod} 
+                        key={`${period.payPeriod}-${period.year}`} 
                         className="border-b transition-colors"
                         data-testid={`row-period-${period.payPeriod}`}
                       >
                         <td className="p-4 align-middle font-medium">
-                          PP{period.payPeriod}
+                          PP{period.payPeriod}'{period.year}
                         </td>
                         <td className="p-4 align-middle text-right font-mono font-semibold">
                           {formatCurrency(period.amount)}
@@ -947,7 +947,7 @@ export default function StipendRequestDetail() {
           <DialogHeader>
             <DialogTitle>Edit Stipend Amount</DialogTitle>
             <DialogDescription>
-              Update the stipend amount for Pay Period {editPayPeriod}. This will only affect this specific pay period.
+              Update the stipend amount for Pay Period PP{editPayPeriod}'{editYear}. This will only affect this specific pay period.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
