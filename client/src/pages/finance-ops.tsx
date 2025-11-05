@@ -124,7 +124,7 @@ export default function FinanceOps() {
   // Set default filter to current pay period (only once on initial load)
   useEffect(() => {
     if (currentPeriod && !hasSetDefaultPeriod.current) {
-      setSelectedPayPeriod(currentPeriod.id.toString());
+      setSelectedPayPeriod(`${currentPeriod.payPeriodNumber}-${currentPeriod.year}`);
       hasSetDefaultPeriod.current = true;
     }
   }, [currentPeriod]);
