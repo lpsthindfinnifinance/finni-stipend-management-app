@@ -712,7 +712,7 @@ export default function FinanceOps() {
                       {periods.map((period: any) => (
                         <TableRow key={period.id}>
                           <TableCell className="font-medium">
-                            PP{period.id}
+                            PP{period.payPeriodNumber}'{period.year}
                           </TableCell>
                           <TableCell>{formatDate(period.startDate)}</TableCell>
                           <TableCell>{formatDate(period.endDate)}</TableCell>

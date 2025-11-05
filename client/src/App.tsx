@@ -64,7 +64,7 @@ function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
   
   // Fetch current pay period
-  const { data: currentPeriod } = useQuery<{ id: number }>({
+  const { data: currentPeriod } = useQuery<{ payPeriodNumber: number; year: number }>({
     queryKey: ["/api/pay-periods/current"],
     enabled: isAuthenticated && !isLoading,
   });
@@ -98,7 +98,7 @@ function AppContent() {
                   <RoleSwitcher />
                   <div className="h-4 w-px bg-border" />
                   <span className="text-sm text-muted-foreground" data-testid="text-current-period">
-                    Pay Period {currentPeriod?.id || 1}
+                    PP{currentPeriod?.payPeriodNumber || 1} {currentPeriod?.year || 2025}
                   </span>
                 </div>
               </header>
