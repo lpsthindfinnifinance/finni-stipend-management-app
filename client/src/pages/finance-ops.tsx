@@ -141,20 +141,24 @@ export default function FinanceOps() {
       return req.isFullyPaid ? "Paid" : "Committed";
     }
 
-    // If showing all periods, check if all non-cancelled periods are paid
+    // If showing all periods, check overall status across all periods
     if (periodFilter === "all") {
       const nonCancelledPeriods = req.paymentBreakdown.filter((p: any) => 
         p.status?.toLowerCase() !== 'cancelled'
       );
       
+      // If ALL periods are cancelled, return "Cancelled"
+      if (nonCancelledPeriods.length === 0) {
+        return "Cancelled";
+      }
+      
       // If all non-cancelled periods are paid, return "Paid"
-      const allPaid = nonCancelledPeriods.length > 0 && 
-        nonCancelledPeriods.every((p: any) => p.status?.toLowerCase() === 'paid');
+      const allPaid = nonCancelledPeriods.every((p: any) => p.status?.toLowerCase() === 'paid');
       
       return allPaid ? "Paid" : "Committed";
     }
 
-    // Check if the specific filtered period is paid
+    // Check if the specific filtered period is paid or cancelled
     // Parse format "22-2025" into period number and year
     const [periodNumStr, yearStr] = periodFilter.split("-");
     const periodNum = parseInt(periodNumStr);
@@ -162,7 +166,10 @@ export default function FinanceOps() {
     const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum && p.year === selectedYear);
     
     if (periodPayment) {
-      return periodPayment.status === "paid" ? "Paid" : "Committed";
+      const status = periodPayment.status?.toLowerCase();
+      if (status === "paid") return "Paid";
+      if (status === "cancelled") return "Cancelled";
+      return "Committed";
     }
 
     // If period not found in breakdown (shouldn't happen with proper filtering), default to Committed
