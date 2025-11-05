@@ -1713,7 +1713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Save CSV data to the pay period specified in the CSV (not necessarily the current period)
-      await storage.updatePayPeriodCsvData(currentPeriodNum, csvData);
+      await storage.updatePayPeriodCsvData(currentPeriodNum, currentYear, csvData);
 
       const balanceMsg = openingBalanceCount > 0 ? `, ${openingBalanceCount} opening balances` : '';
       const warningMsg = skippedNullStipendCap > 0 ? ` ⚠️ WARNING: ${skippedNullStipendCap} practices skipped - StipendCapAvgFinal column is empty or missing in your CSV!` : '';
