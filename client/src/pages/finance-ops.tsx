@@ -594,7 +594,7 @@ export default function FinanceOps() {
                     Current Pay Period
                   </CardTitle>
                   <CardDescription>
-                    Fiscal Year 2025 (26 pay periods)
+                    Fiscal Year {currentPeriod?.year || 2025} (26 pay periods)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -603,7 +603,7 @@ export default function FinanceOps() {
                       <div className="flex items-center justify-between p-4 bg-primary/10 rounded-lg">
                         <div>
                           <p className="text-2xl font-bold text-foreground">
-                            Pay Period {currentPeriod.id}
+                            Pay Period {currentPeriod.payPeriodNumber}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {formatDate(currentPeriod.startDate)} - {formatDate(currentPeriod.endDate)}
@@ -972,7 +972,7 @@ export default function FinanceOps() {
             <DialogHeader>
               <DialogTitle>Import BigQuery Data</DialogTitle>
               <DialogDescription>
-                Upload practice metrics CSV for Pay Period {currentPeriod?.id}
+                Upload practice metrics CSV for Pay Period {currentPeriod?.payPeriodNumber} ({currentPeriod?.year})
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
