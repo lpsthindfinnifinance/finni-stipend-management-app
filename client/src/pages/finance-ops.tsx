@@ -938,6 +938,8 @@ export default function FinanceOps() {
                                       variant={
                                         periodStatus === "Paid"
                                           ? "success"
+                                          : periodStatus === "Cancelled"
+                                          ? "destructive"
                                           : "default"
                                       }
                                     >

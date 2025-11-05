@@ -1708,27 +1708,40 @@ export class DatabaseStorage implements IStorage {
   async getPortfolioSummaries(): Promise<any[]> {
     const portfolioList = await this.getPortfolios();
     const currentPeriod = await this.getCurrentPayPeriod();
-    const currentPeriodNumber = currentPeriod?.id || 21;
+    const currentPeriodNumber = currentPeriod?.payPeriodNumber || 21;
+    const currentYear = currentPeriod?.year || 2025;
     
     // Fetch all data in bulk to avoid N+1 queries (only active practices)
     const [allPractices, allMetrics, allUsers] = await Promise.all([
       db.select().from(practices).where(eq(practices.isActive, true)),
-      db.select().from(practiceMetrics).where(eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber)),
+      db.select().from(practiceMetrics).where(
+        and(
+          eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber),
+          eq(practiceMetrics.year, currentYear)
+        )
+      ),
       db.select().from(users),
     ]);
 
-    // Get all ledger totals in one efficient query
+    // Get all ledger totals for PP1-PP26 of current year only (year-scoped)
     const ledgerTotals = await db.select({
       practiceId: practiceLedger.practiceId,
       transactionType: practiceLedger.transactionType,
       total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
     })
     .from(practiceLedger)
-    .where(or(
-      eq(practiceLedger.transactionType, 'paid'),
-      eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
-      eq(practiceLedger.transactionType, 'committed')
-    ))
+    .where(
+      and(
+        eq(practiceLedger.year, currentYear),
+        gte(practiceLedger.payPeriod, 1),
+        lte(practiceLedger.payPeriod, 26),
+        or(
+          eq(practiceLedger.transactionType, 'paid'),
+          eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
+          eq(practiceLedger.transactionType, 'committed')
+        )
+      )
+    )
     .groupBy(practiceLedger.practiceId, practiceLedger.transactionType);
 
     // Create lookup maps for efficient access
