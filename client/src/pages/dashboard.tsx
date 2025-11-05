@@ -86,8 +86,7 @@ export default function Dashboard() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-sm">
-                          <strong>Total Portfolio Cap:</strong> Sum of all practice stipend caps for the current year (PP1-PP26). 
-                          Calculated from BigQuery metrics imported via CSV.
+                          <strong>Total Portfolio Cap:</strong> Sum of all practice stipend caps for the current year (PP1-PP26).
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -121,8 +120,7 @@ export default function Dashboard() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-sm">
-                          <strong>Stipend Paid:</strong> Total stipends that have been marked as "Paid" from PP1 to PP26 of the current year only. 
-                          Year-scoped to prevent cross-year data mixing.
+                          <strong>Stipend Paid:</strong> Total stipends that have been marked as "Paid" from PP1 to PP26 of the current year only.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -158,8 +156,7 @@ export default function Dashboard() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-sm">
-                          <strong>Stipend Committed:</strong> Total approved stipends not yet paid, from PP1 to PP26 of the current year. 
-                          Includes all "Committed" ledger entries for the current year only.
+                          <strong>Stipend Committed:</strong> Total approved stipends not yet paid, from PP1 to PP26 of the current year.
                         </p>
                       </TooltipContent>
                     </Tooltip>
