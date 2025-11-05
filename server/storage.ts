@@ -830,59 +830,70 @@ export class DatabaseStorage implements IStorage {
 
     const breakdown: any[] = [];
     const startPeriod = request.effectivePayPeriod;
+    const startYear = request.effectiveYear;
     const endPeriod = request.requestType === 'recurring' && request.recurringEndPeriod
       ? request.recurringEndPeriod
       : startPeriod;
+    const endYear = request.requestType === 'recurring' && request.recurringEndYear
+      ? request.recurringEndYear
+      : startYear;
 
-    // Generate breakdown for each pay period
-    for (let period = startPeriod; period <= endPeriod; period++) {
-      // Check ledger for this period's entry
-      const ledgerEntries = await db
-        .select()
-        .from(practiceLedger)
-        .where(
-          and(
-            eq(practiceLedger.relatedRequestId, requestId),
-            eq(practiceLedger.payPeriod, period)
-          )
-        );
+    // Generate breakdown for each pay period across years
+    for (let year = startYear; year <= endYear; year++) {
+      const periodStart = (year === startYear) ? startPeriod : 1;
+      const periodEnd = (year === endYear) ? endPeriod : 26;
+      
+      for (let period = periodStart; period <= periodEnd; period++) {
+        // Check ledger for this period's entry
+        const ledgerEntries = await db
+          .select()
+          .from(practiceLedger)
+          .where(
+            and(
+              eq(practiceLedger.relatedRequestId, requestId),
+              eq(practiceLedger.payPeriod, period),
+              eq(practiceLedger.year, year)
+            )
+          );
 
-      let status = 'pending'; // Default if no ledger entry found
-      let ledgerEntry = null;
-      let periodAmount = Number(request.amount); // Default to request amount
+        let status = 'pending'; // Default if no ledger entry found
+        let ledgerEntry = null;
+        let periodAmount = Number(request.amount); // Default to request amount
 
-      if (ledgerEntries.length > 0) {
-        // Find the most recent relevant entry (paid takes precedence over committed)
-        const paidEntry = ledgerEntries.find(e => e.transactionType === 'paid');
-        const committedEntries = ledgerEntries.filter(e => e.transactionType === 'committed');
-        
-        if (paidEntry) {
-          status = 'paid';
-          ledgerEntry = paidEntry;
-          periodAmount = Math.abs(Number(paidEntry.amount)); // Use ledger entry amount
-        } else if (committedEntries.length > 0) {
-          // Sum all committed entries to account for cancellations (negative amounts)
-          const committedSum = committedEntries.reduce((sum, entry) => sum + Number(entry.amount), 0);
+        if (ledgerEntries.length > 0) {
+          // Find the most recent relevant entry (paid takes precedence over committed)
+          const paidEntry = ledgerEntries.find(e => e.transactionType === 'paid');
+          const committedEntries = ledgerEntries.filter(e => e.transactionType === 'committed');
           
-          // If sum is effectively zero but entries exist, it was cancelled
-          // If sum > 0, it's still committed
-          // If no entries, it's pending
-          if (Math.abs(committedSum) < 0.01) {
-            status = 'cancelled';
-          } else {
-            status = 'committed';
-            ledgerEntry = committedEntries[0]; // Use first entry for reference
-            periodAmount = Math.abs(committedSum); // Use actual committed amount from ledger
+          if (paidEntry) {
+            status = 'paid';
+            ledgerEntry = paidEntry;
+            periodAmount = Math.abs(Number(paidEntry.amount)); // Use ledger entry amount
+          } else if (committedEntries.length > 0) {
+            // Sum all committed entries to account for cancellations (negative amounts)
+            const committedSum = committedEntries.reduce((sum, entry) => sum + Number(entry.amount), 0);
+            
+            // If sum is effectively zero but entries exist, it was cancelled
+            // If sum > 0, it's still committed
+            // If no entries, it's pending
+            if (Math.abs(committedSum) < 0.01) {
+              status = 'cancelled';
+            } else {
+              status = 'committed';
+              ledgerEntry = committedEntries[0]; // Use first entry for reference
+              periodAmount = Math.abs(committedSum); // Use actual committed amount from ledger
+            }
           }
         }
-      }
 
-      breakdown.push({
-        payPeriod: period,
-        amount: periodAmount,
-        status: status,
-        ledgerEntryId: ledgerEntry?.id,
-      });
+        breakdown.push({
+          payPeriod: period,
+          year: year,
+          amount: periodAmount,
+          status: status,
+          ledgerEntryId: ledgerEntry?.id,
+        });
+      }
     }
 
     return breakdown;

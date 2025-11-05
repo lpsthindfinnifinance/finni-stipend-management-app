@@ -39,6 +39,7 @@ export default function StipendRequestDetail() {
   
   // Edit amount state
   const [editPayPeriod, setEditPayPeriod] = useState<number | null>(null);
+  const [editYear, setEditYear] = useState<number | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [isEditAmountDialogOpen, setIsEditAmountDialogOpen] = useState(false);
 
@@ -136,8 +137,8 @@ export default function StipendRequestDetail() {
   });
 
   const cancelPeriodMutation = useMutation({
-    mutationFn: async ({ payPeriod }: { payPeriod: number }) => {
-      return await apiRequest("POST", `/api/stipend-requests/${id}/cancel-period`, { payPeriod });
+    mutationFn: async ({ payPeriod, year }: { payPeriod: number; year: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/cancel-period`, { payPeriod, year });
     },
     onSuccess: () => {
       toast({
@@ -169,8 +170,8 @@ export default function StipendRequestDetail() {
   });
 
   const markPeriodPaidMutation = useMutation({
-    mutationFn: async ({ payPeriod }: { payPeriod: number }) => {
-      return await apiRequest("POST", `/api/stipend-requests/${id}/mark-period-paid`, { payPeriod });
+    mutationFn: async ({ payPeriod, year }: { payPeriod: number; year: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/mark-period-paid`, { payPeriod, year });
     },
     onSuccess: () => {
       toast({
@@ -238,8 +239,8 @@ export default function StipendRequestDetail() {
   });
 
   const editAmountMutation = useMutation({
-    mutationFn: async ({ payPeriod, newAmount }: { payPeriod: number; newAmount: number }) => {
-      return await apiRequest("POST", `/api/stipend-requests/${id}/update-period-amount`, { payPeriod, newAmount });
+    mutationFn: async ({ payPeriod, year, newAmount }: { payPeriod: number; year: number; newAmount: number }) => {
+      return await apiRequest("POST", `/api/stipend-requests/${id}/update-period-amount`, { payPeriod, year, newAmount });
     },
     onSuccess: (_, variables) => {
       toast({
@@ -276,14 +277,15 @@ export default function StipendRequestDetail() {
     },
   });
 
-  const handleEditAmount = (payPeriod: number, currentAmount: number) => {
+  const handleEditAmount = (payPeriod: number, year: number, currentAmount: number) => {
     setEditPayPeriod(payPeriod);
+    setEditYear(year);
     setEditAmount(currentAmount.toString());
     setIsEditAmountDialogOpen(true);
   };
 
   const handleSubmitEditAmount = () => {
-    if (!editPayPeriod || !editAmount) {
+    if (!editPayPeriod || !editYear || !editAmount) {
       toast({
         title: "Error",
         description: "Invalid input",
@@ -302,7 +304,7 @@ export default function StipendRequestDetail() {
       return;
     }
 
-    editAmountMutation.mutate({ payPeriod: editPayPeriod, newAmount });
+    editAmountMutation.mutate({ payPeriod: editPayPeriod, year: editYear, newAmount });
   };
 
   const canApprove = () => {
@@ -666,7 +668,7 @@ export default function StipendRequestDetail() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleEditAmount(period.payPeriod, period.amount)}
+                                onClick={() => handleEditAmount(period.payPeriod, period.year, period.amount)}
                                 data-testid={`button-edit-amount-${period.payPeriod}`}
                               >
                                 <DollarSign className="h-3 w-3 mr-1" />
@@ -675,7 +677,7 @@ export default function StipendRequestDetail() {
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={() => markPeriodPaidMutation.mutate({ payPeriod: period.payPeriod })}
+                                onClick={() => markPeriodPaidMutation.mutate({ payPeriod: period.payPeriod, year: period.year })}
                                 disabled={markPeriodPaidMutation.isPending}
                                 data-testid={`button-mark-paid-${period.payPeriod}`}
                               >
@@ -685,7 +687,7 @@ export default function StipendRequestDetail() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => cancelPeriodMutation.mutate({ payPeriod: period.payPeriod })}
+                                onClick={() => cancelPeriodMutation.mutate({ payPeriod: period.payPeriod, year: period.year })}
                                 disabled={cancelPeriodMutation.isPending}
                                 data-testid={`button-cancel-${period.payPeriod}`}
                               >
