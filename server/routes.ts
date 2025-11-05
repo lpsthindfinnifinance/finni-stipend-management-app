@@ -1017,9 +1017,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.cancelCommittedPeriod(requestId, payPeriod, year);
 
-      // Send Slack notification
+      // Get request details for Slack notification
+      const request = await storage.getStipendRequestById(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      // Get practice details for portfolio information
+      const practice = await storage.getPracticeById(request.practiceId);
+      const portfolioName = practice?.portfolioId || 'Unknown';
+      const practiceName = practice?.clinicName || request.practiceId;
+
+      // Construct URL to the stipend request
+      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+        : process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const requestUrl = `${baseUrl}/requests/${requestId}`;
+
+      // Send Slack notification with enhanced details
       await sendSlackNotification(
-        `Committed stipend for request #${requestId} cancelled for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
+        `🚫 *Stipend Period Cancelled*\n` +
+        `*Request ID:* #${requestId}\n` +
+        `*Practice:* ${practiceName}\n` +
+        `*Portfolio:* ${portfolioName}\n` +
+        `*Pay Period:* PP${payPeriod}'${year}\n` +
+        `*Description:* ${request.stipendDescription}\n` +
+        `*Cancelled by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
+        `*View Request:* ${requestUrl}`,
         'general',
         storage
       );
