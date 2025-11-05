@@ -44,7 +44,15 @@ function shouldShowRequestForPeriod(req: any, selectedPayPeriod: string): boolea
     return true;
   }
   
-  const periodNum = parseInt(selectedPayPeriod);
+  // Parse the selected period format "22-2025" into period number and year
+  const [periodNumStr, yearStr] = selectedPayPeriod.split("-");
+  const periodNum = parseInt(periodNumStr);
+  const selectedYear = parseInt(yearStr);
+  
+  // Check if request matches the selected year
+  if (req.effectiveYear !== selectedYear) {
+    return false;
+  }
   
   // Check if request is active for this period based on effectivePayPeriod and recurringEndPeriod
   const isPeriodInRange = req.requestType === "one_time"
@@ -58,7 +66,7 @@ function shouldShowRequestForPeriod(req: any, selectedPayPeriod: string): boolea
   
   // If period is in range, check if it's cancelled in the payment breakdown
   if (req.paymentBreakdown) {
-    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum);
+    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum && p.year === selectedYear);
     
     // If we found the period breakdown and it's cancelled, exclude it
     if (periodPayment && periodPayment.status?.toLowerCase() === 'cancelled') {
@@ -147,8 +155,11 @@ export default function FinanceOps() {
     }
 
     // Check if the specific filtered period is paid
-    const periodNum = parseInt(periodFilter);
-    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum);
+    // Parse format "22-2025" into period number and year
+    const [periodNumStr, yearStr] = periodFilter.split("-");
+    const periodNum = parseInt(periodNumStr);
+    const selectedYear = parseInt(yearStr);
+    const periodPayment = req.paymentBreakdown.find((p: any) => p.payPeriod === periodNum && p.year === selectedYear);
     
     if (periodPayment) {
       return periodPayment.status === "paid" ? "Paid" : "Committed";
@@ -790,9 +801,9 @@ export default function FinanceOps() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Periods</SelectItem>
-                        {Array.from({ length: 26 }, (_, i) => i + 1).map((period) => (
-                          <SelectItem key={period} value={period.toString()}>
-                            Pay Period {period}
+                        {periods && periods.map((period: any) => (
+                          <SelectItem key={`${period.payPeriodNumber}-${period.year}`} value={`${period.payPeriodNumber}-${period.year}`}>
+                            PP{period.payPeriodNumber}'{period.year}
                           </SelectItem>
                         ))}
                       </SelectContent>
