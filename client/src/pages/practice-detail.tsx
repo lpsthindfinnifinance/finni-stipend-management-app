@@ -458,14 +458,30 @@ export default function PracticeDetail() {
                       </thead>
                       <tbody className="[&_tr:last-child]:border-0">
                         {(ledger as any[]).map((entry: any, index: number) => {
-                          const isClickable = !!entry.relatedRequestId;
+                          const isClickable = !!entry.relatedRequestId || !!entry.relatedAllocationId;
+                          const isRequest = !!entry.relatedRequestId;
+                          const isAllocation = !!entry.relatedAllocationId;
+                          
+                          const handleClick = () => {
+                            if (isRequest) {
+                              window.location.href = `/requests/${entry.relatedRequestId}`;
+                            } else if (isAllocation) {
+                              window.location.href = `/allocations/${entry.relatedAllocationId}`;
+                            }
+                          };
+                          
+                          const testId = isRequest 
+                            ? `row-ledger-request-${entry.relatedRequestId}` 
+                            : isAllocation 
+                            ? `row-ledger-allocation-${entry.relatedAllocationId}` 
+                            : `row-ledger-${index}`;
                           
                           return (
                             <tr 
                               key={index} 
-                              data-testid={isClickable ? `row-ledger-request-${entry.relatedRequestId}` : `row-ledger-${index}`}
+                              data-testid={testId}
                               className={`border-b transition-colors ${isClickable ? "cursor-pointer hover-elevate" : ""}`}
-                              onClick={isClickable ? () => window.location.href = `/requests/${entry.relatedRequestId}` : undefined}
+                              onClick={isClickable ? handleClick : undefined}
                             >
                               <td className="p-4 align-middle text-sm text-muted-foreground">
                                 {formatDate(entry.createdAt)}
