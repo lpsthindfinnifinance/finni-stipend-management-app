@@ -81,8 +81,8 @@ export interface IStorage {
   getPracticeLedger(practiceId: string): Promise<any[]>;
   createLedgerEntry(entry: InsertPracticeLedger): Promise<PracticeLedger>;
   getPracticeBalance(practiceId: string): Promise<number>;
-  getStipendPaid(practiceId: string): Promise<number>;
-  getStipendCommitted(practiceId: string): Promise<number>;
+  getStipendPaid(practiceId: string, year?: number): Promise<number>;
+  getStipendCommitted(practiceId: string, year?: number): Promise<number>;
   getUnapprovedStipend(practiceId: string): Promise<number>;
   getAllocatedIn(practiceId: string): Promise<number>;
   getAllocatedOut(practiceId: string): Promise<number>;
@@ -600,39 +600,51 @@ export class DatabaseStorage implements IStorage {
     return Number(result[0]?.total ?? 0);
   }
 
-  async getStipendPaid(practiceId: string): Promise<number> {
+  async getStipendPaid(practiceId: string, year?: number): Promise<number> {
     // Sum all 'paid' and 'opening_balance_stipend_paid' transactions from the ledger (these are negative, so we take absolute value for display)
+    // If year is provided, only sum PP1-PP26 of that year
+    const conditions = [
+      eq(practiceLedger.practiceId, practiceId),
+      or(
+        eq(practiceLedger.transactionType, 'paid'),
+        eq(practiceLedger.transactionType, 'opening_balance_stipend_paid')
+      )
+    ];
+    
+    if (year !== undefined) {
+      conditions.push(eq(practiceLedger.year, year));
+      conditions.push(sql`${practiceLedger.payPeriod} >= 1 AND ${practiceLedger.payPeriod} <= 26`);
+    }
+    
     const result = await db
       .select({
         total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
       })
       .from(practiceLedger)
-      .where(
-        and(
-          eq(practiceLedger.practiceId, practiceId),
-          or(
-            eq(practiceLedger.transactionType, 'paid'),
-            eq(practiceLedger.transactionType, 'opening_balance_stipend_paid')
-          )
-        )
-      );
+      .where(and(...conditions));
     
     return Number(result[0]?.total ?? 0);
   }
 
-  async getStipendCommitted(practiceId: string): Promise<number> {
+  async getStipendCommitted(practiceId: string, year?: number): Promise<number> {
     // Sum all 'committed' transactions from the ledger (these are negative, so we take absolute value for display)
+    // If year is provided, only sum PP1-PP26 of that year
+    const conditions = [
+      eq(practiceLedger.practiceId, practiceId),
+      eq(practiceLedger.transactionType, 'committed')
+    ];
+    
+    if (year !== undefined) {
+      conditions.push(eq(practiceLedger.year, year));
+      conditions.push(sql`${practiceLedger.payPeriod} >= 1 AND ${practiceLedger.payPeriod} <= 26`);
+    }
+    
     const result = await db
       .select({
         total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
       })
       .from(practiceLedger)
-      .where(
-        and(
-          eq(practiceLedger.practiceId, practiceId),
-          eq(practiceLedger.transactionType, 'committed')
-        )
-      );
+      .where(and(...conditions));
     
     return Number(result[0]?.total ?? 0);
   }
