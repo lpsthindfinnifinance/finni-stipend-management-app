@@ -305,15 +305,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const stipendCap = metrics?.stipendCapAvgFinal ? parseFloat(metrics.stipendCapAvgFinal) : 0;
           const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
-          const availablePerPP = balance / remainingPeriods;
+          
+          // Year-scoped available balance: Cap - Paid (current year) - Committed (current year)
+          const availableBalanceTillPP26 = stipendCap - stipendPaid - stipendCommitted;
+          const availablePerPP = availableBalanceTillPP26 / remainingPeriods;
+          
           // Utilization scoped to current year PP1-PP26
           const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
           
           return {
             ...practice,
             stipendCap,
-            currentBalance: balance, // For frontend compatibility with donor validation
-            availableBalance: balance,
+            currentBalance: balance, // Total balance for donor validation (allocation logic)
+            availableBalance: availableBalanceTillPP26, // Year-scoped for display
             stipendPaid,
             stipendCommitted,
             availablePerPP,
@@ -451,13 +455,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Utilization = (Paid + Committed) / Cap (scoped to current year PP1-PP26)
       const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
       
-      // Calculate available per pay period
+      // Year-scoped available balance for display
+      const availableBalanceTillPP26 = stipendCap - stipendPaid - stipendCommitted;
       const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
-      const availablePerPP = balance / remainingPeriods;
+      const availablePerPP = availableBalanceTillPP26 / remainingPeriods;
       
       res.json({
         practiceId: req.params.id,
-        currentBalance: balance,
+        currentBalance: balance, // Total balance for allocation donor validation
         stipendCap,
         stipendPaid,
         stipendCommitted,
@@ -465,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allocatedIn,
         allocatedOut,
         availablePerPP,
-        available: balance, // Keep for backward compatibility
+        available: availableBalanceTillPP26, // Year-scoped for display
       });
     } catch (error) {
       console.error("Error fetching practice balance:", error);
