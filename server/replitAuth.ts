@@ -13,10 +13,15 @@ if (!process.env.REPLIT_DOMAINS) {
 
 const getOidcConfig = memoize(
 	async () => {
-		return await client.discovery(
-			new URL(process.env.OIDC_ISSUER_URL ?? "https://replit.com/oidc"),
-			process.env.OIDC_CLIENT_ID!,
-		);
+		try {
+			return await client.discovery(
+				new URL(process.env.OIDC_ISSUER_URL ?? "https://replit.com/oidc"),
+				process.env.OIDC_CLIENT_ID!,
+			);
+		} catch (error) {
+			console.error("OIDC discovery error:", error);
+			throw error;
+		}
 	},
 	{ maxAge: 3600 * 1000 },
 );
@@ -92,24 +97,38 @@ export async function setupAuth(app: Express) {
 		tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
 		verified: passport.AuthenticateCallback,
 	) => {
-		const claims = tokens.claims();
+		try {
+			const claims = tokens.claims();
+			if (!claims) {
+				console.error("No claims in token response");
+				verified(new Error("Invalid token response"), false);
+				return;
+			}
+			console.log("OAuth claims received:", {
+				sub: claims.sub,
+				email: claims.email,
+			});
 
-		// Check if user is authorized (exists in Users table)
-		const isAuthorized = await verifyAndUpdateUser(claims);
+			// Check if user is authorized (exists in Users table)
+			const isAuthorized = await verifyAndUpdateUser(claims);
 
-		if (!isAuthorized) {
-			// User not found - reject login
-			verified(
-				new Error("User not authorized. Please contact your administrator."),
-				false,
-			);
-			return;
+			if (!isAuthorized) {
+				// User not found - reject login
+				verified(
+					new Error("User not authorized. Please contact your administrator."),
+					false,
+				);
+				return;
+			}
+
+			// User authorized - proceed with login
+			const user = {};
+			updateUserSession(user, tokens);
+			verified(null, user);
+		} catch (error) {
+			console.error("Error in OAuth verify function:", error);
+			verified(error as Error, false);
 		}
-
-		// User authorized - proceed with login
-		const user = {};
-		updateUserSession(user, tokens);
-		verified(null, user);
 	};
 
 	for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
@@ -140,13 +159,22 @@ export async function setupAuth(app: Express) {
 		})(req, res, next);
 	});
 
-	app.get("/api/callback", (req, res, next) => {
-		passport.authenticate(`replitauth:${req.hostname}`, {
-			successReturnToOrRedirect: "/dashboard",
-			failureRedirect: "/unauthorized",
-			failureMessage: true,
-		})(req, res, next);
-	});
+	app.get(
+		"/api/callback",
+		(req, res, next) => {
+			passport.authenticate(`replitauth:${req.hostname}`, {
+				successReturnToOrRedirect: "/dashboard",
+				failureRedirect: "/unauthorized",
+				failureMessage: true,
+			})(req, res, next);
+		},
+		(err: any, req: any, res: any, next: any) => {
+			if (err) {
+				console.error("OAuth callback error:", err.message, err.stack);
+			}
+			next(err);
+		},
+	);
 
 	// Unauthorized access page
 	app.get("/unauthorized", (req, res) => {
@@ -235,6 +263,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 		updateUserSession(user, tokenResponse);
 		return next();
 	} catch (error) {
+		console.error("Refresh token error:", error);
 		res.status(401).json({ message: "Unauthorized" });
 		return;
 	}
