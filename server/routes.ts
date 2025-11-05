@@ -2267,10 +2267,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CSV Template Download
   app.get('/api/templates/metrics', isAuthenticated, isFinance, async (req, res) => {
     try {
-      // Generate CSV template with headers (only Practice ID required)
+      // Generate CSV template with headers (including Year for multi-year support)
       const headers = [
         'ClinicName',
         'PayPeriod',
+        'Year',
         'StipendCap',
         'NegativeEarningsCap',
         'NegativeEarningsUtilized'
