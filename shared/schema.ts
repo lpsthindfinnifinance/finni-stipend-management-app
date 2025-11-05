@@ -137,6 +137,7 @@ export const practiceMetrics = pgTable("practice_metrics", {
   
   // Pay period
   currentPayPeriodNumber: integer("current_pay_period_number").notNull(), // Required for upsert
+  year: integer("year").notNull(), // 2025, 2026, etc.
   
   // YTD (Year-to-date) metrics
   billedPpsYtd: integer("billed_pps_ytd"),
@@ -172,8 +173,8 @@ export const practiceMetrics = pgTable("practice_metrics", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  // Unique constraint on clinicName + currentPayPeriodNumber for upsert
-  uniqueClinicPeriod: unique("unique_clinic_period").on(table.clinicName, table.currentPayPeriodNumber),
+  // Unique constraint on clinicName + year + currentPayPeriodNumber for upsert
+  uniqueClinicPeriod: unique("unique_clinic_period").on(table.clinicName, table.year, table.currentPayPeriodNumber),
 }));
 
 export const insertPracticeMetricsSchema = createInsertSchema(practiceMetrics).omit({
@@ -193,6 +194,7 @@ export const practiceLedger = pgTable("practice_ledger", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   practiceId: varchar("practice_id").notNull(),
   payPeriod: integer("pay_period").notNull(),
+  year: integer("year").notNull(), // 2025, 2026, etc.
   transactionType: varchar("transaction_type").notNull(), // opening_balance, opening_balance_stipend_paid, remeasurement, paid, committed, allocation_in, allocation_out, suspense_in, suspense_out
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(), // Can be positive or negative
   description: text("description"),
@@ -222,8 +224,10 @@ export const stipendRequests = pgTable("stipend_requests", {
   stipendDescription: text("stipend_description"), // Description of the stipend
   staffEmails: text("staff_emails"), // Email IDs of staff (for staff_cost_reimbursement only)
   requestType: varchar("request_type").notNull(), // one_time, recurring
-  effectivePayPeriod: integer("effective_pay_period").notNull(), // Pay period when stipend takes effect (required for all requests)
-  recurringEndPeriod: integer("recurring_end_period"), // Only for recurring, max 26 (PP26 2025)
+  effectivePayPeriod: integer("effective_pay_period").notNull(), // Pay period when stipend takes effect (1-26)
+  effectiveYear: integer("effective_year").notNull(), // Year when stipend takes effect (2025, 2026, etc.)
+  recurringEndPeriod: integer("recurring_end_period"), // Only for recurring, ending pay period (1-26)
+  recurringEndYear: integer("recurring_end_year"), // Only for recurring, ending year (2025, 2026, etc.)
   justification: text("justification").notNull(),
   status: varchar("status").notNull().default("pending_lead_psm"), // pending_lead_psm, pending_finance, approved, rejected
   leadPsmApprovedAt: timestamp("lead_psm_approved_at"),
@@ -239,7 +243,7 @@ export const stipendRequests = pgTable("stipend_requests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertStipendRequestSchema = createInsertSchema(stipendRequests).omit({
+const baseStipendRequestSchema = createInsertSchema(stipendRequests).omit({
   id: true,
   status: true,
   leadPsmApprovedAt: true,
@@ -253,8 +257,10 @@ export const insertStipendRequestSchema = createInsertSchema(stipendRequests).om
   financeComment: true,
   createdAt: true,
   updatedAt: true,
-} as any).refine(
-  (data) => {
+});
+
+export const insertStipendRequestSchema = baseStipendRequestSchema.refine(
+  (data: any) => {
     if (typeof data.amount === 'string') {
       const numAmount = parseFloat(data.amount);
       return !isNaN(numAmount) && numAmount > 0;
@@ -263,13 +269,16 @@ export const insertStipendRequestSchema = createInsertSchema(stipendRequests).om
   },
   { message: "Amount must be greater than 0", path: ["amount"] }
 ).refine(
-  (data) => data.justification && data.justification.length >= 10,
+  (data: any) => data.justification && data.justification.length >= 10,
   { message: "Justification must be at least 10 characters", path: ["justification"] }
 ).refine(
-  (data) => data.effectivePayPeriod >= 1 && data.effectivePayPeriod <= 26,
+  (data: any) => data.effectivePayPeriod >= 1 && data.effectivePayPeriod <= 26,
   { message: "Pay period must be between 1 and 26", path: ["effectivePayPeriod"] }
 ).refine(
-  (data) => data.stipendDescription && data.stipendDescription.trim().length >= 5,
+  (data: any) => data.effectiveYear >= 2025,
+  { message: "Year must be 2025 or later", path: ["effectiveYear"] }
+).refine(
+  (data: any) => data.stipendDescription && data.stipendDescription.trim().length >= 5,
   { message: "Stipend description must be at least 5 characters", path: ["stipendDescription"] }
 );
 
@@ -329,14 +338,19 @@ export type InterPsmAllocation = typeof interPsmAllocations.$inferSelect;
 // ============================================================================
 
 export const payPeriods = pgTable("pay_periods", {
-  id: integer("id").primaryKey(), // 1-26 for 2025
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  payPeriodNumber: integer("pay_period_number").notNull(), // 1-26
+  year: integer("year").notNull(), // 2025, 2026, etc.
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   isCurrent: integer("is_current").notNull().default(0), // 0 or 1 (boolean)
   remeasurementCompleted: integer("remeasurement_completed").notNull().default(0),
   csvData: text("csv_data"), // Stores the uploaded CSV data for this pay period
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint on year + payPeriodNumber
+  uniqueYearPeriod: unique("unique_year_period").on(table.year, table.payPeriodNumber),
+}));
 
 export const insertPayPeriodSchema = createInsertSchema(payPeriods).omit({
   createdAt: true,
@@ -355,6 +369,7 @@ export const practiceReassignments = pgTable("practice_reassignments", {
   fromPortfolioId: varchar("from_portfolio_id").notNull(),
   toPortfolioId: varchar("to_portfolio_id").notNull(),
   effectivePayPeriod: integer("effective_pay_period").notNull(),
+  effectiveYear: integer("effective_year").notNull(), // 2025, 2026, etc.
   reassignedBy: varchar("reassigned_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -375,7 +390,8 @@ export const negativeEarningsCapRequests = pgTable("negative_earnings_cap_reques
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   practiceId: varchar("practice_id").notNull(),
   requestorId: varchar("requestor_id").notNull(), // PSM who submitted
-  payPeriod: integer("pay_period").notNull(), // Pay period this request applies to
+  payPeriod: integer("pay_period").notNull(), // Pay period this request applies to (1-26)
+  year: integer("year").notNull(), // Year this request applies to (2025, 2026, etc.)
   requestedAmount: decimal("requested_amount", { precision: 12, scale: 2 }).notNull(),
   justification: text("justification").notNull(),
   status: varchar("status").notNull().default("pending_finance"), // pending_finance, approved, rejected
@@ -393,6 +409,7 @@ export const insertNegativeEarningsCapRequestSchema = z.object({
   practiceId: z.string(),
   requestorId: z.string(),
   payPeriod: z.number(),
+  year: z.number(),
   requestedAmount: z.string().refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
   justification: z.string().min(10, "Justification must be at least 10 characters"),
 });

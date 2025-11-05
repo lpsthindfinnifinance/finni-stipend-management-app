@@ -1390,7 +1390,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const columnMapping: Record<string, string> = {
         // Practice identification (only ClinicName required)
         'ClinicName': 'clinicName',
-        'PayPeriod': 'payPeriod', // Simplified template format
+        'PayPeriod': 'payPeriod', // Simplified template format  
+        'Year': 'year', // Year column (2025, 2026, etc.)
         'Practice_DisplayName_Group': 'practiceDisplayNameGroup',
         'IsActivePractice': 'isActivePractice',
         'CurrentPayPeriod_Number': 'currentPayPeriodNumber', // Full BigQuery format
@@ -1492,15 +1493,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
+        // Extract year (required)
+        const yearValue = getValue('Year');
+        if (!yearValue || isNaN(parseInt(yearValue))) {
+          errors.push(`Line ${i + 1}: Missing or invalid Year`);
+          continue;
+        }
+        const year = parseInt(yearValue);
+        if (year < 2025) {
+          errors.push(`Line ${i + 1}: Year must be 2025 or later`);
+          continue;
+        }
+
         // Build import data object with ALL BigQuery columns
         const importData: any = {
           // Practice identification (only ClinicName required)
           clinicName,
+          year, // Year column
           practiceDisplayNameGroup: getValue('Practice_DisplayName_Group'),
           isActivePractice: parseIntValue(getValue('IsActivePractice')),
           // Support both simplified template (PayPeriod) and full BigQuery format (CurrentPayPeriod_Number)
           // Use nullish coalescing so that 0 is treated as valid
-          currentPayPeriodNumber: parseIntValue(getValue('PayPeriod')) ?? parseIntValue(getValue('CurrentPayPeriod_Number')) ?? currentPeriod.id,
+          currentPayPeriodNumber: parseIntValue(getValue('PayPeriod')) ?? parseIntValue(getValue('CurrentPayPeriod_Number')) ?? currentPeriod.payPeriodNumber,
           
           // YTD metrics - Complete set
           billedPpsYtd: parseIntValue(getValue('BilledPPs_YTD')),
@@ -1579,9 +1593,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let skippedNullStipendCap = 0;
       const practicesNotInTable: string[] = [];
       
-      // Get the current period number from the first import
-      const currentPeriodNum = imports.length > 0 ? imports[0].currentPayPeriodNumber : currentPeriod.id;
+      // Get the current period number and year from the first import
+      const currentPeriodNum = imports.length > 0 ? imports[0].currentPayPeriodNumber : currentPeriod.payPeriodNumber;
+      const currentYear = imports.length > 0 ? imports[0].year : currentPeriod.year;
       const previousPeriodNum = currentPeriodNum - 1;
+      // Previous year handling: if currentPeriodNum is 1, previous period is PP26 of previous year
+      const previousYear = currentPeriodNum === 1 ? currentYear - 1 : currentYear;
 
       for (const importData of imports) {
         // Upsert metrics first
@@ -1606,7 +1623,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (previousPeriodNum > 0) {
           const previousMetrics = await storage.getPreviousMetricsByClinicName(
             importData.clinicName, 
-            previousPeriodNum
+            previousPeriodNum,
+            previousYear
           );
 
           // If no previous metrics exist, create opening balance from current StipendCapAvgFinal
@@ -1616,9 +1634,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
+                year: currentYear,
                 transactionType: 'opening_balance',
                 amount: openingBalance.toString(),
-                description: `Opening balance for PP${currentPeriodNum}: $${openingBalance.toFixed(2)}`,
+                description: `Opening balance for PP${currentPeriodNum}'${currentYear}: $${openingBalance.toFixed(2)}`,
               });
               openingBalanceCount++;
             }
@@ -1632,29 +1651,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Only create ledger entry if adjustment is significant (> $0.01)
             if (Math.abs(adjustment) > 0.01) {
               // Delete existing remeasurement entries for this practice/period (prevents duplicates on re-upload)
-              await storage.deleteRemeasurementEntries(practice.id, currentPeriodNum);
+              await storage.deleteRemeasurementEntries(practice.id, currentPeriodNum, currentYear);
               
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
+                year: currentYear,
                 transactionType: adjustment > 0 ? 'remeasurement_increase' : 'remeasurement_decrease',
                 amount: adjustment.toString(), // Store actual value (positive for increase, negative for decrease)
-                description: `Remeasurement PP${currentPeriodNum}: ${adjustment > 0 ? '+' : ''}$${adjustment.toFixed(2)} (Prev PP${previousPeriodNum}: $${previousCap.toFixed(2)}, New: $${newCap.toFixed(2)})`,
+                description: `Remeasurement PP${currentPeriodNum}'${currentYear}: ${adjustment > 0 ? '+' : ''}$${adjustment.toFixed(2)} (Prev PP${previousPeriodNum}'${previousYear}: $${previousCap.toFixed(2)}, New: $${newCap.toFixed(2)})`,
               });
               remeasurementCount++;
             }
           }
         } else {
-          // First period ever - create opening balance
+          // First period ever (PP1) - create opening balance
           if (importData.stipendCapAvgFinal !== null) {
             const openingBalance = Number(importData.stipendCapAvgFinal);
             if (openingBalance > 0.01) {
               await storage.createLedgerEntry({
                 practiceId: practice.id,
                 payPeriod: currentPeriodNum,
+                year: currentYear,
                 transactionType: 'opening_balance',
                 amount: openingBalance.toString(),
-                description: `Opening balance for PP${currentPeriodNum}: $${openingBalance.toFixed(2)}`,
+                description: `Opening balance for PP${currentPeriodNum}'${currentYear}: $${openingBalance.toFixed(2)}`,
               });
               openingBalanceCount++;
             }
@@ -1709,17 +1730,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "CSV data is required" });
       }
 
-      // Parse CSV - expecting columns: ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid
+      // Parse CSV - expecting columns: ClinicID, PayPeriodNumber, Year, OpeningBalanceStipendPaid
       const lines = csvData.trim().split('\n');
       const headers = lines[0].split(',').map(h => h.trim());
       
       // Validate headers
-      const requiredHeaders = ['ClinicID', 'PayPeriodNumber', 'OpeningBalanceStipendPaid'];
+      const requiredHeaders = ['ClinicID', 'PayPeriodNumber', 'Year', 'OpeningBalanceStipendPaid'];
       const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
       
       if (missingHeaders.length > 0) {
         return res.status(400).json({ 
-          message: `Missing required columns: ${missingHeaders.join(', ')}. Expected columns: ClinicID, PayPeriodNumber, OpeningBalanceStipendPaid` 
+          message: `Missing required columns: ${missingHeaders.join(', ')}. Expected columns: ClinicID, PayPeriodNumber, Year, OpeningBalanceStipendPaid` 
         });
       }
 
@@ -1740,6 +1761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const clinicId = values[headerIndex['ClinicID']];
         const payPeriodNumber = values[headerIndex['PayPeriodNumber']];
+        const yearValue = values[headerIndex['Year']];
         const openingBalanceStipendPaid = values[headerIndex['OpeningBalanceStipendPaid']];
 
         // Validate required fields
@@ -1759,6 +1781,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
+        if (!yearValue || isNaN(parseInt(yearValue))) {
+          errors.push(`Line ${i + 1}: Missing or invalid Year`);
+          continue;
+        }
+
+        const year = parseInt(yearValue);
+        if (year < 2025) {
+          errors.push(`Line ${i + 1}: Year must be 2025 or later`);
+          continue;
+        }
+
         if (!openingBalanceStipendPaid || isNaN(parseFloat(openingBalanceStipendPaid))) {
           errors.push(`Line ${i + 1}: Invalid OpeningBalanceStipendPaid`);
           continue;
@@ -1769,6 +1802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imports.push({
           clinicId,
           payPeriodNumber: periodNum,
+          year,
           amount,
         });
       }
@@ -1799,17 +1833,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Delete existing opening_balance_stipend_paid entries for this practice/period (to allow updates/zeroing)
-        await storage.deleteOpeningBalanceStipendPaid(practice.id, importData.payPeriodNumber);
+        // Delete existing opening_balance_stipend_paid entries for this practice/period/year (to allow updates/zeroing)
+        await storage.deleteOpeningBalanceStipendPaid(practice.id, importData.payPeriodNumber, importData.year);
 
         // Only create new entry if amount is non-zero
         if (importData.amount !== 0) {
           await storage.createLedgerEntry({
             practiceId: practice.id,
             payPeriod: importData.payPeriodNumber,
+            year: importData.year,
             transactionType: 'opening_balance_stipend_paid',
             amount: (-Math.abs(importData.amount)).toString(), // Negative value
-            description: `Opening Balance - Stipend Paid (PP${importData.payPeriodNumber})`,
+            description: `Opening Balance - Stipend Paid (PP${importData.payPeriodNumber}'${importData.year})`,
           });
         }
         
