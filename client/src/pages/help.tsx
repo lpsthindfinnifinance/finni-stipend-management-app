@@ -121,6 +121,13 @@ export default function Help() {
                     </p>
                   </div>
                   <div>
+                    <strong className="text-sm">Year-Scoped Financial Metrics:</strong>
+                    <p className="text-sm text-muted-foreground">
+                      All dashboard KPIs (Stipend Paid, Stipend Committed, Available Balance, Utilization %) are calculated from PP1-PP26 of the currently selected pay period's year only. 
+                      This ensures accurate year-over-year comparisons and prevents cross-year data mixing.
+                    </p>
+                  </div>
+                  <div>
                     <strong className="text-sm">Remeasurement:</strong>
                     <p className="text-sm text-muted-foreground">
                       When stipend caps change between pay periods, adjustments are automatically calculated and recorded
@@ -150,57 +157,124 @@ export default function Help() {
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  1. Dashboard Overview
+                  1. Understanding Your Dashboard
                 </h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Your dashboard shows portfolio-level financial metrics:
+                  Your dashboard shows real-time portfolio-level financial metrics for the current year (PP1-PP26):
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                  <li><strong>Total Portfolio Cap:</strong> Combined stipend caps for all practices in your portfolio</li>
-                  <li><strong>Stipend Paid (YTD):</strong> Total stipends paid out this year</li>
-                  <li><strong>Stipend Committed:</strong> Approved stipends not yet paid</li>
-                  <li><strong>Available Balance:</strong> Remaining stipend capacity</li>
+                  <li><strong>Total Portfolio Cap:</strong> Combined stipend caps for all practices in your portfolio (current year only)</li>
+                  <li><strong>Stipend Paid (YTD):</strong> Total stipends paid from PP1 to PP26 of the current year</li>
+                  <li><strong>Stipend Committed:</strong> Approved stipends not yet paid (current year PP1-PP26)</li>
+                  <li><strong>Available Balance:</strong> Remaining capacity (Cap - Paid - Committed for current year)</li>
                   <li><strong>Pending Approvals:</strong> Requests awaiting Lead PSM/Finance approval</li>
                 </ul>
+                <div className="bg-muted p-3 rounded-lg mt-3">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Important:</strong> When viewing PP1 2026, you'll see metrics for 2026 only (not 2025 data). 
+                    This year-scoped approach ensures accurate tracking as you transition between years.
+                  </p>
+                </div>
               </div>
 
               {/* Creating Requests */}
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  2. Creating Stipend Requests
+                  2. How to Create a Stipend Request (Step-by-Step)
                 </h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium mb-2">Step 1: Navigate to "My Requests"</p>
-                    <p className="text-sm text-muted-foreground">Click "New Request" button in the top right</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium mb-2">Step 2: Fill out request form</p>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1">Before You Start:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                      <li><strong>Practice:</strong> Select practice from your portfolio</li>
-                      <li><strong>Amount:</strong> Enter stipend amount (validated against available balance)</li>
-                      <li><strong>Stipend Type:</strong> Choose category (Rent/Lease, Staff Cost, Marketing, etc.)</li>
-                      <li><strong>Stipend Description:</strong> Detailed explanation of the request (required)</li>
-                      <li><strong>Staff Emails:</strong> Required if type is "Staff Cost Reimbursement"</li>
-                      <li><strong>Request Type:</strong> One-time or Recurring</li>
-                      <li><strong>Effective Pay Period:</strong> When stipend should start</li>
-                      <li><strong>Justification:</strong> Business reason for this request</li>
+                      <li>Check your practice's available balance on the Dashboard or Practices page</li>
+                      <li>Gather all required information: amount, business justification, stipend type</li>
+                      <li>Know which pay period the stipend should start (effective date)</li>
                     </ul>
                   </div>
+                  
                   <div>
-                    <p className="text-sm font-medium mb-2">Step 3: For Recurring Requests</p>
+                    <p className="text-sm font-semibold mb-2">📍 Step 1: Access the Request Form</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                      <li>Select "Recurring" as request type</li>
-                      <li>Choose end pay period (when recurring payments stop)</li>
-                      <li>Amount will be paid each period until end period</li>
+                      <li>Click "My Requests" in the left sidebar navigation</li>
+                      <li>Click the green "New Request" button in the top right corner</li>
+                      <li>The stipend request form will open</li>
                     </ul>
                   </div>
+                  
                   <div>
-                    <p className="text-sm font-medium mb-2">Step 4: Submit</p>
-                    <p className="text-sm text-muted-foreground">
-                      Click "Submit Request" - it will go to Lead PSM for approval
+                    <p className="text-sm font-semibold mb-2">📝 Step 2: Fill Out Basic Information</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li><strong>Practice:</strong> Click the dropdown and select the practice from your portfolio (only your portfolio's practices will appear)</li>
+                      <li><strong>Amount:</strong> Enter the stipend amount (e.g., 5000.00). System will validate against practice's available balance</li>
+                      <li><strong>Stipend Type:</strong> Select from dropdown:
+                        <ul className="ml-5 mt-1 list-circle">
+                          <li>Rent/Lease Reimbursement</li>
+                          <li>Staff Cost Reimbursement</li>
+                          <li>Marketing/Advertising</li>
+                          <li>Equipment/Supplies</li>
+                          <li>Technology/Software</li>
+                          <li>Other</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">📄 Step 3: Provide Detailed Description</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li><strong>Stipend Description (Required):</strong> Enter a detailed explanation of what this stipend is for
+                        <p className="text-xs italic mt-1">Example: "Q1 2025 office rent reimbursement for expanded clinic space"</p>
+                      </li>
+                      <li><strong>Staff Emails (Conditional):</strong> If you selected "Staff Cost Reimbursement", this field becomes required. Enter staff email addresses separated by commas</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">📅 Step 4: Select Request Type and Timing</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li><strong>Request Type:</strong> Choose one:
+                        <ul className="ml-5 mt-1 list-circle">
+                          <li><strong>One-time:</strong> Stipend paid once in a single pay period</li>
+                          <li><strong>Recurring:</strong> Stipend paid every period for a specified range</li>
+                        </ul>
+                      </li>
+                      <li><strong>Effective Pay Period:</strong> Select when the stipend should start (usually current or next period)</li>
+                      <li><strong>End Pay Period (Recurring only):</strong> If recurring, select the final pay period for this stipend</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">💼 Step 5: Add Business Justification</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li><strong>Justification (Required):</strong> Explain the business reason for this request
+                        <p className="text-xs italic mt-1">Example: "Practice expanding to serve 15 additional clients per week, requiring larger facility"</p>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">✅ Step 6: Review and Submit</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>Review all entered information for accuracy</li>
+                      <li>Check that the amount is within available balance</li>
+                      <li>Click the blue "Submit Request" button at the bottom</li>
+                      <li>You'll see a success message and be redirected to "My Requests" page</li>
+                      <li>Your request will appear in the "Pending" tab with status "Pending Lead PSM"</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Common Mistakes to Avoid:
                     </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>Requesting more than the practice's available balance (will be rejected by system)</li>
+                      <li>Forgetting to add staff emails when selecting "Staff Cost Reimbursement" type</li>
+                      <li>Not providing detailed enough description or justification</li>
+                      <li>Selecting wrong effective pay period (can't be changed after submission)</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -234,17 +308,31 @@ export default function Help() {
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  4. Viewing Practice Details
+                  4. Viewing Practice Financial Details
                 </h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Click on any practice to view:
+                  Navigate to "Practices" page and click on any practice row to view detailed financial information:
                 </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                  <li><strong>Stipend Cap:</strong> Maximum available for this practice</li>
-                  <li><strong>Current Balance:</strong> Available funds after paid/committed stipends</li>
-                  <li><strong>Ledger History:</strong> All financial transactions for the practice</li>
-                  <li><strong>Pending Requests:</strong> Requests awaiting approval</li>
+                <ul className="text-sm text-muted-foreground space-y-2 ml-5 list-disc">
+                  <li><strong>Stipend Cap (Current Year):</strong> Maximum stipend allocation for this practice for PP1-PP26 of current year</li>
+                  <li><strong>Stipend Paid (Current Year):</strong> Total stipends already disbursed from PP1 to current period of this year</li>
+                  <li><strong>Stipend Committed (Current Year):</strong> Approved stipends not yet paid for PP1-PP26 of current year</li>
+                  <li><strong>Available Balance:</strong> 
+                    <ul className="ml-5 mt-1 list-circle">
+                      <li><strong>Till PP26:</strong> Remaining capacity through end of current year (Cap - Paid - Committed)</li>
+                      <li><strong>Per Pay Period:</strong> Average available per remaining period (Till PP26 ÷ Remaining Periods)</li>
+                    </ul>
+                  </li>
+                  <li><strong>% Utilized:</strong> Percentage of cap consumed by paid + committed stipends (current year only)</li>
+                  <li><strong>Pending Requests:</strong> Count of requests awaiting approval for this practice</li>
+                  <li><strong>Ledger History Table:</strong> Complete transaction history including opening balances, remeasurements, paid/committed stipends, and allocations</li>
                 </ul>
+                <div className="bg-muted p-3 rounded-lg mt-3">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Note:</strong> All financial metrics are year-scoped. When viewing PP1 2026, you'll only see 2026 data (not 2025). 
+                    This allows accurate tracking as practices transition between years.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -308,38 +396,122 @@ export default function Help() {
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <ArrowRightLeft className="h-4 w-4" />
-                  2. Managing Practice Allocations
+                  2. How to Allocate Stipends Between Practices (Step-by-Step)
                 </h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Lead PSMs can allocate stipends between any practices (across all portfolios).
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium mb-2">Step 1: Navigate to "Allocations" page</p>
-                    <p className="text-sm text-muted-foreground">Click "New Allocation" button</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium mb-2">Step 2: Select donor practices</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                      <li>Use checkboxes to select practices giving funds</li>
-                      <li>Enter amount for each selected practice</li>
-                      <li>Total donor amount is calculated automatically</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium mb-2">Step 3: Select recipient practices</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                      <li>Select practices receiving funds</li>
-                      <li>Enter amount for each recipient</li>
-                      <li>Total recipient amount must equal total donor amount</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium mb-2">Step 4: Submit allocation</p>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1">What are Allocations?</p>
                     <p className="text-sm text-muted-foreground">
-                      System creates ledger entries: negative for donors, positive for recipients. 
-                      Balances update immediately.
+                      Allocations allow you to transfer stipend funds from practices with excess capacity (donors) 
+                      to practices that need additional funds (recipients). Lead PSMs can allocate across all portfolios. 
+                      PSMs can only allocate within their own portfolio.
                     </p>
+                  </div>
+                  
+                  <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1">Before You Start:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>Identify which practice(s) have excess available balance (donors)</li>
+                      <li>Identify which practice(s) need additional funds (recipients)</li>
+                      <li>Verify donor practices have sufficient total balance to transfer</li>
+                      <li>Know the exact amounts you want to transfer</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">📍 Step 1: Access Allocations Page</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>Click "Allocations" in the left sidebar navigation</li>
+                      <li>You'll see a table of all past allocations</li>
+                      <li>Click the green "New Allocation" button in the top right</li>
+                      <li>The allocation form will open</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">💰 Step 2: Select Donor Practices (Giving Funds)</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>In the "Donor Practices" table, you'll see all available practices with their current balances</li>
+                      <li>Check the checkbox next to each practice you want to transfer FROM</li>
+                      <li>For each selected donor, enter the amount to transfer in the "Amount" input field
+                        <p className="text-xs italic mt-1">Example: Check "NM-LC" and enter 5000.00</p>
+                      </li>
+                      <li>You can select multiple donors - the total donor amount is calculated at the bottom</li>
+                      <li>System validates that each donor has sufficient balance</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">📥 Step 3: Select Recipient Practices (Receiving Funds)</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>In the "Recipient Practices" table, you'll see all practices (excluding donor practices)</li>
+                      <li>Check the checkbox next to each practice you want to transfer TO</li>
+                      <li>For each selected recipient, enter the amount to receive in the "Amount" input field
+                        <p className="text-xs italic mt-1">Example: Check "CO-RachelB" and enter 5000.00</p>
+                      </li>
+                      <li>You can select multiple recipients - the total recipient amount is calculated at the bottom</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">⚖️ Step 4: Balance the Allocation</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>The form shows "Total Donor Amount" and "Total Recipient Amount" at the bottom</li>
+                      <li><strong>CRITICAL:</strong> These two amounts MUST be exactly equal to submit</li>
+                      <li>If amounts don't match, you'll see a red error message</li>
+                      <li>Adjust the amounts until both totals are identical
+                        <p className="text-xs italic mt-1">Example: Donor total = $8,000, Recipient total = $8,000 ✅</p>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">✅ Step 5: Submit the Allocation</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>Review all donor and recipient selections and amounts</li>
+                      <li>Verify that total donor = total recipient</li>
+                      <li>Click the blue "Submit Allocation" button at the bottom</li>
+                      <li>You'll see a success message</li>
+                      <li>The allocation will appear in the main Allocations table</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-semibold mb-2">🔄 What Happens After Submission</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>System creates ledger entries for each donor practice (negative amounts, type "allocation_out")</li>
+                      <li>System creates ledger entries for each recipient practice (positive amounts, type "allocation_in")</li>
+                      <li>Donor practice balances decrease immediately</li>
+                      <li>Recipient practice balances increase immediately</li>
+                      <li>All changes are visible in practice ledger history</li>
+                      <li>Allocation is marked as "completed" instantly (no approval needed)</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-red-50 dark:bg-red-950 p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Common Mistakes to Avoid:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li><strong>Unbalanced totals:</strong> Donor and recipient amounts must match exactly</li>
+                      <li><strong>Insufficient balance:</strong> Donor practice must have enough total balance to give</li>
+                      <li><strong>Self-allocation:</strong> Cannot allocate from a practice to itself (automatically prevented)</li>
+                      <li><strong>Portfolio restrictions (PSM only):</strong> PSMs can only allocate within their portfolio</li>
+                      <li><strong>Forgetting multiple practices:</strong> You can allocate from/to multiple practices in one transaction</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1">Example Allocation Scenario:</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Practice A has $10,000 excess, Practice B needs $6,000, Practice C needs $4,000:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
+                      <li>Donor: Practice A → $10,000</li>
+                      <li>Recipients: Practice B → $6,000, Practice C → $4,000</li>
+                      <li>Total Donor = $10,000, Total Recipient = $10,000 ✅ Balanced!</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -444,16 +616,22 @@ export default function Help() {
                       On Finance Ops page, click "Download Template" to get the CSV format
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Required columns: <code className="bg-muted px-1 py-0.5 rounded">ClinicName, PayPeriod, StipendCap, NegativeEarningsCap, NegativeEarningsUtilized</code>
+                      Required columns (6 columns): <code className="bg-muted px-1 py-0.5 rounded">ClinicName, PayPeriod, Year, StipendCap, NegativeEarningsCap, NegativeEarningsUtilized</code>
                     </p>
+                    <div className="bg-muted p-2 rounded mt-2 text-xs font-mono">
+                      Example: NM-LC,1,2026,50000.00,5000.00,1200.00
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm font-medium mb-2">Step 2: Prepare CSV Data</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-5 list-disc">
-                      <li>Export data from BigQuery</li>
-                      <li>Match ClinicName exactly to practice names in system</li>
-                      <li>Ensure StipendCap values are calculated correctly</li>
-                      <li>PayPeriod should match current period (or leave empty to auto-fill)</li>
+                      <li>Export data from BigQuery for all practices</li>
+                      <li><strong>ClinicName:</strong> Must match Practice ID exactly (e.g., "NM-LC", "CO-RachelB") - this is the Practice ID, not the clinic display name</li>
+                      <li><strong>PayPeriod:</strong> Enter pay period number (1-26), or leave empty to auto-fill with current period</li>
+                      <li><strong>Year:</strong> Enter 4-digit year (e.g., 2025, 2026) - REQUIRED for multi-year support</li>
+                      <li><strong>StipendCap:</strong> Calculated stipend cap for this practice/period/year</li>
+                      <li><strong>NegativeEarningsCap:</strong> Negative earnings cap value</li>
+                      <li><strong>NegativeEarningsUtilized:</strong> Amount of negative earnings used</li>
                     </ul>
                   </div>
                   <div>
@@ -484,13 +662,26 @@ export default function Help() {
                     <p className="text-sm font-medium mb-2">Understanding Remeasurement</p>
                     <div className="bg-muted p-3 rounded-lg text-sm text-muted-foreground space-y-2">
                       <p><strong>Example:</strong></p>
-                      <p>• PP1: Import StipendCap = $50,000 → Opening balance created</p>
-                      <p>• PP2: Import StipendCap = $52,500 → Remeasurement: +$2,500</p>
-                      <p>• PP3: Import StipendCap = $51,000 → Remeasurement: -$1,500</p>
+                      <p>• PP1 2025: Import StipendCap = $50,000 → Opening balance created</p>
+                      <p>• PP2 2025: Import StipendCap = $52,500 → Remeasurement: +$2,500</p>
+                      <p>• PP3 2025: Import StipendCap = $51,000 → Remeasurement: -$1,500</p>
                       <p className="mt-2 pt-2 border-t border-border">
-                        <strong>Key:</strong> Remeasurement only compares raw StipendCap values from consecutive CSV uploads.
+                        <strong>Key:</strong> Remeasurement only compares raw StipendCap values from consecutive CSV uploads within the same year.
                         It does NOT consider allocations, paid stipends, or other ledger activities.
                       </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-2">Year-Scoped Financial Metrics</p>
+                    <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg text-sm text-muted-foreground">
+                      <p className="font-semibold mb-2">Important: All KPIs are Year-Scoped</p>
+                      <p>All dashboard metrics (Stipend Paid, Stipend Committed, Available Balance, Utilization %) are calculated from PP1-PP26 of the currently selected pay period's year only.</p>
+                      <p className="mt-2"><strong>Example:</strong></p>
+                      <ul className="ml-5 mt-1 list-disc">
+                        <li>When viewing PP22 2025: Shows 2025 data only (PP1-PP26 of 2025)</li>
+                        <li>When viewing PP1 2026: Shows 2026 data only (PP1-PP26 of 2026)</li>
+                      </ul>
+                      <p className="mt-2">This ensures accurate year-over-year comparisons and prevents cross-year data mixing when transitioning between years.</p>
                     </div>
                   </div>
                 </div>
