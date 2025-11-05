@@ -362,7 +362,7 @@ export default function NewRequest() {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="recurring" id="recurring" data-testid="radio-recurring" />
                       <Label htmlFor="recurring" className="font-normal cursor-pointer">
-                        Recurring till Pay Period 26 (2025)
+                        Recurring
                       </Label>
                     </div>
                   </RadioGroup>
