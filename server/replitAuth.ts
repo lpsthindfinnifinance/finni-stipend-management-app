@@ -148,6 +148,7 @@ export async function setupAuth(app: Express) {
 					"openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
 				callbackURL: `https://${domain}/api/callback`,
 			},
+
 			verify,
 		);
 		passport.use(strategy);
