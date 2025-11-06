@@ -15,7 +15,7 @@ function encodeDatabaseUrl(url: string): string {
 }
 
 export const pool = new Pool({
-	connectionString: encodeDatabaseUrl(process.env.DATABASE_URL),
+	connectionString: process.env.DATABASE_URL,
 	ssl: { rejectUnauthorized: false },
 });
 export const db = drizzle({ client: pool, schema });
