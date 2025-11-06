@@ -11,8 +11,14 @@ if (!process.env.DATABASE_URL) {
 	);
 }
 
+function encodeDatabaseUrl(url: string): string {
+	const parsed = new URL(url);
+	parsed.password = encodeURIComponent(parsed.password);
+	return parsed.toString();
+}
+
 export const pool = new Pool({
-	connectionString: process.env.DATABASE_URL,
+	connectionString: encodeDatabaseUrl(process.env.DATABASE_URL),
 	ssl: false,
 });
 export const db = drizzle({ client: pool, schema });
