@@ -28,33 +28,72 @@ import Settings from "@/pages/settings";
 import Help from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
+// function Router() {
+//   const { isAuthenticated, isLoading } = useAuth();
+
+//   return (
+//     <Switch>
+//       {isLoading || !isAuthenticated ? (
+//         <Route path="/" component={Landing} />
+//       ) : (
+//         <>
+//           <Route path="/" component={Dashboard} />
+//           <Route path="/dashboard" component={Dashboard} />
+//           <Route path="/practices" component={Practices} />
+//           <Route path="/practices/:id" component={PracticeDetail} />
+//           <Route path="/requests/new" component={NewRequest} />
+//           <Route path="/requests/:id" component={StipendRequestDetail} />
+//           <Route path="/requests" component={Requests} />
+//           <Route path="/approvals" component={Approvals} />
+//           <Route path="/allocations" component={Allocations} />
+//           <Route path="/allocations/new" component={NewAllocation} />
+//           <Route path="/allocations/:id" component={AllocationDetail} />
+//           <Route path="/pay-periods" component={PayPeriods} />
+//           <Route path="/finance-ops" component={FinanceOps} />
+//           <Route path="/negative-earnings" component={NegativeEarnings} />
+//           <Route path="/settings" component={Settings} />
+//           <Route path="/help" component={Help} />
+//         </>
+//       )}
+//       <Route component={NotFound} />
+//     </Switch>
+//   );
+// }
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-
+  // NEW: Early return for loading state
+  if (isLoading) {
+    return null;
+  }
+  // NEW: Early return for unauthenticated users
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+  // NEW: Only authenticated routes here (no conditional inside Switch)
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/practices" component={Practices} />
-          <Route path="/practices/:id" component={PracticeDetail} />
-          <Route path="/requests/new" component={NewRequest} />
-          <Route path="/requests/:id" component={StipendRequestDetail} />
-          <Route path="/requests" component={Requests} />
-          <Route path="/approvals" component={Approvals} />
-          <Route path="/allocations" component={Allocations} />
-          <Route path="/allocations/new" component={NewAllocation} />
-          <Route path="/allocations/:id" component={AllocationDetail} />
-          <Route path="/pay-periods" component={PayPeriods} />
-          <Route path="/finance-ops" component={FinanceOps} />
-          <Route path="/negative-earnings" component={NegativeEarnings} />
-          <Route path="/settings" component={Settings} />
-          <Route path="/help" component={Help} />
-        </>
-      )}
+      <Route path="/" component={Dashboard} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/practices" component={Practices} />
+      <Route path="/practices/:id" component={PracticeDetail} />
+      <Route path="/requests/new" component={NewRequest} />
+      <Route path="/requests/:id" component={StipendRequestDetail} />
+      <Route path="/requests" component={Requests} />
+      <Route path="/approvals" component={Approvals} />
+      <Route path="/allocations" component={Allocations} />
+      <Route path="/allocations/new" component={NewAllocation} />
+      <Route path="/allocations/:id" component={AllocationDetail} />
+      <Route path="/pay-periods" component={PayPeriods} />
+      <Route path="/finance-ops" component={FinanceOps} />
+      <Route path="/negative-earnings" component={NegativeEarnings} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/help" component={Help} />
       <Route component={NotFound} />
     </Switch>
   );
