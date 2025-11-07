@@ -7,7 +7,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { RoleSwitcher } from "@/components/role-switcher";
 import { useAuth } from "@/hooks/useAuth";
-import finniLogo from "@assets/finni_logo_1762237015805.png";
+// import finniLogo from "@assets/finni_logo_1762237015805.png";
+import finniLogo from "@assets/Fnni Logo_1762236891653.png";
 
 // Pages
 import Landing from "@/pages/landing";
