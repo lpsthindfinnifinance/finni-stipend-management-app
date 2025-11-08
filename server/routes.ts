@@ -396,8 +396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             data: {practices:practices}
           }));
       } else {
-        return res.json([]);
         console.log("4: My Practices GET ==> Else Case")
+        return res.json([]);
       }
       
       // Enrich with current balance for each practice
