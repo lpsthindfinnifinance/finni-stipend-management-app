@@ -195,18 +195,18 @@ export class DatabaseStorage implements IStorage {
     }
 
     // If no existing user, insert new one
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    // const [user] = await db
+    //   .insert(users)
+    //   .values(userData)
+    //   .onConflictDoUpdate({
+    //     target: users.id,
+    //     set: {
+    //       ...userData,
+    //       updatedAt: new Date(),
+    //     },
+    //   })
+    //   .returning();
+    // return user;
   }
 
   async updateUserRole(id: string, role: string, portfolioId?: string): Promise<User> {
