@@ -363,7 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.id;
       const user = await storage.getUser(userId);
       //const userEmail = req.user.claims.email;
-      const user = await storage.getUserByEmail(userEmail);
+      //const user = await storage.getUserByEmail(userEmail);
 
       // Added logs for error tracing ------------------------------------------------------------------------------------------------------------------------
       // console.log(JSON.stringify({
