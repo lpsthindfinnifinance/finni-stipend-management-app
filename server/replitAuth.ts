@@ -130,9 +130,15 @@ export async function setupAuth(app: Express) {
 			}
 
 			// User authorized - proceed with login
-			const user = {};
-			updateUserSession(user, tokens);
-			verified(null, user);
+			//const user = {};
+			const dbUser = await storage.getUserByEmail(claims.email);
+			if (!dbUser) {
+		        // This should not happen, but it's a safe check
+		        verified(new Error("Failed to retrieve user profile after auth."), false);
+		        return;
+		      }
+			updateUserSession(dbUser, tokens);
+			verified(null, dbUser);
 		} catch (error) {
 			console.error("Error in OAuth verify function:", error);
 			verified(error as Error, false);
@@ -158,6 +164,7 @@ export async function setupAuth(app: Express) {
 	passport.serializeUser((user: Express.User, cb) => cb(null, user));
 	passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
+	
 	app.get("/api/login", (req: Request, res: Response, next: NextFunction) => {
 		const domains = process.env.REPLIT_DOMAINS!.split(",");
 		if (!domains.includes(req.hostname)) {
