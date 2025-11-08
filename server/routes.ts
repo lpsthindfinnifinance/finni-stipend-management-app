@@ -360,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/practices/my', isAuthenticated, async (req: any, res) => {
     try {
       //const userId = req.user.claims.sub;
-      const userId = req.user.claims.id;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       //const userEmail = req.user.claims.email;
       //const user = await storage.getUserByEmail(userEmail);
