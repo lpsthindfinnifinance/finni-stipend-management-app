@@ -161,6 +161,11 @@ export class DatabaseStorage implements IStorage {
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     // First try to find existing user by email
+    
+    if (!userData.email) {
+      throw new Error("Cannot upsert user without an email.");
+    }
+
     if (userData.email) {
       const [existingUser] = await db
         .select()
@@ -174,14 +179,19 @@ export class DatabaseStorage implements IStorage {
         const [updated] = await db
           .update(users)
           .set({
-            ...updateData,
-            updatedAt: new Date(),
-          })
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              profileImageUrl: userData.profileImageUrl,
+              sub: userData.sub, // <-- This is the new line that saves the sub
+              updatedAt: new Date(),
+            })
           .where(eq(users.id, existingUser.id))
           .returning();
         
         return updated;
       }
+      console.error(`upsertUser failed: User with email ${userData.email} not found.`);
+      throw new Error(`User not found: ${userData.email}`);
     }
 
     // If no existing user, insert new one
