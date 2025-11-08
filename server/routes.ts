@@ -361,6 +361,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+
+      // Added logs for error tracing ------------------------------------------------------------------------------------------------------------------------
+      console.log(JSON.stringify({
+        severity: "INFO",
+        message: "1: My Practices GET ==>",
+        data: {isAuthenticated:isAuthenticated, userId:userId, user:user, isUser:!user, userRole:user?.role}
+      }));
       
       if (!user) {
         return res.json([]);
@@ -370,12 +377,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let practices;
       if (user.role === 'Finance' || user.role === 'Admin') {
         practices = await storage.getPractices({});
+        
+        // Added logs for error tracing ------------------------------------------------------------------------------------------------------------------------
+          console.log(JSON.stringify({
+            severity: "INFO",
+            message: "2: My Practices GET ==>",
+            data: {practices:practices}
+          }));
+        
       } else if (user.portfolioId) {
         practices = await storage.getPractices({
           portfolio: user.portfolioId,
         });
+        // Added logs for error tracing ------------------------------------------------------------------------------------------------------------------------
+          console.log(JSON.stringify({
+            severity: "INFO",
+            message: "3: My Practices GET ==>",
+            data: {practices:practices}
+          }));
       } else {
         return res.json([]);
+        console.log("4: My Practices GET ==> Else Case")
       }
       
       // Enrich with current balance for each practice
