@@ -82,11 +82,12 @@ async function verifyAndUpdateUser(claims: any): Promise<boolean> {
 
 	// User exists - update their profile with latest OIDC data
 	await storage.upsertUser({
-		id: claims["sub"],
+		id: existingUser.id,
 		email: claims["email"],
 		firstName: claims["first_name"],
 		lastName: claims["last_name"],
 		profileImageUrl: claims["profile_image_url"],
+		sub: claims["sub"],
 	});
 
 	return true;
