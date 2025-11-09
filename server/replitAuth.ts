@@ -267,15 +267,37 @@ export async function setupAuth(app: Express) {
     `);
 	});
 
-	app.get("/api/logout", (req, res) => {
-		req.logout(() => {
-			res.redirect(
-				client.buildEndSessionUrl(config, {
-					client_id: process.env.OIDC_CLIENT_ID!,
-					post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-				}).href,
-			);
-		});
+	app.get("/api/logout", (req: any, res: any, next: any) => {
+	  // Use the modern error-first callback for req.logout
+	  req.logout(function(err: any) {
+	    if (err) {
+	      // If logout fails, log it and pass the error
+	      console.error("req.logout error:", err);
+	      return next(err);
+	    }
+	
+	    // On success, try to build the OIDC logout URL
+	    try {
+	      // We must get the config object again inside this function scope
+	      // Note: This assumes 'config' is available in this scope.
+	      // If 'config' was defined inside setupAuth, this is correct.
+	      const logoutUrl = client.buildEndSessionUrl(config, {
+	        client_id: process.env.OIDC_CLIENT_ID!,
+	        
+	        // Add the trailing slash to redirect to the root path "/"
+	        post_logout_redirect_uri: `${req.protocol}://${req.hostname}/`,
+	      });
+	      
+	      // Redirect the user to Replit's OIDC logout page
+	      res.redirect(logoutUrl.href);
+	
+	    } catch (error) {
+	      console.error("Error building end session URL:", error);
+	      // If building the URL fails, just redirect to the homepage
+	      // This prevents the "Service Unavailable" crash.
+	      res.redirect("/");
+	    }
+	  });
 	});
 }
 
