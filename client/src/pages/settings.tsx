@@ -1219,6 +1219,7 @@ export default function Settings() {
                       <SelectItem value="request_approved">Request Approved</SelectItem>
                       <SelectItem value="request_rejected">Request Rejected</SelectItem>
                       <SelectItem value="period_paid">Period Paid</SelectItem>
+                      <SelectItem value="allocations">Allocations</SelectItem>
                       <SelectItem value="general">General</SelectItem>
                     </SelectContent>
                   </Select>
