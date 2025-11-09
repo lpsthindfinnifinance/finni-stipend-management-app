@@ -1594,115 +1594,80 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async getDashboardSummary(userId: string, role: string, portfolioId?: string): Promise<any> {
+    // === 1. GET PREREQUISITES (2 fast queries) ===
+    
     // Get current pay period
     const currentPeriod = await this.getCurrentPayPeriod();
     const currentPeriodNumber = currentPeriod?.payPeriodNumber || 21;
     const currentYear = currentPeriod?.year || 2025;
 
-    // Get ALL practices regardless of role (only active practices)
-    // Dashboard KPIs always show totals across all portfolios
-    const practicesList: Practice[] = await db.select().from(practices).where(eq(practices.isActive, true));
-
-    // Calculate metrics
-    let totalStipendCap = 0;
-    let totalStipendPaid = 0;
-    let totalStipendCommitted = 0;
-
-    // Get practice IDs for efficient ledger query
+    // Get ALL active practice IDs
+    const practicesList = await db.select({ id: practices.id })
+      .from(practices)
+      .where(eq(practices.isActive, true));
+      
     const practiceIds = practicesList.map(p => p.id);
 
-    // Calculate stipend cap from metrics for the current year
-    for (const practice of practicesList) {
-      const metrics = await db.select()
-        .from(practiceMetrics)
-        .where(
-          and(
-            eq(practiceMetrics.clinicName, practice.id),
-            eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber),
-            eq(practiceMetrics.year, currentYear)
-          )
-        )
-        .limit(1);
-      
-      if (metrics[0]?.stipendCapAvgFinal) {
-        totalStipendCap += parseFloat(metrics[0].stipendCapAvgFinal);
-      }
+    // === 2. RUN ALL CALCULATIONS IN PARALLEL ===
+    
+    // If there are no practices, return an empty summary
+    if (practiceIds.length === 0) {
+      return {
+        totalCap: 0,
+        stipendPaid: 0,
+        stipendCommitted: 0,
+        availableBalanceTillPP26: 0,
+        availableBalancePerPP: 0,
+        pendingApprovals: 0,
+        currentPeriodNumber: currentPeriodNumber,
+      };
     }
 
-    // Get ledger totals for PP1-PP26 of current year only (excludes any periods beyond PP26)
-    if (practiceIds.length > 0) {
-      const ledgerTotals = await db.select({
-        practiceId: practiceLedger.practiceId,
-        transactionType: practiceLedger.transactionType,
-        total: sql<number>`COALESCE(ABS(SUM(CAST(${practiceLedger.amount} AS DECIMAL))), 0)`,
-      })
-      .from(practiceLedger)
-      .where(
-        and(
-          or(...practiceIds.map(id => eq(practiceLedger.practiceId, id))),
+    const [
+      stipendMetrics,
+      ledgerTotals,
+      pendingResult
+    ] = await Promise.all([
+      
+      // Query 1: Get the SUM of all stipend caps in one go
+      db.select({
+          totalCap: sql<number>`COALESCE(SUM(CAST(${practiceMetrics.stipendCapAvgFinal} AS DECIMAL)), 0)`
+        })
+        .from(practiceMetrics)
+        .where(and(
+          inArray(practiceMetrics.clinicName, practiceIds),
+          eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNumber),
+          eq(practiceMetrics.year, currentYear)
+        )),
+
+      // Query 2: Get the SUM of all 'paid' and 'committed' in one go
+      db.select({
+          totalPaid: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${practiceLedger.transactionType} = 'paid' OR ${practiceLedger.transactionType} = 'opening_balance_stipend_paid' THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`,
+          totalCommitted: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${practiceLedger.transactionType} = 'committed' THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`
+        })
+        .from(practiceLedger)
+        .where(and(
+          inArray(practiceLedger.practiceId, practiceIds),
           eq(practiceLedger.year, currentYear),
           gte(practiceLedger.payPeriod, 1),
-          lte(practiceLedger.payPeriod, 26),
-          or(
-            eq(practiceLedger.transactionType, 'paid'),
-            eq(practiceLedger.transactionType, 'opening_balance_stipend_paid'),
-            eq(practiceLedger.transactionType, 'committed')
-          )
-        )
-      )
-      .groupBy(practiceLedger.practiceId, practiceLedger.transactionType);
+          lte(practiceLedger.payPeriod, 26)
+        )),
 
-      // Sum up totals by transaction type
-      for (const entry of ledgerTotals) {
-        if (entry.transactionType === 'paid' || entry.transactionType === 'opening_balance_stipend_paid') {
-          totalStipendPaid += Number(entry.total);
-        } else if (entry.transactionType === 'committed') {
-          totalStipendCommitted += Number(entry.total);
-        }
-      }
-    }
+      // Query 3: Get the pending count (using the logic you already had)
+      this.getPendingCount(role, portfolioId)
+    ]);
 
-    // Calculate Available Balance (scoped to current year PP1-PP26)
+    // === 3. PROCESS RESULTS (fast, in-memory) ===
+    
+    const totalStipendCap = Number(stipendMetrics[0].totalCap);
+    const totalStipendPaid = Number(ledgerTotals[0].totalPaid);
+    const totalStipendCommitted = Number(ledgerTotals[0].totalCommitted);
+    const pendingCount = Number(pendingResult[0].count);
+
+    // Calculate Available Balance
     const availableBalanceTillPP26 = totalStipendCap - totalStipendPaid - totalStipendCommitted;
     const remainingPeriods = Math.max(26 - currentPeriodNumber, 1);
-    const availableBalancePerPP = availableBalanceTillPP26 / remainingPeriods;
-
-    // Get pending approvals count (requests NOT fully approved)
-    let pendingCount = 0;
-    if (role === "PSM" && portfolioId) {
-      const pending = await db.select().from(stipendRequests)
-        .leftJoin(practices, eq(stipendRequests.practiceId, practices.id))
-        .where(
-          and(
-            eq(practices.portfolioId, portfolioId),
-            or(
-              eq(stipendRequests.status, 'pending_lead_psm'),
-              eq(stipendRequests.status, 'pending_finance')
-            )
-          )
-        );
-      pendingCount = pending.length;
-    } else if (role === "Lead PSM") {
-      const pending = await db.select().from(stipendRequests)
-        .where(
-          or(
-            eq(stipendRequests.status, 'pending_lead_psm'),
-            eq(stipendRequests.status, 'pending_finance')
-          )
-        );
-      pendingCount = pending.length;
-    } else if (role === "Finance") {
-      const pending = await db.select().from(stipendRequests)
-        .where(eq(stipendRequests.status, 'pending_finance'));
-      pendingCount = pending.length;
-    } else if (role === "Admin") {
-      const pending = await db.select().from(stipendRequests)
-        .where(or(
-          eq(stipendRequests.status, 'pending_lead_psm'),
-          eq(stipendRequests.status, 'pending_finance')
-        ));
-      pendingCount = pending.length;
-    }
+    const availableBalancePerPP = availableBalanceTillPP26 > 0 ? availableBalanceTillPP26 / remainingPeriods : 0;
 
     return {
       totalCap: totalStipendCap,
@@ -1715,6 +1680,52 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // === 4. ADD THIS HELPER FUNCTION ===
+  // I created this helper from your 'if/else' logic to make it query-able
+  
+  private async getPendingCount(role: string, portfolioId?: string): Promise<{ count: number }[]> {
+    let query = db.select({ count: sql<number>`COUNT(*)` })
+      .from(stipendRequests);
+
+    if (role === "PSM" && portfolioId) {
+      return query
+        .leftJoin(practices, eq(stipendRequests.practiceId, practices.id))
+        .where(
+          and(
+            eq(practices.portfolioId, portfolioId),
+            or(
+              eq(stipendRequests.status, 'pending_lead_psm'),
+              eq(stipendRequests.status, 'pending_finance')
+            )
+          )
+        ) as Promise<{ count: number }[]>;
+        
+    } else if (role === "Lead PSM") {
+      return query
+        .where(
+          or(
+            eq(stipendRequests.status, 'pending_lead_psm'),
+            eq(stipendRequests.status, 'pending_finance')
+          )
+        ) as Promise<{ count: number }[]>;
+        
+    } else if (role === "Finance") {
+      return query
+        .where(eq(stipendRequests.status, 'pending_finance')) as Promise<{ count: number }[]>;
+        
+    } else if (role === "Admin") {
+      return query
+        .where(or(
+          eq(stipendRequests.status, 'pending_lead_psm'),
+          eq(stipendRequests.status, 'pending_finance')
+        )) as Promise<{ count: number }[]>;
+    }
+    
+    // Default: no role matches, return 0
+    return Promise.resolve([{ count: 0 }]);
+  }
+
+  
   async getPortfolioSummaries(): Promise<any[]> {
     const portfolioList = await this.getPortfolios();
     const currentPeriod = await this.getCurrentPayPeriod();
