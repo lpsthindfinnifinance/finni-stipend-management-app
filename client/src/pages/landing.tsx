@@ -13,7 +13,7 @@ export default function Landing() {
               <img 
                     src={finniCat} 
                     alt="Finni Health" 
-                    className="h-96"
+                    className="h-[96px]"
                     data-testid="finni-cat"
                   />
           </div>
