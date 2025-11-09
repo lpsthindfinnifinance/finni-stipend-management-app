@@ -500,7 +500,7 @@ export const insertSlackSettingSchema = createInsertSchema(slack_settings).omit(
   createdAt: true,
   updatedAt: true,
 }).extend({
-  notificationType: z.enum(["request_submitted", "request_approved", "request_rejected", "period_paid", "general"], 
+  notificationType: z.enum(["request_submitted", "request_approved", "request_rejected", "period_paid", "allocations", "general"], 
     { required_error: "Notification type is required" }),
   webhookUrl: z.string().url("Must be a valid webhook URL").startsWith("https://hooks.slack.com/", "Must be a valid Slack webhook URL"),
   channelName: z.string().optional(),
