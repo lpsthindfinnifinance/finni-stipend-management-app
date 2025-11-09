@@ -23,11 +23,11 @@ export default function Landing() {
           </h1>
           
           <h2 className="text-2xl md:text-3xl font-medium text-muted-foreground">
-            Stipend Management System
+            Stipend Management Application
           </h2>
           
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Comprehensive stipend management for 60+ ABA practices with multi-level approval workflows, 
+            Comprehensive stipend management for Finni's Practice Success Team with multi-level approval workflows, 
             practice-level ledger tracking, and real-time portfolio analytics.
           </p>
 
