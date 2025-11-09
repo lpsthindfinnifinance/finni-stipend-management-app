@@ -13,8 +13,8 @@ export default function Landing() {
               <img 
                     src={finniCat} 
                     alt="Finni Health" 
-                    className="h-7"
-                    data-testid="img-finni-logo"
+                    className="h-96"
+                    data-testid="finni-cat"
                   />
           </div>
           
