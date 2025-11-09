@@ -71,26 +71,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Helper function to get user by email (preferred) or ID fallback
-  async function getUserFromClaims(claims: any): Promise<User | undefined> {
-    const userEmail = claims?.email;
-    const userId = claims?.sub;
-    
-    // Try to find user by email first (handles existing users with different IDs)
-    if (userEmail) {
-      const allUsers = await storage.getAllUsers();
-      const user = allUsers.find(u => u.email === userEmail);
-      if (user) return user;
-    }
-    
-    // Fall back to userId
-    if (userId) {
-      return await storage.getUser(userId);
-    }
-    
-    return undefined;
-  }
-
   // Role-based middleware
   const isFinance = async (req: any, res: any, next: any) => {
     try {
@@ -98,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const user = await getUserFromClaims(req.user.claims);
+      const user = req.user;
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
@@ -121,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await getUserFromClaims(req.user.claims);
+      const user = const user = req.user;;
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -131,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/update-role', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await getUserFromClaims(req.user.claims);
+      const currentUser = req.user;
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -147,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/auth/switch-role', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await getUserFromClaims(req.user.claims);
+      const currentUser = req.user;
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -176,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/auth/switch-portfolio', isAuthenticated, async (req: any, res) => {
     try {
-      const currentUser = await getUserFromClaims(req.user.claims);
+      const currentUser = req.user;
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -214,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await getUserFromClaims(req.user.claims);
+      const user = req.user;
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
