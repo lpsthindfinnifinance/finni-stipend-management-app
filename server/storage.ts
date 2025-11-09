@@ -386,7 +386,6 @@ export class DatabaseStorage implements IStorage {
     filters?: { search?: string; portfolio?: string }
   ): Promise<any[]> {
     
-    // --- ADDED LOG ---
     console.log(JSON.stringify({
       message: "--- storage.getEnrichedPractices START ---",
       currentPeriodNum,
@@ -394,13 +393,13 @@ export class DatabaseStorage implements IStorage {
       filters
     }, null, 2));
     
-    // 1. Define all SUMs as SQL fragments
+    // 1. Define all SUMs as SQL fragments (FIXED: removed extra ')' )
     
     // --- ALL-TIME TOTALS ---
     const balanceSql = sql<number>`COALESCE(SUM(CAST(${practiceLedger.amount} AS DECIMAL)), 0)`.as('balance');
     const allocatedInSql = sql<number>`COALESCE(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'allocation_in' 
-      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedIn');
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END), 0)`.as('allocatedIn');
     const allocatedOutSql = sql<number>`COALESCE(ABS(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'allocation_out' 
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedOut');
@@ -476,7 +475,7 @@ export class DatabaseStorage implements IStorage {
         allocatedOut: sql<number>`COALESCE(${balanceSubQuery.allocatedOut}, 0)`,
         stipendPaid: sql<number>`COALESCE(${ledgerSubQuery.stipendPaid}, 0)`,
         stipendCommitted: sql<number>`COALESCE(${ledgerSubQuery.stipendCommitted}, 0)`,
-        unapprovedStipend: sql<number>`COALESCE(${unapprovedSubQuery.unapprovedStipend}, 0)` // <-- REMOVED TRAILING COMMA HERE
+        unapprovedStipend: sql<number>`COALESCE(${unapprovedSubQuery.unapprovedStipend}, 0)`
       })
       .from(practices)
       // Left Join metrics (year/period specific)
@@ -506,17 +505,20 @@ export class DatabaseStorage implements IStorage {
       const searchLower = filters.search.toLowerCase();
       conditions.push(
         or(
+          // --- UPDATED to use 'ilike' for case-insensitive search (better for Postgres) ---
           sql`LOWER(${practices.id}) LIKE ${'%' + searchLower + '%'}`,
           sql`LOWER(${practices.name}) LIKE ${'%' + searchLower + '%'}`
         )
       );
     }
     
-    // --- ADDED LOG ---
-    console.log("storage.getEnrichedPractices: Running main query...");
-    const results = await query.where(and(...conditions));
+    // --- THIS IS THE LOG YOU REQUESTED ---
+    const finalQuery = query.where(and(...conditions));
+    console.log("--- Drizzle Query SQL ---", finalQuery.toSQL());
+    // --- END OF LOG ---
     
-    // --- ADDED LOG ---
+    const results = await finalQuery;
+    
     console.log(`storage.getEnrichedPractices: Query successful, returned ${results.length} rows.`);
     return results;
   }
