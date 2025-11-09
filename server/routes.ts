@@ -102,6 +102,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/update-role', isAuthenticated, async (req: any, res) => {
     try {
       const currentUser = req.user;
+
+      console.log(currentUser)
+      console.log(req.body)
+      
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
