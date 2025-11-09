@@ -67,15 +67,10 @@ export default function NotFound() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center space-y-6 max-w-md px-4">
         <div className="inline-block">
-          <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <FileQuestion className="h-10 w-10 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="inline-block">
               <img 
                     src={finniCat404} 
                     alt="Finni Cat 404" 
-                    className="h-[180px]"
+                    className="h-[360px]"
                     data-testid="finni-cat"
                   />
           </div>
@@ -103,3 +98,8 @@ export default function NotFound() {
     </div>
   );
 }
+
+
+
+
+
