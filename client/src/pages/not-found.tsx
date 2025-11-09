@@ -71,7 +71,14 @@ export default function NotFound() {
             <FileQuestion className="h-10 w-10 text-muted-foreground" />
           </div>
         </div>
-        
+        <div className="inline-block">
+              <img 
+                    src={finniCat404} 
+                    alt="Finni Cat 404" 
+                    className="h-[180px]"
+                    data-testid="finni-cat"
+                  />
+          </div>
         <div className="space-y-2">
           <h1 className="text-4xl font-semibold text-foreground">
             404
