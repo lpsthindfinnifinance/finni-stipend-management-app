@@ -2208,9 +2208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Portfolio:* ${portfolioName}\n` +
         `*Total Amount:* $${Number(totalAmount).toFixed(2)}\n` +
         `*Pay Period:* PP${currentPeriod?.payPeriodNumber || 1} ${currentYear}\n\n` +
-        `*Donor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
+        `*Contributor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
         `*Recipient Practices (${recipientPractices.length}):**\n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}`,
-        'general',
+        'allocations',
         storage
       );
       
