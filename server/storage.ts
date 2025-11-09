@@ -386,40 +386,45 @@ export class DatabaseStorage implements IStorage {
     filters?: { search?: string; portfolio?: string }
   ): Promise<any[]> {
     
+    // --- ADDED LOG ---
+    console.log(JSON.stringify({
+      message: "--- storage.getEnrichedPractices START ---",
+      currentPeriodNum,
+      currentYear,
+      filters
+    }, null, 2));
+    
     // 1. Define all SUMs as SQL fragments
     
-    // --- ALL-TIME BALANCE ---
-    // This calculates the total sum of all ledger entries for all time
+    // --- ALL-TIME TOTALS ---
     const balanceSql = sql<number>`COALESCE(SUM(CAST(${practiceLedger.amount} AS DECIMAL)), 0)`.as('balance');
-    
-    // --- YEAR-SCOPED TOTALS ---
-    // These calculate sums *only* for the specified year
-    const stipendPaidSql = sql<number>`COALESCE(ABS(SUM(CASE 
-      WHEN ${practiceLedger.transactionType} = 'paid' OR ${practiceLedger.transactionType} = 'opening_balance_stipend_paid'
-      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendPaid');
-    
-    const stipendCommittedSql = sql<number>`COALESCE(ABS(SUM(CASE 
-      WHEN ${practiceLedger.transactionType} = 'committed' 
-      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendCommitted');
-      
     const allocatedInSql = sql<number>`COALESCE(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'allocation_in' 
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedIn');
-
     const allocatedOutSql = sql<number>`COALESCE(ABS(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'allocation_out' 
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedOut');
 
-    // 2. Create a Sub-Query for ALL-TIME balance
+    // --- YEAR-SCOPED TOTALS ---
+    const stipendPaidSql = sql<number>`COALESCE(ABS(SUM(CASE 
+      WHEN ${practiceLedger.transactionType} = 'paid' OR ${practiceLedger.transactionType} = 'opening_balance_stipend_paid'
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendPaid');
+    const stipendCommittedSql = sql<number>`COALESCE(ABS(SUM(CASE 
+      WHEN ${practiceLedger.transactionType} = 'committed' 
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendCommitted');
+      
+    // 2. Create a Sub-Query for ALL-TIME calculations
     // This subquery has NO year filter
     const balanceSubQuery = db
       .select({
         practiceId: practiceLedger.practiceId,
-        balance: balanceSql
+        balance: balanceSql,
+        allocatedIn: allocatedInSql,
+        allocatedOut: allocatedOutSql
       })
       .from(practiceLedger)
       .groupBy(practiceLedger.practiceId)
-      .as('balance');
+      .as('balance_sq');
 
     // 3. Create a Sub-Query for YEAR-SCOPED calculations
     // This subquery IS filtered by the currentYear
@@ -428,8 +433,6 @@ export class DatabaseStorage implements IStorage {
         practiceId: practiceLedger.practiceId,
         stipendPaid: stipendPaidSql,
         stipendCommitted: stipendCommittedSql,
-        allocatedIn: allocatedInSql,
-        allocatedOut: allocatedOutSql,
       })
       .from(practiceLedger)
       .where(
@@ -440,7 +443,7 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .groupBy(practiceLedger.practiceId)
-      .as('ledger');
+      .as('ledger_sq');
 
     // 4. Create a Sub-Query for unapproved stipends (all-time)
     const unapprovedSubQuery = db
@@ -453,7 +456,7 @@ export class DatabaseStorage implements IStorage {
         inArray(stipendRequests.status, ['pending_lead_psm', 'pending_finance'])
       )
       .groupBy(stipendRequests.practiceId)
-      .as('unapproved');
+      .as('unapproved_sq');
 
     // 5. Create the main query
     let query = db
@@ -469,11 +472,11 @@ export class DatabaseStorage implements IStorage {
         
         // Select all calculated fields from our sub-queries
         balance: sql<number>`COALESCE(${balanceSubQuery.balance}, 0)`,
+        allocatedIn: sql<number>`COALESCE(${balanceSubQuery.allocatedIn}, 0)`,
+        allocatedOut: sql<number>`COALESCE(${balanceSubQuery.allocatedOut}, 0)`,
         stipendPaid: sql<number>`COALESCE(${ledgerSubQuery.stipendPaid}, 0)`,
         stipendCommitted: sql<number>`COALESCE(${ledgerSubQuery.stipendCommitted}, 0)`,
-        allocatedIn: sql<number>`COALESCE(${ledgerSubQuery.allocatedIn}, 0)`,
-        allocatedOut: sql<number>`COALESCE(${ledgerSubQuery.allocatedOut}, 0)`,
-        unapprovedStipend: sql<number>`COALESCE(${unapprovedSubQuery.unapprovedStipend}, 0)`,
+        unapprovedStipend: sql<number>`COALESCE(${unapprovedSubQuery.unapprovedStipend}, 0)` // <-- REMOVED TRAILING COMMA HERE
       })
       .from(practices)
       // Left Join metrics (year/period specific)
@@ -509,7 +512,13 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
-    return await query.where(and(...conditions));
+    // --- ADDED LOG ---
+    console.log("storage.getEnrichedPractices: Running main query...");
+    const results = await query.where(and(...conditions));
+    
+    // --- ADDED LOG ---
+    console.log(`storage.getEnrichedPractices: Query successful, returned ${results.length} rows.`);
+    return results;
   }
   
   async createPractice(practice: InsertPractice): Promise<Practice> {
