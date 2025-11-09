@@ -72,12 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Role-based middleware
-  const isFinance = async (req: any, res: any, next: any) => {
-    try {
-      if (!req.user?.claims) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
+  const isFinance = async (req: any, res: any, next: any) => {     
       const user = req.user;
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -87,12 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role !== "Finance" && user.role !== "Admin") {
         return res.status(403).json({ message: "Finance or Admin access required" });
       }
-      
       next();
-    } catch (error) {
-      console.error("Finance middleware error:", error);
-      res.status(500).json({ message: "Authentication error" });
-    }
   };
 
   // ============================================================================
@@ -101,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const user = const user = req.user;;
+      const user = req.user;
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
