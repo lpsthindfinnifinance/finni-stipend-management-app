@@ -274,6 +274,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   app.get('/api/practices', isAuthenticated, async (req, res) => {
+    // --- ADDED LOG ---
+    console.log("--- /api/practices route handler START ---");
     try {
       const { search, portfolio } = req.query;
       
@@ -283,27 +285,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentYear = currentPeriod?.year || 2025;
       const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
 
+      // --- ADDED filters object for logging ---
+      const filters = {
+        search: search as string,
+        portfolio: portfolio as string,
+      };
+
+      // --- ADDED LOG ---
+      console.log(JSON.stringify({
+        message: "Calling storage.getEnrichedPractices with params",
+        currentPeriodNumber,
+        currentYear,
+        filters
+      }, null, 2));
+
       // 2. Call the new function (replaces the N+1 loop)
       // This single DB call gets all data for all practices
       const enrichedData = await storage.getEnrichedPractices(
         currentPeriodNumber,
         currentYear,
-        {
-          search: search as string,
-          portfolio: portfolio as string,
-        }
+        filters
       );
+
+      // --- ADDED LOG ---
+      console.log(`storage.getEnrichedPractices returned ${enrichedData.length} practices.`);
 
       // 3. Perform in-memory calculations (this is now very fast)
       const enrichedPractices = enrichedData.map(practice => {
-        const stipendCap = practice.stipendCapAvgFinal ? parseFloat(practice.stipendCapAvgFinal) : 0;
+        // --- THIS IS THE FIX ---
+        // Use Number() to safely convert, defaulting to 0
+        const stipendCap = Number(practice.stipendCapAvgFinal) || 0;
+        const stipendPaid = Number(practice.stipendPaid) || 0;
+        const stipendCommitted = Number(practice.stipendCommitted) || 0;
         
         // Year-scoped available balance: Cap - Paid (current year) - Committed (current year)
-        const availableBalanceTillPP26 = stipendCap - practice.stipendPaid - practice.stipendCommitted;
+        const availableBalanceTillPP26 = stipendCap - stipendPaid - stipendCommitted;
         const availablePerPP = (availableBalanceTillPP26 > 0 && remainingPeriods > 0) ? availableBalanceTillPP26 / remainingPeriods : 0;
         
         // Utilization scoped to current year PP1-PP26
-        const utilizationPercent = stipendCap > 0 ? ((practice.stipendPaid + practice.stipendCommitted) / stipendCap) * 100 : 0;
+        const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
 
         return {
           // from practices table
@@ -313,16 +333,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: practice.isActive,
           
           // from calculations
-          stipendCap,
-          currentBalance: practice.balance, // Total balance for donor validation (allocation logic)
-          availableBalance: availableBalanceTillPP26, // Year-scoped for display
-          stipendPaid: practice.stipendPaid,
-          stipendCommitted: practice.stipendCommitted,
-          availablePerPP,
-          unapprovedStipend: practice.unapprovedStipend,
-          utilizationPercent,
-          allocatedIn: practice.allocatedIn,
-          allocatedOut: practice.allocatedOut,
+          stipendCap, // Now guaranteed to be a number
+          currentBalance: Number(practice.balance) || 0, // Guaranteed number
+          availableBalance: availableBalanceTillPP26, // Guaranteed number
+          stipendPaid, // Guaranteed number
+          stipendCommitted, // Guaranteed number
+          availablePerPP, // Guaranteed number
+          unapprovedStipend: Number(practice.unapprovedStipend) || 0, // Guaranteed number
+          utilizationPercent, // Guaranteed number
+          allocatedIn: Number(practice.allocatedIn) || 0, // Guaranteed number
+          allocatedOut: Number(practice.allocatedOut) || 0, // Guaranteed number
         };
       });
       
@@ -339,7 +359,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(enrichedPractices);
 
     } catch (error) {
-      console.error("Error fetching practices:", error);
+      // --- MODIFIED CATCH BLOCK ---
+      console.error("--- FATAL Error fetching /api/practices ---:", error);
+      // Log the full error object, which might contain SQL details
+      console.log(JSON.stringify({
+        message: "Error details",
+        errorName: (error as Error).name,
+        errorMessage: (error as Error).message,
+        errorStack: (error as Error).stack,
+        errorObject: error // Log the whole object
+      }, null, 2));
       res.status(500).json({ message: "Failed to fetch practices" });
     }
   });
