@@ -72,6 +72,7 @@ export interface IStorage {
   
   // Practice metrics operations
   getPracticeMetrics(practiceId: string, payPeriod?: number, year?: number): Promise<PracticeMetrics[]>;
+  getEnrichedPractices(currentPeriodNum: number, currentYear: number, filters?: { search?: string; portfolio?: string }): Promise<any[]>;
   upsertPracticeMetrics(metrics: InsertPracticeMetrics): Promise<PracticeMetrics>;
   getCurrentMetrics(practiceId: string, payPeriod: number, year: number): Promise<PracticeMetrics | undefined>;
   getPreviousMetricsByClinicName(clinicName: string, payPeriod: number, year: number): Promise<PracticeMetrics | undefined>;
@@ -379,6 +380,126 @@ export class DatabaseStorage implements IStorage {
     return practice;
   }
 
+  async getEnrichedPractices(
+    currentPeriodNum: number, 
+    currentYear: number, 
+    filters?: { search?: string; portfolio?: string }
+  ): Promise<any[]> {
+    
+    // 1. Define all SUMs as SQL fragments
+    // Note: We use COALESCE and ABS to ensure we get 0 instead of null and always positive numbers
+    
+    // Total balance
+    const balanceSql = sql<number>`COALESCE(SUM(CAST(${practiceLedger.amount} AS DECIMAL)), 0)`.as('balance');
+    
+    // Year-scoped paid
+    const stipendPaidSql = sql<number>`COALESCE(ABS(SUM(CASE 
+      WHEN ${practiceLedger.transactionType} = 'paid' OR ${practiceLedger.transactionType} = 'opening_balance_stipend_paid'
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendPaid');
+    
+    // Year-scoped committed
+    const stipendCommittedSql = sql<number>`COALESCE(ABS(SUM(CASE 
+      WHEN ${practiceLedger.transactionType} = 'committed' 
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendCommitted');
+      
+    // Allocations
+    const allocatedInSql = sql<number>`COALESCE(SUM(CASE 
+      WHEN ${practiceLedger.transactionType} = 'allocation_in' 
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedIn');
+    const allocatedOutSql = sql<number>`COALESCE(ABS(SUM(CASE 
+      WHEN ${practiceLedger.transactionType} = 'allocation_out' 
+      THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedOut');
+
+    // 2. Create a Sub-Query for all ledger calculations
+    const ledgerSubQuery = db
+      .select({
+        practiceId: practiceLedger.practiceId,
+        balance: balanceSql,
+        stipendPaid: stipendPaidSql,
+        stipendCommitted: stipendCommittedSql,
+        allocatedIn: allocatedInSql,
+        allocatedOut: allocatedOutSql,
+      })
+      .from(practiceLedger)
+      // Filter for year-scoped totals BEFORE grouping
+      .where(
+        and(
+          eq(practiceLedger.year, currentYear),
+          gte(practiceLedger.payPeriod, 1),
+          lte(practiceLedger.payPeriod, 26)
+        )
+      )
+      .groupBy(practiceLedger.practiceId)
+      .as('ledger'); // Alias this subquery as 'ledger'
+
+    // 3. Create a Sub-Query for unapproved stipends
+    const unapprovedSubQuery = db
+      .select({
+        practiceId: stipendRequests.practiceId,
+        unapprovedStipend: sql<number>`COALESCE(SUM(CAST(${stipendRequests.amount} AS DECIMAL)), 0)`.as('unapprovedStipend')
+      })
+      .from(stipendRequests)
+      .where(
+        inArray(stipendRequests.status, ['pending_lead_psm', 'pending_finance'])
+      )
+      .groupBy(stipendRequests.practiceId)
+      .as('unapproved'); // Alias as 'unapproved'
+
+    // 4. Create the main query
+    let query = db
+      .select({
+        // Select fields from practices table
+        id: practices.id,
+        name: practices.name,
+        portfolioId: practices.portfolioId,
+        isActive: practices.isActive,
+        
+        // Select stipend cap from metrics
+        stipendCapAvgFinal: practiceMetrics.stipendCapAvgFinal,
+        
+        // Select all calculated fields from our sub-queries
+        balance: sql<number>`COALESCE(${ledgerSubQuery.balance}, 0)`,
+        stipendPaid: sql<number>`COALESCE(${ledgerSubQuery.stipendPaid}, 0)`,
+        stipendCommitted: sql<number>`COALESCE(${ledgerSubQuery.stipendCommitted}, 0)`,
+        allocatedIn: sql<number>`COALESCE(${ledgerSubQuery.allocatedIn}, 0)`,
+        allocatedOut: sql<number>`COALESCE(${ledgerSubQuery.allocatedOut}, 0)`,
+        unapprovedStipend: sql<number>`COALESCE(${unapprovedSubQuery.unapprovedStipend}, 0)`,
+      })
+      .from(practices)
+      // Left Join metrics
+      .leftJoin(
+        practiceMetrics,
+        and(
+          eq(practiceMetrics.clinicName, practices.id),
+          eq(practiceMetrics.currentPayPeriodNumber, currentPeriodNum),
+          eq(practiceMetrics.year, currentYear)
+        )
+      )
+      // Left Join ledger calculations
+      .leftJoin(ledgerSubQuery, eq(practices.id, ledgerSubQuery.practiceId))
+      // Left Join unapproved request calculations
+      .leftJoin(unapprovedSubQuery, eq(practices.id, unapprovedSubQuery.practiceId));
+
+    // 5. Apply filters to the main query
+    const conditions = [eq(practices.isActive, true)]; // Always filter for active practices
+    
+    if (filters?.portfolio && filters.portfolio !== "all") {
+      conditions.push(eq(practices.portfolioId, filters.portfolio));
+    }
+    
+    if (filters?.search) {
+      const searchLower = filters.search.toLowerCase();
+      conditions.push(
+        or(
+          sql`LOWER(${practices.id}) LIKE ${'%' + searchLower + '%'}`,
+          sql`LOWER(${practices.name}) LIKE ${'%' + searchLower + '%'}`
+        )
+      );
+    }
+    
+    return await query.where(and(...conditions));
+  }
+  
   async createPractice(practice: InsertPractice): Promise<Practice> {
     const [created] = await db.insert(practices).values(practice).returning();
     return created;
