@@ -153,10 +153,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (err) {
           console.error("Failed to refresh session after role switch:", err);
           return res.status(500).json({ message: "Role updated but session refresh failed" });
-        }
+        };
       res.json(updatedUser);
         
-    } catch (error) {
+      });
+    }
+      catch (error) {
       console.error("Error switching role:", error);
       res.status(500).json({ message: "Failed to switch role" });
     }
