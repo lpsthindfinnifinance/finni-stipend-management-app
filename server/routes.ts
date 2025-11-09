@@ -122,6 +122,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/auth/switch-role', isAuthenticated, async (req: any, res) => {
     try {
       const currentUser = req.user;
+
+      console.log("Log >>>>>>>>>>>>>>>>>>")
+      console.log(currentUser)
+      console.log(req.body)
+      
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
