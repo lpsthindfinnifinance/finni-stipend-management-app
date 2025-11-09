@@ -424,8 +424,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if PSM user has access to this practice (portfolio-based access control)
       // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
+      
       
       if (user && user.role === 'PSM') {
         if (user.portfolioId !== practice.portfolioId) {
@@ -449,7 +451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Practice not found" });
       }
       
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user && user.role === 'PSM') {
@@ -505,7 +508,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Practice not found" });
       }
       
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user && user.role === 'PSM') {
@@ -545,7 +549,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Practice not found" });
       }
       
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user && user.role === 'PSM') {
@@ -579,7 +584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use validated data (type assertion needed due to Zod refine chain)
       const validatedData = validationResult.data as any;
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -635,7 +641,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/stipend-requests', isAuthenticated, async (req: any, res) => {
     try {
       const { requestorId } = req.query;
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -671,7 +678,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stipend-requests/pending', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -703,7 +711,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stipend-requests/approved', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -785,7 +794,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if PSM user has access to this request (portfolio-based access control)
       // Only PSM users are restricted to their portfolio; Lead PSM, Finance, and Admin can view all
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user && user.role === 'PSM') {
@@ -806,7 +816,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stipend-requests/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       const { comment } = req.body; // Get optional comment from request body
       
@@ -946,7 +957,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stipend-requests/:id/reject', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       const { reason } = req.body;
 
@@ -1024,7 +1036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stipend-requests/:id/cancel-period', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1086,7 +1099,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stipend-requests/:id/update-period-amount', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1126,7 +1140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stipend-requests/:id/mark-period-paid', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1191,7 +1206,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/stipend-requests/:id', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1258,7 +1274,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/negative-earnings/requests', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1293,7 +1310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/negative-earnings/requests', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { practiceId, amount, justification } = req.body;
 
       if (!practiceId || !amount || !justification) {
@@ -1331,7 +1349,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/negative-earnings/requests/:id/approve', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { approvedAmount, notes } = req.body;
 
       const updated = await storage.updateNegativeEarningsCapRequestStatus(
@@ -1360,7 +1379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/negative-earnings/requests/:id/reject', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { notes } = req.body;
 
       const updated = await storage.updateNegativeEarningsCapRequestStatus(
@@ -1963,7 +1983,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/allocations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -2022,7 +2043,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { 
         donorPsmId, 
         totalAmount, 
