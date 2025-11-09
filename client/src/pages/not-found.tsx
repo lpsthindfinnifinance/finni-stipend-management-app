@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+eimport { Button } from "@/components/ui/button";
 // import { Frown } from "lucide-react"; // No longer needed
 import finniCat404 from "@assets/finni_404.png";
 
@@ -75,6 +75,16 @@ export default function NotFound() {
                   />
           </div>
         <div className="space-y-2">
+                <div className="space-y-3 pt-4">
+                   <h2 className="text-3xl font-bold text-foreground">
+                     Oops! This page is lost.
+                   </h2>
+                   <p className="text-lg text-muted-foreground max-w-md">
+                     Even our best agent (Finni the Cat) couldn't find what you're looking for. 
+                     It might have been moved or deleted.
+                   </p>
+                </div> 
+                
           <h1 className="text-4xl font-semibold text-foreground">
             404
           </h1>
@@ -92,7 +102,7 @@ export default function NotFound() {
           }}
           data-testid="button-go-home"
         >
-          Go to Dashboard
+          Go to Hompegae
         </Button>
       </div>
     </div>
