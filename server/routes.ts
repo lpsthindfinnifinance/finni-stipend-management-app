@@ -613,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Send Slack notification with enhanced details
-      await sendSlackNotification(
+      await (
         `🆕 *New Stipend Request Submitted*\n` +
         `*Request ID:* #${request.id}\n` +
         `*Submitted by:* ${user.firstName} ${user.lastName}\n` +
@@ -2179,9 +2179,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Send Slack notification
+      // Get donor practice names for notification
+      const donorPracticeNames = await Promise.all(
+        donorPractices.map(async (dp: any) => {
+          const practice = await storage.getPracticeById(dp.practiceId);
+          return `${practice?.name || dp.practiceId} ($${Number(dp.amount).toFixed(2)})`;
+        })
+      );
+
+      // Get recipient practice names for notification
+      const recipientPracticeNames = await Promise.all(
+        recipientPractices.map(async (rp: any) => {
+          const practice = await storage.getPracticeById(rp.practiceId);
+          return `${practice?.name || rp.practiceId} ($${Number(rp.amount).toFixed(2)})`;
+        })
+      );
+
+      // Get portfolio information
+      const portfolioName = user?.portfolioId 
+        ? (await storage.getPortfolioById(user.portfolioId))?.name || user.portfolioId
+        : 'N/A';
+
+      // Send enhanced Slack notification
       await sendSlackNotification(
-        `💸 Practice Allocation #${allocation.id}: $${totalAmount} transferred (${donorPracticeIds.length} donor → ${recipientPracticeIds.length} recipient practices)`,
+        `💸 *New Practice Allocation Created*\n` +
+        `*Allocation ID:* #${allocation.id}\n` +
+        `*Created by:* ${user?.firstName} ${user?.lastName} (${user?.role})\n` +
+        `*Portfolio:* ${portfolioName}\n` +
+        `*Total Amount:* $${Number(totalAmount).toFixed(2)}\n` +
+        `*Pay Period:* PP${currentPeriod?.payPeriodNumber || 1} ${currentYear}\n\n` +
+        `*Donor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
+        `*Recipient Practices (${recipientPractices.length}):**\n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}`,
         'general',
         storage
       );
