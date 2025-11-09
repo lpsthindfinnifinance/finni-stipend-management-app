@@ -466,8 +466,9 @@ export class DatabaseStorage implements IStorage {
         portfolioId: practices.portfolioId,
         isActive: practices.isActive,
         
-        // Select stipend cap from metrics
-        stipendCapAvgFinal: practiceMetrics.stipendCapAvgFinal,
+        // --- THIS IS THE FIX ---
+        // Select stipend cap from metrics, ensuring it's never null
+        stipendCapAvgFinal: sql<number>`COALESCE(CAST(${practiceMetrics.stipendCapAvgFinal} AS DECIMAL), 0)`,
         
         // Select all calculated fields from our sub-queries
         balance: sql<number>`COALESCE(${balanceSubQuery.balance}, 0)`,
