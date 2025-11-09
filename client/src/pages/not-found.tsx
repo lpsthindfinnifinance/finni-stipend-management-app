@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 // import { Frown } from "lucide-react"; // No longer needed
 import finniCat404 from "@assets/finni.png";
-import Link from "next/link";
 
 export default function NotFound() {
   return (
@@ -37,10 +36,13 @@ export default function NotFound() {
         </div>
 
         {/* Go to Dashboard Button */}
-        <Button asChild size="lg">
-          <Link href="/">
-            Go to Dashboard
-          </Link>
+        <Button
+           onClick={() => {
+             window.location.href = "/"           
+           }}
+           data-testid="button-go-home"
+         >
+           Go to Homepage
         </Button>
       </div>
     </div>
