@@ -1,4 +1,4 @@
-eimport { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 // import { Frown } from "lucide-react"; // No longer needed
 import finniCat404 from "@assets/finni_404.png";
 
