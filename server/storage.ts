@@ -387,41 +387,51 @@ export class DatabaseStorage implements IStorage {
   ): Promise<any[]> {
     
     // 1. Define all SUMs as SQL fragments
-    // Note: We use COALESCE and ABS to ensure we get 0 instead of null and always positive numbers
     
-    // Total balance
+    // --- ALL-TIME BALANCE ---
+    // This calculates the total sum of all ledger entries for all time
     const balanceSql = sql<number>`COALESCE(SUM(CAST(${practiceLedger.amount} AS DECIMAL)), 0)`.as('balance');
     
-    // Year-scoped paid
+    // --- YEAR-SCOPED TOTALS ---
+    // These calculate sums *only* for the specified year
     const stipendPaidSql = sql<number>`COALESCE(ABS(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'paid' OR ${practiceLedger.transactionType} = 'opening_balance_stipend_paid'
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendPaid');
     
-    // Year-scoped committed
     const stipendCommittedSql = sql<number>`COALESCE(ABS(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'committed' 
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('stipendCommitted');
       
-    // Allocations
     const allocatedInSql = sql<number>`COALESCE(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'allocation_in' 
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedIn');
+
     const allocatedOutSql = sql<number>`COALESCE(ABS(SUM(CASE 
       WHEN ${practiceLedger.transactionType} = 'allocation_out' 
       THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`.as('allocatedOut');
 
-    // 2. Create a Sub-Query for all ledger calculations
+    // 2. Create a Sub-Query for ALL-TIME balance
+    // This subquery has NO year filter
+    const balanceSubQuery = db
+      .select({
+        practiceId: practiceLedger.practiceId,
+        balance: balanceSql
+      })
+      .from(practiceLedger)
+      .groupBy(practiceLedger.practiceId)
+      .as('balance');
+
+    // 3. Create a Sub-Query for YEAR-SCOPED calculations
+    // This subquery IS filtered by the currentYear
     const ledgerSubQuery = db
       .select({
         practiceId: practiceLedger.practiceId,
-        balance: balanceSql,
         stipendPaid: stipendPaidSql,
         stipendCommitted: stipendCommittedSql,
         allocatedIn: allocatedInSql,
         allocatedOut: allocatedOutSql,
       })
       .from(practiceLedger)
-      // Filter for year-scoped totals BEFORE grouping
       .where(
         and(
           eq(practiceLedger.year, currentYear),
@@ -430,9 +440,9 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .groupBy(practiceLedger.practiceId)
-      .as('ledger'); // Alias this subquery as 'ledger'
+      .as('ledger');
 
-    // 3. Create a Sub-Query for unapproved stipends
+    // 4. Create a Sub-Query for unapproved stipends (all-time)
     const unapprovedSubQuery = db
       .select({
         practiceId: stipendRequests.practiceId,
@@ -443,9 +453,9 @@ export class DatabaseStorage implements IStorage {
         inArray(stipendRequests.status, ['pending_lead_psm', 'pending_finance'])
       )
       .groupBy(stipendRequests.practiceId)
-      .as('unapproved'); // Alias as 'unapproved'
+      .as('unapproved');
 
-    // 4. Create the main query
+    // 5. Create the main query
     let query = db
       .select({
         // Select fields from practices table
@@ -458,7 +468,7 @@ export class DatabaseStorage implements IStorage {
         stipendCapAvgFinal: practiceMetrics.stipendCapAvgFinal,
         
         // Select all calculated fields from our sub-queries
-        balance: sql<number>`COALESCE(${ledgerSubQuery.balance}, 0)`,
+        balance: sql<number>`COALESCE(${balanceSubQuery.balance}, 0)`,
         stipendPaid: sql<number>`COALESCE(${ledgerSubQuery.stipendPaid}, 0)`,
         stipendCommitted: sql<number>`COALESCE(${ledgerSubQuery.stipendCommitted}, 0)`,
         allocatedIn: sql<number>`COALESCE(${ledgerSubQuery.allocatedIn}, 0)`,
@@ -466,7 +476,7 @@ export class DatabaseStorage implements IStorage {
         unapprovedStipend: sql<number>`COALESCE(${unapprovedSubQuery.unapprovedStipend}, 0)`,
       })
       .from(practices)
-      // Left Join metrics
+      // Left Join metrics (year/period specific)
       .leftJoin(
         practiceMetrics,
         and(
@@ -475,12 +485,14 @@ export class DatabaseStorage implements IStorage {
           eq(practiceMetrics.year, currentYear)
         )
       )
-      // Left Join ledger calculations
+      // Left Join ALL-TIME balance
+      .leftJoin(balanceSubQuery, eq(practices.id, balanceSubQuery.practiceId))
+      // Left Join YEAR-SCOPED ledger totals
       .leftJoin(ledgerSubQuery, eq(practices.id, ledgerSubQuery.practiceId))
       // Left Join unapproved request calculations
       .leftJoin(unapprovedSubQuery, eq(practices.id, unapprovedSubQuery.practiceId));
 
-    // 5. Apply filters to the main query
+    // 6. Apply filters to the main query
     const conditions = [eq(practices.isActive, true)]; // Always filter for active practices
     
     if (filters?.portfolio && filters.portfolio !== "all") {
