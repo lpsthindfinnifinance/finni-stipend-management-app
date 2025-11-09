@@ -277,55 +277,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { search, portfolio } = req.query;
       
-      const practices = await storage.getPractices({
-        search: search as string,
-        portfolio: portfolio as string,
+      // 1. Get current pay period (still need this)
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      const currentPeriodNumber = currentPeriod?.payPeriodNumber || 21;
+      const currentYear = currentPeriod?.year || 2025;
+      const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
+
+      // 2. Call the new function (replaces the N+1 loop)
+      // This single DB call gets all data for all practices
+      const enrichedData = await storage.getEnrichedPractices(
+        currentPeriodNumber,
+        currentYear,
+        {
+          search: search as string,
+          portfolio: portfolio as string,
+        }
+      );
+
+      // 3. Perform in-memory calculations (this is now very fast)
+      const enrichedPractices = enrichedData.map(practice => {
+        const stipendCap = practice.stipendCapAvgFinal ? parseFloat(practice.stipendCapAvgFinal) : 0;
+        
+        // Year-scoped available balance: Cap - Paid (current year) - Committed (current year)
+        const availableBalanceTillPP26 = stipendCap - practice.stipendPaid - practice.stipendCommitted;
+        const availablePerPP = (availableBalanceTillPP26 > 0 && remainingPeriods > 0) ? availableBalanceTillPP26 / remainingPeriods : 0;
+        
+        // Utilization scoped to current year PP1-PP26
+        const utilizationPercent = stipendCap > 0 ? ((practice.stipendPaid + practice.stipendCommitted) / stipendCap) * 100 : 0;
+
+        return {
+          // from practices table
+          id: practice.id,
+          name: practice.name,
+          portfolioId: practice.portfolioId,
+          isActive: practice.isActive,
+          
+          // from calculations
+          stipendCap,
+          currentBalance: practice.balance, // Total balance for donor validation (allocation logic)
+          availableBalance: availableBalanceTillPP26, // Year-scoped for display
+          stipendPaid: practice.stipendPaid,
+          stipendCommitted: practice.stipendCommitted,
+          availablePerPP,
+          unapprovedStipend: practice.unapprovedStipend,
+          utilizationPercent,
+          allocatedIn: practice.allocatedIn,
+          allocatedOut: practice.allocatedOut,
+        };
       });
       
-      // Get current pay period to fetch latest metrics
-      const currentPeriod = await storage.getCurrentPayPeriod();
-      
-      // Enrich with balance data and latest metrics
-      const currentYear = currentPeriod?.year || 2025;
-      const enrichedPractices = await Promise.all(
-        practices.map(async (practice) => {
-          const [balance, stipendPaid, stipendCommitted, metrics, unapprovedStipend, allocatedIn, allocatedOut] = await Promise.all([
-            storage.getPracticeBalance(practice.id),
-            storage.getStipendPaid(practice.id, currentYear),
-            storage.getStipendCommitted(practice.id, currentYear),
-            currentPeriod ? storage.getCurrentMetrics(practice.id, currentPeriod.payPeriodNumber, currentPeriod.year) : Promise.resolve(undefined),
-            storage.getUnapprovedStipend(practice.id),
-            storage.getAllocatedIn(practice.id),
-            storage.getAllocatedOut(practice.id),
-          ]);
-          
-          const stipendCap = metrics?.stipendCapAvgFinal ? parseFloat(metrics.stipendCapAvgFinal) : 0;
-          const remainingPeriods = currentPeriod ? Math.max(26 - currentPeriod.payPeriodNumber, 1) : 1;
-          
-          // Year-scoped available balance: Cap - Paid (current year) - Committed (current year)
-          const availableBalanceTillPP26 = stipendCap - stipendPaid - stipendCommitted;
-          const availablePerPP = availableBalanceTillPP26 / remainingPeriods;
-          
-          // Utilization scoped to current year PP1-PP26
-          const utilizationPercent = stipendCap > 0 ? ((stipendPaid + stipendCommitted) / stipendCap) * 100 : 0;
-          
-          return {
-            ...practice,
-            stipendCap,
-            currentBalance: balance, // Total balance for donor validation (allocation logic)
-            availableBalance: availableBalanceTillPP26, // Year-scoped for display
-            stipendPaid,
-            stipendCommitted,
-            availablePerPP,
-            unapprovedStipend,
-            utilizationPercent,
-            allocatedIn,
-            allocatedOut,
-          };
-        })
-      );
-      
-      // Sort by portfolio (G1, G2, G3, G4, G5) then by practice ID
+      // 4. Sort (same as before)
       enrichedPractices.sort((a, b) => {
         // First sort by portfolio
         if (a.portfolioId !== b.portfolioId) {
@@ -336,6 +337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(enrichedPractices);
+
     } catch (error) {
       console.error("Error fetching practices:", error);
       res.status(500).json({ message: "Failed to fetch practices" });
