@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, TrendingUp, Shield, BarChart3 } from "lucide-react";
-import finniLogo from "@assets/Fnni Logo_1762236891653.png";
+import finniCat from "@assets/finni.png";
 
 export default function Landing() {
   return (
@@ -10,14 +10,12 @@ export default function Landing() {
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-3xl mx-auto text-center space-y-8">
           <div className="inline-block">
-            <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <img 
-                    src={finniLogo} 
+                    src={finniCat} 
                     alt="Finni Health" 
                     className="h-7"
                     data-testid="img-finni-logo"
                   />
-            </div>
           </div>
           
           <h1 className="text-4xl md:text-5xl font-semibold text-foreground">
