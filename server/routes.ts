@@ -146,7 +146,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = await storage.updateUserRole(currentUser.id, role, undefined);
-      res.json(user);
+      const updatedUser = await storage.updateUserRole(currentUser.id, role, undefined);
+
+      // 2. Manually refresh the session with the updated user
+      req.login(updatedUser, (err) => {
+        if (err) {
+          console.error("Failed to refresh session after role switch:", err);
+          return res.status(500).json({ message: "Role updated but session refresh failed" });
+        }
+      res.json(updatedUser);
+        
     } catch (error) {
       console.error("Error switching role:", error);
       res.status(500).json({ message: "Failed to switch role" });
