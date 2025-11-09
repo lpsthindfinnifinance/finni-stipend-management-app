@@ -145,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You are not authorized to switch to this role" });
       }
       
-      const user = await storage.updateUserRole(currentUser.id, role, undefined);
+      //const user = await storage.updateUserRole(currentUser.id, role, undefined);
       const updatedUser = await storage.updateUserRole(currentUser.id, role, undefined);
 
       // 2. Manually refresh the session with the updated user
