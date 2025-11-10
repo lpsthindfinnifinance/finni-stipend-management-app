@@ -70,7 +70,7 @@ export default function Practices() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by practice ID or name..."
+                    placeholder="Search by practice slug or name..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
