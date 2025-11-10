@@ -406,7 +406,7 @@ export default function Settings() {
       lastName: formData.get("lastName") as string,
       role: userRole,
       roles: finalRoles,
-      portfolioId: userPortfolio === "none" ? undefined : userPortfolio,
+      portfolioId: userPortfolio === "none" ? null : userPortfolio,
     };
 
     if (editingUser) {
