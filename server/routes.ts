@@ -941,11 +941,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+      // const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+      //   ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+      //   : process.env.REPLIT_DEV_DOMAIN
+      //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      //   : 'http://localhost:5000';
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
       const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
 
       // Build pay period info
