@@ -644,7 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Send Slack notification with enhanced details
-      await (
+      await sendSlackNotification(
         `🆕 *New Stipend Request Submitted*\n` +
         `*Request ID:* #${request.id}\n` +
         `*Submitted by:* ${user.firstName} ${user.lastName}\n` +
