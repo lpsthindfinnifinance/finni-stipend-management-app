@@ -631,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : process.env.REPLIT_DEV_DOMAIN
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : 'http://localhost:5000';
-      const requestUrl = `${baseUrl}/stipend-requests/${request.id}`;
+      const requestUrl = `${baseUrl}/requests/${request.id}`;
 
       // Build pay period info
       let payPeriodInfo = '';
