@@ -2047,7 +2047,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/allocations/:id', isAuthenticated, async (req: any, res) => {
+// Preview pro-rata allocation distribution
+// IMPORTANT: This route must be BEFORE /api/allocations/:id to avoid "preview" being matched as an ID
+app.get('/api/allocations/preview', isAuthenticated, async (req: any, res) => {
+    try {
+      const totalAmount = parseFloat(req.query.totalAmount as string);
+      const recipientPracticeIdsParam = req.query.recipientPracticeIds as string;
+
+      if (!totalAmount || totalAmount <= 0) {
+        return res.status(400).json({ message: "Invalid total amount" });
+      }
+
+      // Parse recipient practice IDs (comma-separated)
+      const recipientPracticeIds = recipientPracticeIdsParam 
+        ? recipientPracticeIdsParam.split(',').filter(id => id.trim())
+        : [];
+
+      // Get user info using email-first lookup
+      // const user = await getUserFromClaims(req.user.claims);
+      // if (!user) {
+      //  return res.status(404).json({ message: "User not found" });
+      //}
+      //const userId = user.id;
+
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get practices with positive balances
+      const practicesWithBalance = await storage.getPracticesWithPositiveBalance(
+        userId,
+        user.role,
+        user.portfolioId
+      );
+
+      // Exclude recipient practices from donor candidates
+      const donorCandidates = practicesWithBalance.filter(
+        p => !recipientPracticeIds.includes(p.practiceId)
+      );
+
+      if (donorCandidates.length === 0) {
+        return res.json({ 
+          donorPractices: [],
+          totalAvailable: 0,
+          hasSufficientBalance: false,
+        });
+      }
+
+      // Calculate total available balance (excluding recipients)
+      const totalAvailable = donorCandidates.reduce((sum, p) => sum + p.availableBalance, 0);
+
+      // Check if there's enough balance
+      if (totalAvailable < totalAmount) {
+        return res.json({
+          donorPractices: [],
+          totalAvailable,
+          hasSufficientBalance: false,
+        });
+      }
+
+      // Calculate pro-rata distribution (only from non-recipient practices)
+      const donorPractices = calculateProRataAllocation(donorCandidates, totalAmount);
+
+      // Enrich donor practices with current balance and balance after allocation
+      const enrichedDonorPractices = donorPractices.map(donor => {
+        const practiceWithBalance = practicesWithBalance.find(p => p.practiceId === donor.practiceId);
+        const currentBalance = practiceWithBalance?.availableBalance || 0;
+        const balanceAfter = currentBalance - donor.amount;
+        
+        return {
+          ...donor,
+          currentBalance,
+          balanceAfter,
+        };
+      });
+
+      res.json({
+        donorPractices: enrichedDonorPractices,
+        totalAvailable,
+        hasSufficientBalance: true,
+      });
+    } catch (error) {
+      console.error("Error previewing allocation:", error);
+      res.status(500).json({ message: "Failed to preview allocation" });
+    }
+  });
+
+// Get allocation by ID
+// IMPORTANT: This route must be AFTER /api/allocations/preview to avoid route conflict
+app.get('/api/allocations/:id', isAuthenticated, async (req: any, res) => {
     try {
       const allocationId = parseInt(req.params.id);
       
@@ -2068,54 +2159,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+// Helper function for pro-rata allocation calculation
+// Rounds to 0.5 multiples, eliminates contributions < 0.5, redistributes to top 5 practices
+function calculateProRataAllocation(
+    practicesWithBalance: Array<{ practiceId: string; practiceName: string; availableBalance: number; portfolioId: string }>,
+    totalAllocationAmount: number
+  ): Array<{ practiceId: string; practiceName: string; amount: number; portfolioId: string }> {
+    // Calculate total available balance
+    const totalAvailableBalance = practicesWithBalance.reduce(
+      (sum, p) => sum + p.availableBalance,
+      0
+    );
 
-  app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
-    try {
-      // const userId = req.user.claims.sub;
-      const userId = req.user.id;
-      const { 
-        donorPsmId, 
-        totalAmount, 
-        donorPracticeIds, 
-        donorPractices,
-        recipientPractices
-      } = req.body;
+    // Check if there's enough balance
+    if (totalAvailableBalance < totalAllocationAmount) {
+      throw new Error(
+        `Insufficient balance. Available: $${totalAvailableBalance.toFixed(2)}, Requested: $${totalAllocationAmount.toFixed(2)}`
+      );
+    }
 
-      // Verify donor PSM is the current user
-      if (donorPsmId !== userId) {
-        return res.status(403).json({ message: "Cannot allocate from another PSM's budget" });
+    // Sort practices by balance (descending) to identify top contributors
+    const sortedPractices = [...practicesWithBalance].sort(
+      (a, b) => b.availableBalance - a.availableBalance
+    );
+
+    // Step 1: Calculate initial pro-rata amounts and round to nearest 0.5
+    const allocations = sortedPractices.map(practice => {
+      const proportion = practice.availableBalance / totalAvailableBalance;
+      const rawAmount = totalAllocationAmount * proportion;
+      const roundedToHalf = Math.round(rawAmount * 2) / 2; // Round to nearest 0.5
+      
+      return {
+        practiceId: practice.practiceId,
+        practiceName: practice.practiceName,
+        amount: roundedToHalf,
+        portfolioId: practice.portfolioId,
+        originalBalance: practice.availableBalance,
+      };
+    });
+
+    // Step 2: Identify amounts < 0.5 and set them to 0
+    let redistributionPool = 0;
+    allocations.forEach(alloc => {
+      if (alloc.amount < 0.5) {
+        redistributionPool += alloc.amount;
+        alloc.amount = 0;
       }
+    });
+
+    // Step 3: Redistribute the pool to top 5 practices (by balance)
+    if (redistributionPool > 0) {
+      // Get top 5 practices that have non-zero allocations
+      const top5Practices = allocations
+        .filter(a => a.amount > 0)
+        .slice(0, 5);
+
+      if (top5Practices.length > 0) {
+        // Distribute evenly among top 5, rounded to 0.5
+        const perPractice = redistributionPool / top5Practices.length;
+        const roundedPerPractice = Math.round(perPractice * 2) / 2;
+
+        top5Practices.forEach(practice => {
+          practice.amount += roundedPerPractice;
+        });
+
+        // Handle any remaining difference due to rounding
+        const redistributedTotal = roundedPerPractice * top5Practices.length;
+        const remainder = Math.round((redistributionPool - redistributedTotal) * 2) / 2;
+        
+        if (Math.abs(remainder) >= 0.5) {
+          // Add remainder to the first top practice
+          top5Practices[0].amount += remainder;
+        }
+      }
+    }
+
+    // Step 4: Final adjustment to match exact total (round to 0.5)
+    const calculatedTotal = allocations.reduce((sum, a) => sum + a.amount, 0);
+    const finalDiff = totalAllocationAmount - calculatedTotal;
+    
+    if (Math.abs(finalDiff) >= 0.5) {
+      // Find the largest allocation and adjust it
+      const largestAllocation = allocations
+        .filter(a => a.amount > 0)
+        .reduce((max, curr) => curr.amount > max.amount ? curr : max, allocations[0]);
+      
+      if (largestAllocation) {
+        largestAllocation.amount += Math.round(finalDiff * 2) / 2;
+      }
+    }
+
+    // Step 5: Filter out zero allocations and remove helper fields
+    return allocations
+      .filter(a => a.amount > 0)
+      .map(({ practiceId, practiceName, amount, portfolioId }) => ({
+        practiceId,
+        practiceName,
+        amount,
+        portfolioId,
+      }));
+  }
+
+
+app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { recipientPractices, comment } = req.body;
+
+      // Get user and validate using email-first lookup
+      // const user = await getUserFromClaims(req.user.claims);
+      const user = req.user
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const userId = user.id;
 
       // Validate recipient practices
       if (!recipientPractices || recipientPractices.length === 0) {
         return res.status(400).json({ message: "Recipient practices are required" });
       }
 
-      // Coerce and validate numeric fields
-      const numericTotalAmount = Number(totalAmount);
-      if (!Number.isFinite(numericTotalAmount) || numericTotalAmount <= 0) {
-        return res.status(400).json({ message: "Invalid total amount" });
+      // Calculate total allocation amount
+      let totalAllocationAmount = 0;
+      for (const recipientPractice of recipientPractices) {
+        const amount = Number(recipientPractice.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return res.status(400).json({ message: `Invalid amount for recipient practice` });
+        }
+        totalAllocationAmount += amount;
       }
 
-      // Validate total amount matches sum of donor practices
-      const donorSum = donorPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
-      if (Math.abs(donorSum - numericTotalAmount) > 0.01) {
-        return res.status(400).json({ message: "Total amount does not match practice amounts" });
-      }
-
-      // Get user and validate portfolio permissions
-      const user = await storage.getUser(userId);
-      const userPortfolioId = user?.portfolioId;
-
-      // Validate recipient amounts match donor amounts
-      const recipientSum = recipientPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
-      if (Math.abs(recipientSum - numericTotalAmount) > 0.01) {
-        return res.status(400).json({ 
-          message: `Total recipient amount ($${recipientSum.toFixed(2)}) must equal total donor amount ($${numericTotalAmount.toFixed(2)})` 
-        });
-      }
-
-      // Validate each recipient practice exists
+      // Validate each recipient practice exists and check permissions
       for (const recipientPractice of recipientPractices) {
         const practice = await storage.getPracticeById(recipientPractice.practiceId);
         if (!practice) {
@@ -2124,66 +2298,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // For PSM: recipient practices must be in same portfolio
         // For Lead PSM/Finance/Admin: can allocate to any practice
-        if (user?.role === "PSM" && practice.portfolioId !== userPortfolioId) {
+        if (user.role === "PSM" && practice.portfolioId !== user.portfolioId) {
           return res.status(403).json({ 
-            message: `As a PSM, you can only allocate to practices within your portfolio (${userPortfolioId})` 
-          });
-        }
-
-        // Validate amount
-        const amount = Number(recipientPractice.amount);
-        if (!Number.isFinite(amount) || amount <= 0) {
-          return res.status(400).json({ message: `Invalid amount for recipient practice ${practice.name}` });
-        }
-      }
-
-      // Validate each practice belongs to donor PSM and has sufficient balance
-      for (const donorPractice of donorPractices) {
-        const requestedAmount = Number(donorPractice.amount);
-        if (!Number.isFinite(requestedAmount)) {
-          return res.status(400).json({ message: `Invalid amount for practice ${donorPractice.practiceId}` });
-        }
-        
-        const practice = await storage.getPracticeById(donorPractice.practiceId);
-        
-        if (!practice) {
-          return res.status(404).json({ message: `Practice ${donorPractice.practiceId} not found` });
-        }
-
-        // For PSM: Verify practice belongs to donor's portfolio
-        // For Lead PSM/Finance/Admin: can allocate from any practice
-        if (user?.role === "PSM" && practice.portfolioId !== userPortfolioId) {
-          return res.status(403).json({ message: `Practice ${donorPractice.practiceId} does not belong to your portfolio` });
-        }
-
-        // Check available balance
-        const available = await storage.getPracticeBalance(donorPractice.practiceId);
-        
-        if (requestedAmount <= 0) {
-          return res.status(400).json({ message: `Amount must be greater than 0 for practice ${practice.name}` });
-        }
-        
-        if (requestedAmount > available) {
-          return res.status(400).json({ 
-            message: `Insufficient balance for practice ${practice.name}. Available: $${available.toFixed(2)}, Requested: $${requestedAmount.toFixed(2)}` 
+            message: `As a PSM, you can only allocate to practices within your portfolio` 
           });
         }
       }
+
+      // Get practices with positive balances (automatically filtered by role/portfolio)
+      const practicesWithBalance = await storage.getPracticesWithPositiveBalance(
+        userId,
+        user.role,
+        user.portfolioId
+      );
+
+      // Extract recipient practice IDs
+      const recipientPracticeIds = recipientPractices.map((p: any) => p.practiceId);
+
+      // Exclude recipient practices from donor candidates
+      const donorCandidates = practicesWithBalance.filter(
+        p => !recipientPracticeIds.includes(p.practiceId)
+      );
+
+      if (donorCandidates.length === 0) {
+        return res.status(400).json({ 
+          message: "No practices with available balance found for allocation (excluding recipients)" 
+        });
+      }
+
+      // Calculate pro-rata donor allocation (excluding recipient practices)
+      let donorPractices;
+      try {
+        donorPractices = calculateProRataAllocation(donorCandidates, totalAllocationAmount);
+      } catch (error: any) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      // Get current period
+      const currentPeriod = await storage.getCurrentPayPeriod();
+      const currentYear = currentPeriod?.year || 2025;
 
       // Create allocation record
-      const recipientPracticeIds = recipientPractices.map((p: any) => p.practiceId);
+      const donorPracticeIds = donorPractices.map((p: any) => p.practiceId);
+      
       const allocationData: any = {
-        donorPsmId,
+        donorPsmId: userId,
         recipientPsmId: null, // DEPRECATED - no longer used
         recipientPracticeIds,
-        totalAmount: totalAmount.toString(),
+        totalAmount: totalAllocationAmount.toString(),
         donorPracticeIds,
+        comment: comment || null, // Optional comment
       };
       const allocation = await storage.createInterPsmAllocation(allocationData);
 
       // Create ledger entries for donor practices (debit/allocation_out)
-      const currentPeriod = await storage.getCurrentPayPeriod();
-      const currentYear = currentPeriod?.year || 2025;
       for (const donorPractice of donorPractices) {
         await storage.createLedgerEntry({
           practiceId: donorPractice.practiceId,
@@ -2212,11 +2380,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get donor practice names for notification
-      const donorPracticeNames = await Promise.all(
-        donorPractices.map(async (dp: any) => {
-          const practice = await storage.getPracticeById(dp.practiceId);
-          return `${practice?.name || dp.practiceId} ($${Number(dp.amount).toFixed(2)})`;
-        })
+      const donorPracticeNames = donorPractices.map(dp => 
+        `${dp.practiceName} ($${dp.amount.toFixed(2)})`
       );
 
       // Get recipient practice names for notification
@@ -2228,20 +2393,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Get portfolio information
-      const portfolioName = user?.portfolioId 
+      const portfolioName = user.portfolioId 
         ? (await storage.getPortfolioById(user.portfolioId))?.name || user.portfolioId
         : 'N/A';
 
       // Send enhanced Slack notification
+      const commentSection = comment ? `\n\n*Comment:* ${comment}` : '';
       await sendSlackNotification(
         `💸 *New Practice Allocation Created*\n` +
         `*Allocation ID:* #${allocation.id}\n` +
-        `*Created by:* ${user?.firstName} ${user?.lastName} (${user?.role})\n` +
+        `*Created by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*Portfolio:* ${portfolioName}\n` +
-        `*Total Amount:* $${Number(totalAmount).toFixed(2)}\n` +
+        `*Total Amount:* $${totalAllocationAmount.toFixed(2)}\n` +
         `*Pay Period:* PP${currentPeriod?.payPeriodNumber || 1} ${currentYear}\n\n` +
-        `*Contributor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
-        `*Recipient Practices (${recipientPractices.length}):**\n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}`,
+        `*Recipient Practices (${recipientPractices.length}):**\n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
+        `*Contributor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}${commentSection}`,
         'allocations',
         storage
       );
@@ -2255,6 +2421,199 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create allocation" });
     }
   });
+
+  // app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
+  //   try {
+  //     // const userId = req.user.claims.sub;
+  //     const user = req.user
+  //     const userId = req.user.id;
+  //     // const { 
+  //     //   donorPsmId, 
+  //     //   totalAmount, 
+  //     //   donorPracticeIds, 
+  //     //   donorPractices,
+  //     //   recipientPractices
+  //     // } = req.body;
+  //     const { recipientPractices, comment } = req.body;
+
+  //     if (!user) {
+  //       return res.status(404).json({ message: "User not found" });
+  //     }
+      
+  //     // Verify donor PSM is the current user
+  //     if (donorPsmId !== userId) {
+  //       return res.status(403).json({ message: "Cannot allocate from another PSM's budget" });
+  //     }
+
+  //     // Validate recipient practices
+  //     if (!recipientPractices || recipientPractices.length === 0) {
+  //       return res.status(400).json({ message: "Recipient practices are required" });
+  //     }
+
+  //     // Coerce and validate numeric fields
+  //     const numericTotalAmount = Number(totalAmount);
+  //     if (!Number.isFinite(numericTotalAmount) || numericTotalAmount <= 0) {
+  //       return res.status(400).json({ message: "Invalid total amount" });
+  //     }
+
+  //     // Validate total amount matches sum of donor practices
+  //     const donorSum = donorPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+  //     if (Math.abs(donorSum - numericTotalAmount) > 0.01) {
+  //       return res.status(400).json({ message: "Total amount does not match practice amounts" });
+  //     }
+
+  //     // Get user and validate portfolio permissions
+  //     const user = await storage.getUser(userId);
+  //     const userPortfolioId = user?.portfolioId;
+
+  //     // Validate recipient amounts match donor amounts
+  //     const recipientSum = recipientPractices.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+  //     if (Math.abs(recipientSum - numericTotalAmount) > 0.01) {
+  //       return res.status(400).json({ 
+  //         message: `Total recipient amount ($${recipientSum.toFixed(2)}) must equal total donor amount ($${numericTotalAmount.toFixed(2)})` 
+  //       });
+  //     }
+
+  //     // Validate each recipient practice exists
+  //     for (const recipientPractice of recipientPractices) {
+  //       const practice = await storage.getPracticeById(recipientPractice.practiceId);
+  //       if (!practice) {
+  //         return res.status(404).json({ message: `Recipient practice ${recipientPractice.practiceId} not found` });
+  //       }
+
+  //       // For PSM: recipient practices must be in same portfolio
+  //       // For Lead PSM/Finance/Admin: can allocate to any practice
+  //       if (user?.role === "PSM" && practice.portfolioId !== userPortfolioId) {
+  //         return res.status(403).json({ 
+  //           message: `As a PSM, you can only allocate to practices within your portfolio (${userPortfolioId})` 
+  //         });
+  //       }
+
+  //       // Validate amount
+  //       const amount = Number(recipientPractice.amount);
+  //       if (!Number.isFinite(amount) || amount <= 0) {
+  //         return res.status(400).json({ message: `Invalid amount for recipient practice ${practice.name}` });
+  //       }
+  //     }
+
+  //     // Validate each practice belongs to donor PSM and has sufficient balance
+  //     for (const donorPractice of donorPractices) {
+  //       const requestedAmount = Number(donorPractice.amount);
+  //       if (!Number.isFinite(requestedAmount)) {
+  //         return res.status(400).json({ message: `Invalid amount for practice ${donorPractice.practiceId}` });
+  //       }
+        
+  //       const practice = await storage.getPracticeById(donorPractice.practiceId);
+        
+  //       if (!practice) {
+  //         return res.status(404).json({ message: `Practice ${donorPractice.practiceId} not found` });
+  //       }
+
+  //       // For PSM: Verify practice belongs to donor's portfolio
+  //       // For Lead PSM/Finance/Admin: can allocate from any practice
+  //       if (user?.role === "PSM" && practice.portfolioId !== userPortfolioId) {
+  //         return res.status(403).json({ message: `Practice ${donorPractice.practiceId} does not belong to your portfolio` });
+  //       }
+
+  //       // Check available balance
+  //       const available = await storage.getPracticeBalance(donorPractice.practiceId);
+        
+  //       if (requestedAmount <= 0) {
+  //         return res.status(400).json({ message: `Amount must be greater than 0 for practice ${practice.name}` });
+  //       }
+        
+  //       if (requestedAmount > available) {
+  //         return res.status(400).json({ 
+  //           message: `Insufficient balance for practice ${practice.name}. Available: $${available.toFixed(2)}, Requested: $${requestedAmount.toFixed(2)}` 
+  //         });
+  //       }
+  //     }
+
+  //     // Create allocation record
+  //     const recipientPracticeIds = recipientPractices.map((p: any) => p.practiceId);
+  //     const allocationData: any = {
+  //       donorPsmId,
+  //       recipientPsmId: null, // DEPRECATED - no longer used
+  //       recipientPracticeIds,
+  //       totalAmount: totalAmount.toString(),
+  //       donorPracticeIds,
+  //     };
+  //     const allocation = await storage.createInterPsmAllocation(allocationData);
+
+  //     // Create ledger entries for donor practices (debit/allocation_out)
+  //     const currentPeriod = await storage.getCurrentPayPeriod();
+  //     const currentYear = currentPeriod?.year || 2025;
+  //     for (const donorPractice of donorPractices) {
+  //       await storage.createLedgerEntry({
+  //         practiceId: donorPractice.practiceId,
+  //         payPeriod: currentPeriod?.id || 1,
+  //         year: currentYear,
+  //         transactionType: "allocation_out",
+  //         amount: (-Math.abs(donorPractice.amount)).toString(),
+  //         description: `Allocation #${allocation.id} to ${recipientPracticeIds.length} recipient practice(s)`,
+  //         relatedRequestId: null,
+  //         relatedAllocationId: allocation.id,
+  //       });
+  //     }
+
+  //     // Create allocation_in entries for recipient practices
+  //     for (const recipientPractice of recipientPractices) {
+  //       await storage.createLedgerEntry({
+  //         practiceId: recipientPractice.practiceId,
+  //         payPeriod: currentPeriod?.id || 1,
+  //         year: currentYear,
+  //         transactionType: "allocation_in",
+  //         amount: Math.abs(recipientPractice.amount).toString(),
+  //         description: `Allocation #${allocation.id} from ${donorPracticeIds.length} donor practice(s)`,
+  //         relatedRequestId: null,
+  //         relatedAllocationId: allocation.id,
+  //       });
+  //     }
+
+  //     // Get donor practice names for notification
+  //     const donorPracticeNames = await Promise.all(
+  //       donorPractices.map(async (dp: any) => {
+  //         const practice = await storage.getPracticeById(dp.practiceId);
+  //         return `${practice?.name || dp.practiceId} ($${Number(dp.amount).toFixed(2)})`;
+  //       })
+  //     );
+
+  //     // Get recipient practice names for notification
+  //     const recipientPracticeNames = await Promise.all(
+  //       recipientPractices.map(async (rp: any) => {
+  //         const practice = await storage.getPracticeById(rp.practiceId);
+  //         return `${practice?.name || rp.practiceId} ($${Number(rp.amount).toFixed(2)})`;
+  //       })
+  //     );
+
+  //     // Get portfolio information
+  //     const portfolioName = user?.portfolioId 
+  //       ? (await storage.getPortfolioById(user.portfolioId))?.name || user.portfolioId
+  //       : 'N/A';
+
+  //     // Send enhanced Slack notification
+  //     await sendSlackNotification(
+  //       `💸 *New Practice Allocation Created*\n` +
+  //       `*Allocation ID:* #${allocation.id}\n` +
+  //       `*Created by:* ${user?.firstName} ${user?.lastName} (${user?.role})\n` +
+  //       `*Portfolio:* ${portfolioName}\n` +
+  //       `*Total Amount:* $${Number(totalAmount).toFixed(2)}\n` +
+  //       `*Pay Period:* PP${currentPeriod?.payPeriodNumber || 1} ${currentYear}\n\n` +
+  //       `*Contributor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
+  //       `*Recipient Practices (${recipientPractices.length}):**\n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}`,
+  //       'allocations',
+  //       storage
+  //     );
+      
+  //     // Mark allocations as completed immediately
+  //     await storage.updateAllocationStatus(allocation.id, "completed");
+
+  //     res.json(allocation);
+  //   } catch (error) {
+  //     console.error("Error creating allocation:", error);
+  //     res.status(500).json({ message: "Failed to create allocation" });
+  //   }
+  // });
 
 
   // ============================================================================
