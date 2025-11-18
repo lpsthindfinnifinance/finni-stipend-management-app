@@ -1538,7 +1538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Miscellaneous_YTD': 'miscellaneousYtd',
         'HQ_Errors_Stipend_YTD': 'hqErrorsStipendYtd',
         'PO_Errors_Stipend_YTD': 'poErrorsStipendYtd',
-        'Negative_Earnings_YTD': 'negativeEarningsYtd',
+        'NegativeEarningsUtilized': 'negativeEarningsYtd',
         'Brex_Expenses_Reimbursement_Mkt_YTD': 'brexExpensesReimbursementMktYtd',
         'Covered_Benefits_YTD': 'coveredBenefitsYtd',
         'Sales_Marketing_SubTotal_YTD': 'salesMarketingSubTotalYtd',
