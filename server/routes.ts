@@ -1703,7 +1703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Negative earnings cap
           negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap')),
-          negativeEarningsYtd: parseNumeric(getValue('NegativeEarningsUtilized')),
+          negativeEarningsYtd: parseNumeric(getValue('NegativeEarningsUtilized'))
         };
 
         imports.push(importData);
