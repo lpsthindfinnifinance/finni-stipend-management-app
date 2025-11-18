@@ -82,7 +82,7 @@ async function importBigQueryData() {
       miscellaneousYtd: parseDecimal(row.miscellaneous_YTD),
       hqErrorsStipendYtd: parseDecimal(row.hqErrorsStipend_YTD),
       poErrorsStipendYtd: parseDecimal(row.poErrorsStipend_YTD),
-      negativeEarningsYtd: parseDecimal(row.negativeEarnings_YTD),
+      negativeEarningsYtd: parseDecimal(row.NegativeEarningsUtilized),
       brexExpensesReimbursementMktYtd: parseDecimal(row.brexExpensesReimbursementMkt_YTD),
       coveredBenefitsYtd: parseDecimal(row.coveredBenefits_YTD),
       salesMarketingSubTotalYtd: parseDecimal(row.salesMarketing_SubTotal_YTD),
