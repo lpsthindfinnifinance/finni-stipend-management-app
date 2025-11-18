@@ -103,6 +103,15 @@ export default function AllocationDetail() {
                   {new Date(allocation.createdAt).toLocaleString()}
                 </p>
               </div>
+
+              {allocation.comment && (
+                <div data-testid="section-comment">
+                  <p className="text-sm text-muted-foreground">Comment</p>
+                  <p className="font-medium" data-testid="text-comment">
+                    {allocation.comment}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
