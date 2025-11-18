@@ -1658,7 +1658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           miscellaneousYtd: parseNumeric(getValue('Miscellaneous_YTD')),
           hqErrorsStipendYtd: parseNumeric(getValue('HQ_Errors_Stipend_YTD')),
           poErrorsStipendYtd: parseNumeric(getValue('PO_Errors_Stipend_YTD')),
-          negativeEarningsYtd: parseNumeric(getValue('NegativeEarningsUtilized')),
+          //negativeEarningsYtd: parseNumeric(getValue('NegativeEarningsUtilized')),
           brexExpensesReimbursementMktYtd: parseNumeric(getValue('Brex_Expenses_Reimbursement_Mkt_YTD')),
           coveredBenefitsYtd: parseNumeric(getValue('Covered_Benefits_YTD')),
           salesMarketingSubTotalYtd: parseNumeric(getValue('Sales_Marketing_SubTotal_YTD')),
@@ -1703,6 +1703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Negative earnings cap
           negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap')),
+          negativeEarningsYtd: parseNumeric(getValue('NegativeEarningsUtilized')),
         };
 
         imports.push(importData);
