@@ -315,14 +315,14 @@ export type StipendRequestWithDetails = StipendRequest & {
 
 export const interPsmAllocations = pgTable("inter_psm_allocations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  // donorPsmId: varchar("donor_psm_id").notNull(),
+  donorPsmId: varchar("donor_psm_id").notNull(),
   recipientPracticeIds: text("recipient_practice_ids").array().notNull(), // Array of recipient practice IDs
   totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
   donorPracticeIds: text("donor_practice_ids").array().notNull(), // Array of donor practice IDs
   status: varchar("status").notNull().default("completed"), // All allocations are completed immediately
   createdAt: timestamp("created_at").defaultNow(),
-  createdBy: varchar("created_by").notNull(),
   completedAt: timestamp("completed_at"),
+  createdBy: varchar("created_by").notNull(),
   payPeriod: integer("payperiod").notNull(),
   year: integer("year").notNull(),
   comment: text("comment")
