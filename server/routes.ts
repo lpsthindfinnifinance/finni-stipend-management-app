@@ -2406,8 +2406,8 @@ app.post('/api/allocations', isAuthenticated, async (req: any, res) => {
         `*Portfolio:* ${portfolioName}\n` +
         `*Total Amount:* $${totalAllocationAmount.toFixed(2)}\n` +
         `*Pay Period:* PP${currentPeriod?.payPeriodNumber || 1} ${currentYear}\n\n` +
-        `*Recipient Practices (${recipientPractices.length}):**\n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
-        `*Contributor Practices (${donorPractices.length}):**\n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}${commentSection}`,
+        `*Recipient Practices (${recipientPractices.length}):* \n${recipientPracticeNames.map(name => `  • ${name}`).join('\n')}\n\n` +
+        `*Contributor Practices (${donorPractices.length}):* \n${donorPracticeNames.map(name => `  • ${name}`).join('\n')}${commentSection}`,
         'allocations',
         storage
       );
