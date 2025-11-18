@@ -114,46 +114,7 @@ export default function AllocationDetail() {
               )}
             </CardContent>
           </Card>
-
-        {/* Contributor Practices Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Contributor Practices</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="font-medium">Practice ID</TableHead>
-                  <TableHead className="font-medium">Practice Name</TableHead>
-                  <TableHead className="font-medium">Portfolio</TableHead>
-                  <TableHead className="font-medium text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allocation.donorPractices && allocation.donorPractices.length > 0 ? (
-                  allocation.donorPractices.map((practice: any) => (
-                    <TableRow key={practice.id} data-testid={`row-donor-practice-${practice.id}`}>
-                      <TableCell className="font-mono">{practice.id}</TableCell>
-                      <TableCell>{practice.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{practice.portfolioId || "N/A"}</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">
-                        {formatCurrency(practice.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No donor practices
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
+        
         {/* Recipient Practices Table */}
         <Card>
           <CardHeader>
@@ -185,6 +146,45 @@ export default function AllocationDetail() {
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
                       No recipient practices
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        
+        {/* Contributor Practices Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contributor Practices</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-medium">Practice ID</TableHead>
+                  <TableHead className="font-medium">Practice Name</TableHead>
+                  <TableHead className="font-medium">Portfolio</TableHead>
+                  <TableHead className="font-medium text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allocation.donorPractices && allocation.donorPractices.length > 0 ? (
+                  allocation.donorPractices.map((practice: any) => (
+                    <TableRow key={practice.id} data-testid={`row-donor-practice-${practice.id}`}>
+                      <TableCell className="font-mono">{practice.id}</TableCell>
+                      <TableCell>{practice.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{practice.portfolioId || "N/A"}</TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        {formatCurrency(practice.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      No donor practices
                     </TableCell>
                   </TableRow>
                 )}
