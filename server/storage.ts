@@ -101,10 +101,16 @@ export interface IStorage {
   deleteStipendRequest(requestId: number): Promise<{ success: boolean; message?: string }>;
   
   // Inter-PSM allocation operations
+  // getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string; recipientPortfolioId?: string }): Promise<any[]>;
+  // getInterPsmAllocationById(id: number): Promise<any | undefined>;
+  // createInterPsmAllocation(allocation: InsertInterPsmAllocation): Promise<InterPsmAllocation>;
+  // updateAllocationStatus(id: number, status: string): Promise<InterPsmAllocation>;
   getInterPsmAllocations(filters?: { donorId?: string; recipientId?: string; recipientPortfolioId?: string }): Promise<any[]>;
   getInterPsmAllocationById(id: number): Promise<any | undefined>;
   createInterPsmAllocation(allocation: InsertInterPsmAllocation): Promise<InterPsmAllocation>;
   updateAllocationStatus(id: number, status: string): Promise<InterPsmAllocation>;
+  getPracticesWithPositiveBalance(userId: string, role: string, portfolioId?: string): Promise<Array<{ practiceId: string; practiceName: string; availableBalance: number; portfolioId: string }>>;
+  
   
   // Pay period operations
   getCurrentPayPeriod(): Promise<PayPeriod | undefined>;
@@ -1493,6 +1499,52 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async getPracticesWithPositiveBalance(
+    userId: string, 
+    role: string, 
+    portfolioId?: string
+  ): Promise<Array<{ practiceId: string; practiceName: string; availableBalance: number; portfolioId: string }>> {
+    // Get all active practices
+    let practicesList: Practice[];
+    
+    // For PSM users: only get practices from their portfolio
+    // For Lead PSM/Finance/Admin: get all practices
+    if (role === "PSM" && portfolioId) {
+      practicesList = await db
+        .select()
+        .from(practices)
+        .where(
+          and(
+            eq(practices.portfolioId, portfolioId),
+            eq(practices.isActive, true)
+          )
+        );
+    } else {
+      // Lead PSM, Finance, Admin can access all practices
+      practicesList = await db
+        .select()
+        .from(practices)
+        .where(eq(practices.isActive, true));
+    }
+
+    // Calculate available balance for each practice
+    const practicesWithBalance = await Promise.all(
+      practicesList.map(async (practice) => {
+        const balance = await this.getPracticeBalance(practice.id);
+        return {
+          practiceId: practice.id,
+          practiceName: practice.name,
+          availableBalance: balance,
+          portfolioId: practice.portfolioId,
+        };
+      })
+    );
+
+    // Filter to only practices with positive balance
+    return practicesWithBalance.filter(p => p.availableBalance > 0);
+  }
+ 
+  
   // ============================================================================
   // PAY PERIOD OPERATIONS
   // ============================================================================
