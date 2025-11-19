@@ -1661,28 +1661,28 @@ export class DatabaseStorage implements IStorage {
       )
       .where(eq(practices.isActive, true));
 
-    Get approved negative earnings cap requests for CURRENT pay period only
-    const requests = await db
-      .select({
-        practiceId: negativeEarningsCapRequests.practiceId,
-        amount: negativeEarningsCapRequests.approvedAmount,
-      })
-      .from(negativeEarningsCapRequests)
-      .where(
-        and(
-          eq(negativeEarningsCapRequests.status, 'approved'),
-          eq(negativeEarningsCapRequests.payPeriod, payPeriod)
-        )
-      );
+    // Get approved negative earnings cap requests for CURRENT pay period only
+    // const requests = await db
+    //   .select({
+    //     practiceId: negativeEarningsCapRequests.practiceId,
+    //     amount: negativeEarningsCapRequests.approvedAmount,
+    //   })
+    //   .from(negativeEarningsCapRequests)
+    //   .where(
+    //     and(
+    //       eq(negativeEarningsCapRequests.status, 'approved'),
+    //       eq(negativeEarningsCapRequests.payPeriod, payPeriod)
+    //     )
+    //   );
 
     // Calculate utilized amounts per practice for current pay period
-    const utilizedByPractice = new Map<string, number>();
-    for (const req of requests) {
-      if (req.amount) {
-        const current = utilizedByPractice.get(req.practiceId) || 0;
-        utilizedByPractice.set(req.practiceId, current + Number(req.amount));
-      }
-    }
+    // const utilizedByPractice = new Map<string, number>();
+    // for (const req of requests) {
+    //   if (req.amount) {
+    //     const current = utilizedByPractice.get(req.practiceId) || 0;
+    //     utilizedByPractice.set(req.practiceId, current + Number(req.amount));
+    //   }
+    // }
 
     // Build summary - only include practices with metrics data (practices that have BigQuery data)
     return result
@@ -1695,8 +1695,8 @@ export class DatabaseStorage implements IStorage {
         portfolioName: row.portfolioName,
         group: row.group,
         negativeEarningsCap: row.negativeEarningsCap ? Number(row.negativeEarningsCap) : 0,
-        utilized: utilizedByPractice.get(row.practiceId) || 0,
-        available: (row.negativeEarningsCap ? Number(row.negativeEarningsCap) : 0) - (utilizedByPractice.get(row.practiceId) || 0),
+        utilized: row.utilized,
+        available: (row.negativeEarningsCap ? Number(row.negativeEarningsCap) : 0) - (row.utilized || 0),
       }));
   }
 
