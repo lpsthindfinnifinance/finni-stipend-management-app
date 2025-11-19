@@ -170,6 +170,7 @@ export const practiceMetrics = pgTable("practice_metrics", {
   
   // Negative earnings cap
   negativeEarningsCap: decimal("negative_earnings_cap", { precision: 12, scale: 2 }),
+  negativeEarningsUtilized: decimal("negative_earnings_utilized", { precision: 12, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
