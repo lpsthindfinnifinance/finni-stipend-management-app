@@ -126,7 +126,8 @@ async function importBigQueryData() {
       // Negative earnings cap - note capital N in CSV column name
       negativeEarningsCap: parseDecimal(row.NegativeEarningsCap),
     };
-    
+    console.log("Negative Earnings utilized ==========> import-bigquery-data.ts")
+    console.log(parseDecimal(row.NegativeEarningsUtilized))
     await db.insert(practiceMetrics).values(metricsData);
     importedMetrics++;
   }
