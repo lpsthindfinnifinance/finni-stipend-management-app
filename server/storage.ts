@@ -1646,7 +1646,7 @@ export class DatabaseStorage implements IStorage {
         portfolioId: practices.portfolioId,
         portfolioName: portfolios.name,
         negativeEarningsCap: practiceMetrics.negativeEarningsCap,
-        utilized: practiceMetrics.negativeEarningsYtd,
+        utilized: practiceMetrics.negativeEarningsUtilized,
         group: practiceMetrics.group,
         metricsId: practiceMetrics.id,
       })
