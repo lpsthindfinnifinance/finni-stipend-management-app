@@ -1582,6 +1582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Negative earnings cap
         'NegativeEarningsCap': 'negativeEarningsCap',
+        'negativeEarningsUtilized': 'negativeEarningsUtilized',
       };
 
       // Build header index map
@@ -1702,7 +1703,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stipendCapAvgFinal: parseNumeric(getValue('StipendCap')) ?? parseNumeric(getValue('StipendCapAvgFinal')),
           
           // Negative earnings cap
-          negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap'))
+          negativeEarningsCap: parseNumeric(getValue('NegativeEarningsCap')),
+          negativeEarningsUtilized: parseNumeric(getValue('NegativeEarningsUtilized'))
         };
 
         imports.push(importData);
