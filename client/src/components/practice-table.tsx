@@ -71,7 +71,7 @@ export function PracticeTable({
         <table className="w-full caption-bottom text-sm">
           <TableHeader className="sticky top-0 bg-background z-10 border-b">
             <TableRow>
-              <TableHead className="font-medium bg-background">Practice ID</TableHead>
+              <TableHead className="font-medium bg-background">Clinic Slug</TableHead>
               <TableHead className="font-medium bg-background">Practice Name</TableHead>
               <TableHead className="font-medium bg-background">Portfolio</TableHead>
               <TableHead className="font-medium text-right bg-background">Stipend Cap (Till PP26)</TableHead>
