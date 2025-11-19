@@ -1661,7 +1661,7 @@ export class DatabaseStorage implements IStorage {
       )
       .where(eq(practices.isActive, true));
 
-    // Get approved negative earnings cap requests for CURRENT pay period only
+    Get approved negative earnings cap requests for CURRENT pay period only
     const requests = await db
       .select({
         practiceId: negativeEarningsCapRequests.practiceId,
