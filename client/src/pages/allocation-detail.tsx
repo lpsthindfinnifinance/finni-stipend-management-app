@@ -184,7 +184,7 @@ export default function AllocationDetail() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      No donor practices
+                      No contributor practices
                     </TableCell>
                   </TableRow>
                 )}
