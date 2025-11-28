@@ -90,7 +90,7 @@ export default function Allocations() {
                       <TableHead className="font-medium">ID</TableHead>
                       <TableHead className="font-medium">Allocated By</TableHead>
                       <TableHead className="font-medium">Recipient Practices</TableHead>
-                      <TableHead className="font-medium">Donor Practices</TableHead>
+                      <TableHead className="font-medium">Contributor Practices</TableHead>
                       <TableHead className="font-medium text-right">Amount</TableHead>
                       <TableHead className="font-medium">Status</TableHead>
                       <TableHead className="font-medium">Date</TableHead>
