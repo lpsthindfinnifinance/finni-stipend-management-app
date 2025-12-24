@@ -79,15 +79,15 @@ export default function NewRequest() {
     }
     
     // Add all periods in next year
-    for (let pp = 1; pp <= 26; pp++) {
-      availablePeriods.push({
-        value: `${pp}-${currentYear + 1}`,
-        label: `PP${pp}'${currentYear + 1}`,
-        periodNum: pp,
-        year: currentYear + 1
-      });
-    }
-  }
+  //   for (let pp = 1; pp <= 26; pp++) {
+  //     availablePeriods.push({
+  //       value: `${pp}-${currentYear + 1}`,
+  //       label: `PP${pp}'${currentYear + 1}`,
+  //       periodNum: pp,
+  //       year: currentYear + 1
+  //     });
+  //   }
+  // }
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
