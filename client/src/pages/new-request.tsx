@@ -69,7 +69,7 @@ export default function NewRequest() {
     const currentYear = currentPayPeriod.year;
     
     // Add remaining periods in current year
-    for (let pp = currentPPNum + 1; pp <= 26; pp++) {
+    for (let pp = currentPPNum; pp <= 26; pp++) {
       availablePeriods.push({
         value: `${pp}-${currentYear}`,
         label: `PP${pp}'${currentYear}`,
