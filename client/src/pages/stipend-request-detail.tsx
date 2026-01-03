@@ -53,6 +53,13 @@ export default function StipendRequestDetail() {
     enabled: isAuthenticated && !!id,
   });
 
+  const isPendingRequest = request && ['pending_psm', 'pending_lead_psm', 'pending_finance'].includes(request.status);
+
+  const { data: practiceBalance } = useQuery<{ available: number }>({
+    queryKey: ["/api/practices", request?.practiceId, "balance"],
+    enabled: isAuthenticated && !!request?.practiceId && isPendingRequest,
+  });
+
   // Check for 403 (access denied) error
   useEffect(() => {
     if (requestError) {
@@ -556,6 +563,13 @@ export default function StipendRequestDetail() {
                       <p className="text-sm text-muted-foreground">Pending Amount</p>
                       <p className="text-2xl font-mono font-bold text-orange-600" data-testid="text-pending-amount">
                         {formatCurrency(totalPendingAmount)}
+                        {practiceBalance?.available !== undefined && (
+                          <span className="text-base text-muted-foreground ml-2" data-testid="text-available-balance">
+                            (Available Bal. <span className={`font-bold ${practiceBalance.available >= totalPendingAmount ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(practiceBalance.available)}
+                            </span>)
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         (Awaiting approval)
