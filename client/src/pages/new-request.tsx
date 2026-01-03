@@ -485,7 +485,7 @@ export default function NewRequest() {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={!practiceId || !isValid || justification.length < 10 || submitMutation.isPending}
+                disabled={!practiceId || justification.length < 10 || submitMutation.isPending} // disabled={!practiceId || !isValid || justification.length < 10 || submitMutation.isPending}
                 data-testid="button-submit-request"
               >
                 {submitMutation.isPending ? "Submitting..." : "Submit Request"}
