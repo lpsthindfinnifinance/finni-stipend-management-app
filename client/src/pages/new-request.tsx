@@ -197,14 +197,14 @@ export default function NewRequest() {
       totalAmount = parseFloat(amount) * periodCount;
     }
     
-    if (practiceBalance && totalAmount > practiceBalance.available) {
-      toast({
-        title: "Validation Error",
-        description: "Total requested amount exceeds available balance",
-        variant: "destructive",
-      });
-      return;
-    }
+    // if (practiceBalance && totalAmount > practiceBalance.available) {
+    //   toast({
+    //     title: "Validation Error",
+    //     description: "Total requested amount exceeds available balance",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     // Parse the period-year format
     const [effectivePP, effectiveYr] = effectivePeriodYear.split('-').map(Number);
@@ -257,7 +257,7 @@ export default function NewRequest() {
   const periodCount = calculatePeriodCount();
   const perPeriodAmount = parseFloat(amount) || 0;
   const totalRequestedAmount = perPeriodAmount * periodCount;
-  const isValid = totalRequestedAmount > 0 && practiceBalance && totalRequestedAmount <= practiceBalance.available;
+  const isValid = totalRequestedAmount > 0 // && practiceBalance && totalRequestedAmount <= practiceBalance.available;
   
 
   return (
