@@ -81,7 +81,7 @@ export function AppSidebar() {
       title: "Negative Earnings",
       url: "/negative-earnings",
       icon: TrendingDown,
-      roles: ["PSM", "Lead PSM", "Finance", "Admin"],
+      roles: ["Admin"],
     },
   ];
 
