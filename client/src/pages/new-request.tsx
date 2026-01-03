@@ -257,7 +257,7 @@ export default function NewRequest() {
   const periodCount = calculatePeriodCount();
   const perPeriodAmount = parseFloat(amount) || 0;
   const totalRequestedAmount = perPeriodAmount * periodCount;
-  const isValid = totalRequestedAmount > 0 // && practiceBalance && totalRequestedAmount <= practiceBalance.available;
+  const isValid = totalRequestedAmount > 0 && practiceBalance && totalRequestedAmount <= practiceBalance.available;
   
 
   return (
