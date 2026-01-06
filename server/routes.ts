@@ -626,11 +626,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+      // const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+      //   ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+      //   : process.env.REPLIT_DEV_DOMAIN
+      //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      //   : 'http://localhost:5000';
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
       const requestUrl = `${baseUrl}/requests/${request.id}`;
 
       // Build pay period info
@@ -947,7 +948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       //   : 'http://localhost:5000';
       const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
-      const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
+      const requestUrl = `${baseUrl}/requests/${requestId}`;
 
       // Build pay period info
       let payPeriodInfo = '';
@@ -1009,12 +1010,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const practice = await storage.getPracticeById(request.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
 
-      // Construct URL to the stipend request
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+      // // Construct URL to the stipend request
+      // const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+      //   ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+      //   : process.env.REPLIT_DEV_DOMAIN
+      //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      //   : 'http://localhost:5000';
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
       const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
 
       // Build pay period info
@@ -1095,12 +1097,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const portfolioName = practice?.portfolioId || 'Unknown';
       const practiceName = practice?.clinicName || request.practiceId;
 
-      // Construct URL to the stipend request
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+      // // Construct URL to the stipend request
+      // const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+      //   ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+      //   : process.env.REPLIT_DEV_DOMAIN
+      //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      //   : 'http://localhost:5000';
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
       const requestUrl = `${baseUrl}/requests/${requestId}`;
 
       // Send Slack notification with enhanced details
@@ -1202,11 +1205,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const portfolioName = practice?.portfolioId || 'Unknown';
 
       // Construct URL to the stipend request
-      const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
-        ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
-        : process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+      // const baseUrl = process.env.REPLIT_DEPLOYMENT_URL 
+      //   ? `https://${process.env.REPLIT_DEPLOYMENT_URL}`
+      //   : process.env.REPLIT_DEV_DOMAIN
+      //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      //   : 'http://localhost:5000';
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
       const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
 
       // Send Slack notification with enhanced details
