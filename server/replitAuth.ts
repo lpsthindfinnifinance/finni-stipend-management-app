@@ -171,7 +171,8 @@ export async function setupAuth(app: Express) {
 			return res.status(400).json({ error: "Invalid hostname" });
 		}
 		passport.authenticate(`replitauth:${req.hostname}`, {
-			prompt: "login consent",
+			//prompt: "login consent",
+			prompt: "none",
 			scope: [
 				"openid",
 				"https://www.googleapis.com/auth/userinfo.email",
