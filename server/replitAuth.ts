@@ -172,6 +172,7 @@ export async function setupAuth(app: Express) {
 		}
 		passport.authenticate(`replitauth:${req.hostname}`, {
 			//prompt: "login consent",
+   state: req.query.returnTo as string || "/dashboard",
 			scope: [
 				"openid",
 				"https://www.googleapis.com/auth/userinfo.email",
@@ -190,11 +191,22 @@ export async function setupAuth(app: Express) {
 				return res.status(400).json({ error: "Invalid hostname" });
 			}
 			console.log("host:::::::", req.hostname);
-			passport.authenticate(`replitauth:${req.hostname}`, {
-				successReturnToOrRedirect: "/dashboard",
-				failureRedirect: "/unauthorized",
-				failureMessage: true,
-			})(req, res, next);
+			// passport.authenticate(`replitauth:${req.hostname}`, {
+				// successReturnToOrRedirect: "/dashboard",
+				// failureRedirect: "/unauthorized",
+				// failureMessage: true,
+    // 
+   passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any) => {
+    if (err || !user) return res.redirect("/unauthorized");
+    req.logIn(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        // This line uses the 'state' we saved in Change 1
+        const redirectTo = req.query.state as string || "/dashboard";
+        res.redirect(redirectTo);
+    });
+    })(req, res, next);
+
+
 		},
 		(err: any, req: Request, res: Response, next: NextFunction) => {
 			if (err) {
