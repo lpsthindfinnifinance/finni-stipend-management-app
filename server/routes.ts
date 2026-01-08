@@ -1017,7 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       //   : 'http://localhost:5000';
       const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
-      const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
+      const requestUrl = `${baseUrl}/requests/${requestId}`;
 
       // Build pay period info
       let payPeriodInfo = '';
@@ -1211,7 +1211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       //   : 'http://localhost:5000';
       const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
-      const requestUrl = `${baseUrl}/stipend-requests/${requestId}`;
+      const requestUrl = `${baseUrl}/requests/${requestId}`;
 
       // Send Slack notification with enhanced details
       await sendSlackNotification(
