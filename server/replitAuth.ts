@@ -316,9 +316,16 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
 	const user = req.user as any;
 
-	if (!req.isAuthenticated() || !user.expires_at) {
-		return res.status(401).json({ message: "Unauthorized" });
-	}
+	//if (!req.isAuthenticated() || !user.expires_at) {
+		//return res.status(401).json({ message: "Unauthorized" });
+	//}
+
+  if (!req.isAuthenticated() || !user.expires_at) {
+    // This redirects the user to the login page and tells the login 
+    // route where to send them back to (req.originalUrl)
+    return res.redirect(`/api/login?returnTo=${encodeURIComponent(req.originalUrl)}`);
+}
+
 
 	const now = Math.floor(Date.now() / 1000);
 	if (now <= user.expires_at) {
