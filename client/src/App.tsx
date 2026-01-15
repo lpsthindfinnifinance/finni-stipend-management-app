@@ -68,11 +68,18 @@ function Router() {
     return null;
   }
   // NEW: Early return for unauthenticated users
+  // if (!isAuthenticated) {
+  //   return (
+  //     <Switch>
+  //       <Route path="/" component={Landing} />
+  //       <Route component={NotFound} />
+  //     </Switch>
+  //   );
+  // }
   if (!isAuthenticated) {
     return (
       <Switch>
         <Route path="/" component={Landing} />
-        <Route component={NotFound} />
       </Switch>
     );
   }
