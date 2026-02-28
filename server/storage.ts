@@ -46,6 +46,8 @@ export interface IStorage {
   // User operations (Required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getPSMByGroupID(groupID: string): Promise<User | undefined>;
+  getLeadPSM(): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserRole(id: string, role: string, portfolioId?: string): Promise<User>;
@@ -159,6 +161,16 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getPSMByGroupID(groupID: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(and(eq(users.portfolio_id, groupID), eq(users.is_active, true)));
+    return user;
+  }
+
+   async getLeadPSM(): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(and(eq(users.role, "Lead PSM"), eq(users.is_active, true)));
     return user;
   }
 
