@@ -16,7 +16,7 @@ import axios from "axios";
 import { WebClient } from '@slack/web-api';
 
 // Slack notification helper
-async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any) {
+async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any, leadPSMEmails: string[] = [], psmEmails: string[] = [], toFinanceTeam: boolean = false) {
   let webhookUrl: string | null = null;
   let hasAnyDatabaseSettings = false;
   
@@ -645,6 +645,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${endPeriod}\n`;
       }
 
+      const psms = await storage.getPSMByGroupID(portfolioName);
+      const leadPSM = await storage.getLeadPSM();
+      const psmEmails = psms.map(psm => psm.email);
+      const leadPSMEmail = leadPSM.map(x => x.email);
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `🆕 *New Stipend Request Submitted*\n` +
@@ -657,7 +661,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo +
         `*View Request:* ${requestUrl}`,
         'request_submitted',
-        storage
+        storage,
+        leadPSMEmail,
+        psmEmails,
+        false
       );
       
       res.json(request);
