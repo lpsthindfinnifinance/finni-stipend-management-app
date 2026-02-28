@@ -13,6 +13,7 @@ import {
   updateUserSchema
 } from "@shared/schema";
 import axios from "axios";
+import { WebClient } from '@slack/web-api';
 
 // Slack notification helper
 async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any) {
