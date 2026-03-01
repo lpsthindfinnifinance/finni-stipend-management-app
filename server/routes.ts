@@ -1158,7 +1158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo +
         `*Rejected by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*Reason:* ${reason || "No reason provided"}\n` +
-        `*View Request:* ${requestUrl}`,
+        `*<${requestUrl}|Click here to view Request>*`,
         'request_rejected',
         storage,
         psmEmails,
@@ -1287,8 +1287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leadPSMEmail = [];
       const financeTeam = true;
       // Send Slack notification
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
+      const requestUrl = `${baseUrl}/requests/${requestId}`;
       await sendSlackNotification(
-        `Stipend amount for request #${requestId} updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
+        `Stipend amount for request <${requestUrl}|#${requestId}>, updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
         'general',
         storage,
         psmEmails,
@@ -1358,7 +1360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         `*Marked by:* ${user.firstName} ${user.lastName}\n` +
-        `*View Request:* ${requestUrl}`,
+        `*<${requestUrl}|Click here to view Request>*`,
         'period_paid',
         storage
       );
