@@ -16,14 +16,15 @@ import axios from "axios";
 import { WebClient } from '@slack/web-api';
 
 const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
-console.log("SLACK_BOT_TOKEN",process.env.SLACK_BOT_TOKEN)
-console.log("SLACK_FINANCE_GROUP_ID",process.env.SLACK_FINANCE_GROUP_ID)
 
 // Slack notification helper
 async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any, toUserEmails: string[] = [], ccUserEmails: string[] = [], toFinanceTeam: boolean = false) {
   let webhookUrl: string | null = null;
   let hasAnyDatabaseSettings = false;
   let finalMessage = message;
+
+console.log("SLACK_BOT_TOKEN",process.env.SLACK_BOT_TOKEN)
+console.log("SLACK_FINANCE_GROUP_ID",process.env.SLACK_FINANCE_GROUP_ID)
 
   // 1. Define Finance Team Group ID 
   const financeGroupId = process.env.SLACK_FINANCE_GROUP_ID
@@ -723,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage,
         leadPSMEmail,
         psmEmails,
-        false
+        true
       );
       
       res.json(request);
