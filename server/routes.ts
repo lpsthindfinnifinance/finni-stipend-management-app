@@ -61,8 +61,8 @@ async function sendSlackNotification(message: string, notificationType: string =
     }
 
     // 4. Formatting the Message
-    const hiLine = headerTags.length > 0 ? `Hi ${headerTags.join(' ')}\n\n` : '';
-    const ccLine = footerTags.length > 0 ? `\n\nCC: ${footerTags.join(' ')}` : '';
+    const hiLine = headerTags.length > 0 ? `*Hi ${headerTags.join(' ')}\n\n*` : '';
+    const ccLine = footerTags.length > 0 ? `\n\ncc: ${footerTags.join(' ')}` : '';
     
     finalMessage = `${hiLine}${message}${ccLine}`;
 
@@ -1178,7 +1178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send Slack notification with enhanced details
       await sendSlackNotification(
-        `🚫 *Stipend Period Cancelled*\n` +
+        `🚫 *Stipend Request Cancelled for Pay Period ${payPeriod}*\n` +
         `*Request ID:* #${requestId}\n` +
         `*Practice:* ${practiceName}\n` +
         `*Portfolio:* ${portfolioName}\n` +
