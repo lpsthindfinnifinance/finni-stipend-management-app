@@ -304,6 +304,7 @@ export type StipendRequestWithDetails = StipendRequest & {
     name: string;
     email: string | null;
   } | null;
+  rejectedByDetails?: { id: string; name: string; email: string } | null;
   practice: {
     id: string;
     clinicName: string;
