@@ -164,7 +164,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getPSMByGroupID(groupID: string): Promise<User | undefined> {
+  async getPSMByGroupID(groupID: string): Promise<User> {
     const [user] = await db.select().from(users).where(and(eq(users.portfolio_id, groupID), eq(users.is_active, true)));
     return user;
   }
