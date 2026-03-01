@@ -16,7 +16,7 @@ import axios from "axios";
 import { WebClient } from '@slack/web-api';
 
 // Slack notification helper
-async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any, leadPSMEmails: string[] = [], psmEmails: string[] = [], toFinanceTeam: boolean = false) {
+async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any, toUserEmails: string[] = [], ccUserEmails: string[] = [], toFinanceTeam: boolean = false) {
   let webhookUrl: string | null = null;
   let hasAnyDatabaseSettings = false;
   
