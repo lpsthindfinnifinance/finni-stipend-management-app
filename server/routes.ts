@@ -1259,49 +1259,103 @@ console.log("Point P good")
     }
   });
 
+  // app.post('/api/stipend-requests/:id/update-period-amount', isAuthenticated, isFinance, async (req: any, res) => {
+  //   try {
+  //     const requestId = parseInt(req.params.id);
+  //     // const userId = req.user.claims.sub;
+  //     const userId = req.user.id;
+  //     const user = await storage.getUser(userId);
+      
+  //     if (!user) {
+  //       return res.status(404).json({ message: "User not found" });
+  //     }
+
+  //     const { payPeriod, year, newAmount } = req.body;
+      
+  //     if (!payPeriod || typeof payPeriod !== 'number') {
+  //       return res.status(400).json({ message: "Valid pay period is required" });
+  //     }
+      
+  //     if (!year || typeof year !== 'number') {
+  //       return res.status(400).json({ message: "Valid year is required" });
+  //     }
+      
+  //     if (!newAmount || typeof newAmount !== 'number' || newAmount <= 0) {
+  //       return res.status(400).json({ message: "Valid amount is required" });
+  //     }
+  //     await storage.updateCommittedPeriodAmount(requestId, payPeriod, year, newAmount);
+  //     const practice = await storage.getPracticeById(request.practiceId);
+  //     const portfolioName = practice?.portfolioId || 'Unknown';
+  //     const psms = await storage.getPSMByGroupID(portfolioName);
+  //     const psmEmails = psms.map(psm => psm.email);
+  //     const leadPSMEmail = [];
+  //     const financeTeam = true;
+  //     // Send Slack notification
+  //     const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
+  //     const requestUrl = `${baseUrl}/requests/${requestId}`;
+  //     await sendSlackNotification(
+  //       `Stipend amount for request <${requestUrl}|#${requestId}>, updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
+  //       'general',
+  //       storage,
+  //       psmEmails,
+  //       leadPSMEmail,
+  //       financeTeam
+  //     );
+
+  //     res.json({ success: true, message: `Updated period PP${payPeriod} amount to $${newAmount.toFixed(2)}` });
+  //   } catch (error) {
+  //     console.error("Error updating period amount:", error);
+  //     res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update period amount" });
+  //   }
+  // });
+
   app.post('/api/stipend-requests/:id/update-period-amount', isAuthenticated, isFinance, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
-      // const userId = req.user.claims.sub;
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-
+  
+      // FIX 1: Fetch the stipend request so 'request' is defined
+      const stipendRequest = await storage.getStipendRequestById(requestId);
+      if (!stipendRequest) {
+        return res.status(404).json({ message: "Stipend request not found" });
+      }
+  
       const { payPeriod, year, newAmount } = req.body;
       
-      if (!payPeriod || typeof payPeriod !== 'number') {
-        return res.status(400).json({ message: "Valid pay period is required" });
-      }
-      
-      if (!year || typeof year !== 'number') {
-        return res.status(400).json({ message: "Valid year is required" });
-      }
-      
-      if (!newAmount || typeof newAmount !== 'number' || newAmount <= 0) {
-        return res.status(400).json({ message: "Valid amount is required" });
-      }
-      const practice = await storage.getPracticeById(request.practiceId);
+      // ... (Keep your validation logic for payPeriod, year, and newAmount) ...
+  
+      // FIX 2: Use the fetched request to get the practice details
+      const practice = await storage.getPracticeById(stipendRequest.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
+  
       await storage.updateCommittedPeriodAmount(requestId, payPeriod, year, newAmount);
+  
+      // Fetch PSM list for the group
       const psms = await storage.getPSMByGroupID(portfolioName);
       const psmEmails = psms.map(psm => psm.email);
-      const leadPSMEmail = [];
-      const financeTeam = true;
-      // Send Slack notification
-      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
+      
+      const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app';
       const requestUrl = `${baseUrl}/requests/${requestId}`;
+  
+      // Send Slack notification
       await sendSlackNotification(
-        `Stipend amount for request <${requestUrl}|#${requestId}>, updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
+        `🔄 *Stipend Amount Updated*\n` +
+        `*Request:* <${requestUrl}|#${requestId}>\n` +
+        `*Practice:* ${practice?.name || stipendRequest.practiceId}\n` +
+        `*New Amount:* $${newAmount.toFixed(2)} for PP${payPeriod}'${year}\n` +
+        `*Updated by:* ${user.firstName} ${user.lastName}`,
         'general',
         storage,
-        psmEmails,
-        leadPSMEmail,
-        financeTeam
+        [],            // toUserEmails (Finance team tagged via flag)
+        psmEmails,     // ccUserEmails
+        true           // toFinanceTeam
       );
-
+  
       res.json({ success: true, message: `Updated period PP${payPeriod} amount to $${newAmount.toFixed(2)}` });
     } catch (error) {
       console.error("Error updating period amount:", error);
