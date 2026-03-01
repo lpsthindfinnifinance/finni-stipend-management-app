@@ -695,11 +695,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${endPeriod}\n`;
       }
 
+      console.log("Good till this point")
       const psms = await storage.getPSMByGroupID(portfolioName);
+      console.log(JSON.stringify({severity: "INFO", message: "psms ==>", data: { psms: psms }}));
       const leadPSM = await storage.getLeadPSM();
+      console.log(JSON.stringify({severity: "INFO", message: "leadPSM ==>", data: { leadPSM: leadPSM }}));
       const psmEmails = psms.map(psm => psm.email);
+      console.log(JSON.stringify({severity: "INFO", message: "psmEmails ==>", data: { psmEmails: psmEmails }}));
       // const leadPSMEmail = leadPSM.map(x => x.email);
       const leadPSMEmail = leadPSM ? [leadPSM.email] : [];
+      console.log(JSON.stringify({severity: "INFO", message: "leadPSMEmail ==>", data: { leadPSMEmail: leadPSMEmail }}));
       
       // Send Slack notification with enhanced details
       await sendSlackNotification(
