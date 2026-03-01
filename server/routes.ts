@@ -15,10 +15,60 @@ import {
 import axios from "axios";
 import { WebClient } from '@slack/web-api';
 
+const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
+
 // Slack notification helper
 async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any, toUserEmails: string[] = [], ccUserEmails: string[] = [], toFinanceTeam: boolean = false) {
   let webhookUrl: string | null = null;
   let hasAnyDatabaseSettings = false;
+  let finalMessage = message;
+
+  // 1. Define Finance Team Group ID 
+  const financeGroupId = process.env.SLACK_FINANCE_GROUP_ID
+  const financeTag = `<!subteam^${financeGroupId}>`;
+
+  try {
+    // 2. Helper to lookup Slack Member IDs from emails
+    const lookupEmails = async (emails: string[]) => {
+      const tags: string[] = [];
+      for (const email of emails) {
+        if (!email) continue;
+        try {
+          const result = await slackClient.users.lookupByEmail({ email: email.trim() });
+          if (result.ok && result.user?.id) {
+            tags.push(`<@${result.user.id}>`);
+          }
+        } catch (e) {
+          console.error(`Slack lookup failed for ${email}`);
+        }
+      }
+      return tags;
+    };
+
+    const toTags = await lookupEmails(toUserEmails);
+    const ccTags = await lookupEmails(ccUserEmails);
+
+    // 3. Finance Team Logic: Start of message if "To" is empty, otherwise CC
+    let headerTags = [...toTags];
+    let footerTags = [...ccTags];
+
+    if (toFinanceTeam) {
+      if (toUserEmails.length === 0) {
+        headerTags.push(financeTag);
+      } else {
+        footerTags.push(financeTag);
+      }
+    }
+
+    // 4. Formatting the Message
+    const hiLine = headerTags.length > 0 ? `Hi ${headerTags.join(' ')}\n\n` : '';
+    const ccLine = footerTags.length > 0 ? `\n\nCC: ${footerTags.join(' ')}` : '';
+    
+    finalMessage = `${hiLine}${message}${ccLine}`;
+
+  } catch (error) {
+    console.error("Slack tag processing error:", error);
+  }
   
   // Try to get webhook from database first
   if (storage) {
