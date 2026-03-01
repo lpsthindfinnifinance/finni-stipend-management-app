@@ -1020,6 +1020,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
 
+      const psms = await storage.getPSMByGroupID(portfolioName);
+      const psmEmails = psms.map(psm => psm.email);
+      const leadPSM = newStatus === "pending_lead_psm" ? await storage.getLeadPSM() : [];
+      const leadPSMEmail = leadPSM ? [leadPSM.email] : [];
+      const financeTeam = newStatus === "pending_finance" ? true : false;
+
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `✅ *Stipend Request Approved*\n` +
@@ -1032,9 +1038,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo +
         `*Approved by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
         `*New Status:* ${newStatus}\n` +
-        `*View Request:* ${requestUrl}`,
+        `*<${requestUrl}|Click here to view Request>*`,
         'request_approved',
-        storage
+        storage,
+        leadPSM,
+        psmEmails,
+        financeTeam
       );
       
       res.json(updated);
