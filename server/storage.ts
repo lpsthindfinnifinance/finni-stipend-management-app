@@ -895,27 +895,58 @@ async getLeadPSM(): Promise<User | undefined> {
   // STIPEND REQUEST OPERATIONS
   // ============================================================================
   
+  // async getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]> {
+  //   const conditions = [];
+    
+  //   if (filters?.status) {
+  //     conditions.push(eq(stipendRequests.status, filters.status));
+  //   }
+  //   if (filters?.practiceId) {
+  //     conditions.push(eq(stipendRequests.practiceId, filters.practiceId));
+  //   }
+  //   if (filters?.requestorId) {
+  //     conditions.push(eq(stipendRequests.requestorId, filters.requestorId));
+  //   }
+
+  //   let query = db.select().from(stipendRequests);
+    
+  //   if (conditions.length > 0) {
+  //     query = query.where(and(...conditions)) as any;
+  //   }
+
+  //   return await query.orderBy(desc(stipendRequests.createdAt));
+  // }
+
   async getStipendRequests(filters?: { status?: string; practiceId?: string; requestorId?: string }): Promise<any[]> {
-    const conditions = [];
-    
-    if (filters?.status) {
-      conditions.push(eq(stipendRequests.status, filters.status));
-    }
-    if (filters?.practiceId) {
-      conditions.push(eq(stipendRequests.practiceId, filters.practiceId));
-    }
-    if (filters?.requestorId) {
-      conditions.push(eq(stipendRequests.requestorId, filters.requestorId));
-    }
-
-    let query = db.select().from(stipendRequests);
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    return await query.orderBy(desc(stipendRequests.createdAt));
+  const conditions = [];
+  
+  if (filters?.status) {
+    conditions.push(eq(stipendRequests.status, filters.status));
   }
+  if (filters?.practiceId) {
+    conditions.push(eq(stipendRequests.practiceId, filters.practiceId));
+  }
+  if (filters?.requestorId) {
+    conditions.push(eq(stipendRequests.requestorId, filters.requestorId));
+  }
+
+  const query = db
+    .select({
+      // 1. "SELECT stipend_requests.*"
+      ...stipendRequests, 
+      // 2. Add custom fields from the join
+      requestorName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+      requestorEmail: users.email
+    })
+    .from(stipendRequests)
+    .leftJoin(users, eq(stipendRequests.requestorId, users.id));
+  
+  if (conditions.length > 0) {
+    query.where(and(...conditions));
+  }
+
+  return await query.orderBy(desc(stipendRequests.createdAt));
+}
 
   async getPendingStipendRequestsForPractice(practiceId: string): Promise<StipendRequest[]> {
     // Get all pending requests for a specific practice
