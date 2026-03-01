@@ -1066,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const psms = await storage.getPSMByGroupID(portfolioName);
       const psmEmails = psms.map(psm => psm.email);
       const leadPSM = newStatus === "pending_lead_psm" ? await storage.getLeadPSM() : [];
-      const leadPSMEmail = leadPSM ? [leadPSM.email] : [];
+      const leadPSMEmail = leadPSM?.email ? [leadPSM.email] : [];
       const financeTeam = newStatus === "pending_finance" ? true : false;
 
       // Send Slack notification with enhanced details
@@ -1084,7 +1084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*<${requestUrl}|Click here to view Request>*`,
         'request_approved',
         storage,
-        leadPSM,
+        leadPSMEmail,
         psmEmails,
         financeTeam
       );
