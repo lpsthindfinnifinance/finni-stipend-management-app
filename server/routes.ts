@@ -947,41 +947,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/stipend-requests/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-    console.log("Point A good")
       const requestId = parseInt(req.params.id);
       // const userId = req.user.claims.sub;
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       const { comment } = req.body; // Get optional comment from request body
-    console.log("Point B good")
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  console.log("Point C good")
+
       const request = await storage.getStipendRequestById(requestId);
       if (!request) {
         return res.status(404).json({ message: "Request not found" });
       }
-console.log("Point D good")
+
       // Determine next status based on current status and user role
       let newStatus = request.status;
-console.log("Point E good")      
+     
       if (request.status === "pending_psm" && user.role === "PSM") {
         newStatus = "pending_lead_psm";
       } else if (request.status === "pending_lead_psm" && user.role === "Lead PSM") {
         newStatus = "pending_finance";
       } else if (request.status === "pending_finance" && user.role === "Finance") {
         newStatus = "approved";
-console.log("Point F good")
+
         // Get current pay period
         const currentPeriod = await storage.getCurrentPayPeriod();
         const currentPeriodNumber = currentPeriod?.id || 1;
-console.log("Point G good")
+
         // Create ledger entries for approved request
         // Amount should be negative for committed as it reduces available balance
         // All entries start as "committed" - Finance will manually mark them as "paid"
         const amount = `-${request.amount}`; // Make negative to reduce balance
-console.log("Point H good")  
+
         if (request.requestType === "one_time") {
           // One-time request: Create single "committed" entry for the effective pay period
           const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
@@ -996,23 +995,23 @@ console.log("Point H good")
             relatedRequestId: requestId,
             relatedAllocationId: null,
           });
-  console.log("Point I good")
+
         } else if (request.requestType === "recurring") {
           // Recurring request: Create "committed" entries for all periods from effective to end
           const effectivePeriod = request.effectivePayPeriod || currentPeriodNumber;
           const effectiveYear = request.effectiveYear || currentPeriod?.year || 2025;
           const endPeriod = request.recurringEndPeriod || 26;
           const endYear = request.recurringEndYear || effectiveYear;
-  console.log("Point J good")
+
           // Create ledger entries for all pay periods in the range
           let currentYear = effectiveYear;
           let period = effectivePeriod;
-  console.log("Point K good") 
+
           while (true) {
             // Check if we've reached the end
             if (currentYear > endYear) break;
             if (currentYear === endYear && period > endPeriod) break;
-  console.log("Point L good")
+
             // All periods start as "committed" - Finance marks as "paid" when processed
             await storage.createLedgerEntry({
               practiceId: request.practiceId,
@@ -1024,7 +1023,6 @@ console.log("Point H good")
               relatedRequestId: requestId,
               relatedAllocationId: null,
             })
-  console.log("Point M good");
             
             // Move to next period
             period++;
@@ -1036,14 +1034,15 @@ console.log("Point H good")
           }
         }
       } else {
-        return res.status(403).json({ message: "Cannot approve this request" });
+        return res.status(403).json({ message: "Cannot approve this request. Ensure you are not an Admin user." });
       }
 console.log("Point N good")
       const updated = await storage.updateStipendRequestStatus(requestId, newStatus, userId, comment);
+console.log("Point O good")
       
       // Get requestor details
       const requestor = await storage.getUser(request.requestorId);
-      
+console.log("Point P good")
       // Get practice details for portfolio information
       const practice = await storage.getPracticeById(request.practiceId);
       const portfolioName = practice?.portfolioId || 'Unknown';
@@ -1069,15 +1068,10 @@ console.log("Point N good")
       console.log("Goog till that point")
 
       const psms = await storage.getPSMByGroupID(portfolioName);
-      console.log("Goog till point 2")
       const psmEmails = psms.map(psm => psm.email);
-      console.log("Goog till point 3")
       const leadPSM = newStatus === "pending_lead_psm" ? await storage.getLeadPSM() : [];
-      console.log("Goog till point 4")
       const leadPSMEmail = leadPSM?.email ? [leadPSM.email] : [];
-      console.log("Goog till point 5")
       const financeTeam = newStatus === "pending_finance" ? true : false;
-      console.log("Goog till point 6")
 
       // Send Slack notification with enhanced details
       await sendSlackNotification(
@@ -1098,7 +1092,6 @@ console.log("Point N good")
         psmEmails,
         financeTeam
       );
-      console.log("Goog till point 7")
       
       res.json(updated);
     } catch (error) {
