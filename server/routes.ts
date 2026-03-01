@@ -61,7 +61,7 @@ async function sendSlackNotification(message: string, notificationType: string =
     }
 
     // 4. Formatting the Message
-    const hiLine = headerTags.length > 0 ? `*Hi ${headerTags.join(' ')}\n\n*` : '';
+    const hiLine = headerTags.length > 0 ? `*Hi ${headerTags.join(' ')}*\n\n` : '';
     const ccLine = footerTags.length > 0 ? `\n\ncc: ${footerTags.join(' ')}` : '';
     
     finalMessage = `${hiLine}${message}${ccLine}`;
