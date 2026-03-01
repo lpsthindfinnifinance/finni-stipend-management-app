@@ -23,9 +23,6 @@ async function sendSlackNotification(message: string, notificationType: string =
   let hasAnyDatabaseSettings = false;
   let finalMessage = message;
 
-console.log("SLACK_BOT_TOKEN",process.env.SLACK_BOT_TOKEN)
-console.log("SLACK_FINANCE_GROUP_ID",process.env.SLACK_FINANCE_GROUP_ID)
-
   // 1. Define Finance Team Group ID 
   const financeGroupId = process.env.SLACK_FINANCE_GROUP_ID
   const financeTag = `<!subteam^${financeGroupId}>`;
@@ -700,14 +697,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Good till this point")
       const psms = await storage.getPSMByGroupID(portfolioName);
-      console.log(JSON.stringify({severity: "INFO", message: "psms ==>", data: { psms: psms }}));
       const leadPSM = await storage.getLeadPSM();
-      console.log(JSON.stringify({severity: "INFO", message: "leadPSM ==>", data: { leadPSM: leadPSM }}));
       const psmEmails = psms.map(psm => psm.email);
-      console.log(JSON.stringify({severity: "INFO", message: "psmEmails ==>", data: { psmEmails: psmEmails }}));
       // const leadPSMEmail = leadPSM.map(x => x.email);
       const leadPSMEmail = leadPSM ? [leadPSM.email] : [];
-      console.log(JSON.stringify({severity: "INFO", message: "leadPSMEmail ==>", data: { leadPSMEmail: leadPSMEmail }}));
       
       // Send Slack notification with enhanced details
       await sendSlackNotification(
@@ -724,7 +717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage,
         leadPSMEmail,
         psmEmails,
-        true
+        false
       );
       
       res.json(request);
