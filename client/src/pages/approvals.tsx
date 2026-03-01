@@ -227,7 +227,7 @@ export default function Approvals() {
             >
               <TableCell className="font-mono">{request.id}</TableCell>
               <TableCell>{request.practiceName || request.practiceId}</TableCell>
-              <TableCell>{request.requestorName?}</TableCell>
+              <TableCell>{request.requestorName}</TableCell>
               <TableCell className="text-right font-mono font-semibold">
                 {formatCurrency(request.amount)}
               </TableCell>
