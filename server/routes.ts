@@ -1348,7 +1348,7 @@ console.log("Point P good")
         `*Request:* <${requestUrl}|#${requestId}>\n` +
         `*Practice:* ${practice?.name || stipendRequest.practiceId}\n` +
         `*New Amount:* $${newAmount.toFixed(2)} for PP${payPeriod}'${year}\n` +
-        `*Old Amount:* $${stipendRequest.amount.toFixed(2)}\n` +
+        `*Old Amount:* $${parseFloat(stipendRequest.amount).toFixed(2)}\n` +
         `*Updated by:* ${user.firstName} ${user.lastName}`,
         'general',
         storage,
