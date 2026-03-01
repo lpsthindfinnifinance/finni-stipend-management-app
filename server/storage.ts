@@ -932,14 +932,19 @@ async getLeadPSM(): Promise<User | undefined> {
 
   const query = db
     .select({
-      // 1. "SELECT stipend_requests.*"
+      // 1. All columns from the stipend request
       ...stipendRequests, 
-      // 2. Add custom fields from the join
+      // 2. Requestor details from the users table join
       requestorName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-      requestorEmail: users.email
+      requestorEmail: users.email,
+      // 3. Practice name from the practices table join
+      practiceName: practices.name 
     })
     .from(stipendRequests)
-    .leftJoin(users, eq(stipendRequests.requestorId, users.id));
+    // First Join: Connect to users to get the person who made the request
+    .leftJoin(users, eq(stipendRequests.requestorId, users.id))
+    // Second Join: Connect to practices to get the clinic name
+    .leftJoin(practices, eq(stipendRequests.practiceId, practices.id));
   
   if (conditions.length > 0) {
     query.where(and(...conditions));
@@ -947,7 +952,7 @@ async getLeadPSM(): Promise<User | undefined> {
 
   return await query.orderBy(desc(stipendRequests.createdAt));
 }
-
+  
   async getPendingStipendRequestsForPractice(practiceId: string): Promise<StipendRequest[]> {
     // Get all pending requests for a specific practice
     return await db
