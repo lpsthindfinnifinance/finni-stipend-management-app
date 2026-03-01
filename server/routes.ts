@@ -695,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${endPeriod}\n`;
       }
 
-      console.log("Good till this point")
+      const practice = await storage.getPracticeById(request.practiceId);
       const psms = await storage.getPSMByGroupID(portfolioName);
       const leadPSM = await storage.getLeadPSM();
       const psmEmails = psms.map(psm => psm.email);
@@ -708,7 +708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Request ID:* #${request.id}\n` +
         `*Submitted by:* ${user.firstName} ${user.lastName}\n` +
         `*Group:* ${portfolioName}\n` +
-        `*Clinic ID:* ${validatedData.practiceId}\n` +
+        `*Clinic:* ${practice.name}\n` +
         `*Amount:* $${parseFloat(validatedData.amount).toFixed(2)}\n` +
         `*Description:* ${validatedData.stipendDescription}\n` +
         payPeriodInfo +
@@ -1064,6 +1064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
 
+      const practice = await storage.getPracticeById(request.practiceId);
       const psms = await storage.getPSMByGroupID(portfolioName);
       const psmEmails = psms.map(psm => psm.email);
       const leadPSM = newStatus === "pending_lead_psm" ? await storage.getLeadPSM() : [];
@@ -1076,7 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Request ID:* #${requestId}\n` +
         `*Submitted by:* ${requestor?.firstName} ${requestor?.lastName}\n` +
         `*Group:* ${portfolioName}\n` +
-        `*Clinic ID:* ${request.practiceId}\n` +
+        `*Clinic:* ${practice.name}\n` +
         `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         payPeriodInfo +
@@ -1141,14 +1142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo = `*Effective Pay Period:* PP${request.effectivePayPeriod}\n` +
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
-
+      const practice = await storage.getPracticeById(request.practiceId);
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `❌ *Stipend Request Rejected*\n` +
         `*Request ID:* #${requestId}\n` +
         `*Submitted by:* ${requestor?.firstName} ${requestor?.lastName}\n` +
         `*Group:* ${portfolioName}\n` +
-        `*Clinic ID:* ${request.practiceId}\n` +
+        `*Clinic:* ${practice.name}\n` +
         `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         payPeriodInfo +
@@ -1333,7 +1334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Pay Period:* PP${payPeriod}\n` +
         `*Submitted by:* ${requestor?.firstName} ${requestor?.lastName}\n` +
         `*Group:* ${portfolioName}\n` +
-        `*Clinic ID:* ${request.practiceId}\n` +
+        `*Clinic:* ${practice.name}\n` +
         `*Amount:* $${parseFloat(request.amount).toFixed(2)}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         `*Marked by:* ${user.firstName} ${user.lastName}\n` +
