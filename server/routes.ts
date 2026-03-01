@@ -712,10 +712,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Amount:* $${parseFloat(validatedData.amount).toFixed(2)}\n` +
         `*Description:* ${validatedData.stipendDescription}\n` +
         payPeriodInfo +
-        `*View Request:* ${requestUrl}`,
+        `*<${requestUrl}|click here to View Request:three_button_mouse:>*`,
         'request_submitted',
         storage,
-        leadPSMEmail,
+        [], //leadPSMEmail
         psmEmails,
         false
       );
