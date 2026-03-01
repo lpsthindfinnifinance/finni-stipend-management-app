@@ -1140,6 +1140,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo = `*Effective Pay Period:* PP${request.effectivePayPeriod}\n` +
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
+      const psms = await storage.getPSMByGroupID(portfolioName);
+      const psmEmails = psms.map(psm => psm.email);
+      const leadPSM = request.status === "pending_finance" ? await storage.getLeadPSM() : [];
+      const leadPSMEmail = leadPSM ? [leadPSM.email] : [];
+      const financeTeam = false
+      
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `❌ *Stipend Request Rejected*\n` +
@@ -1154,7 +1160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Reason:* ${reason || "No reason provided"}\n` +
         `*View Request:* ${requestUrl}`,
         'request_rejected',
-        storage
+        storage,
+        psmEmails,
+        leadPSMEmail,
+        financeTeam
       );
       
       res.json(updated);
@@ -1217,7 +1226,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //   : 'http://localhost:5000';
       const baseUrl = 'https://finni-stipend-management-app-401300973899.europe-west1.run.app'
       const requestUrl = `${baseUrl}/requests/${requestId}`;
-
+      const psms = await storage.getPSMByGroupID(portfolioName);
+      const psmEmails = psms.map(psm => psm.email);
+      const leadPSMEmail = [];
+      const financeTeam = false
+      
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `🚫 *Stipend Request Cancelled for Pay Period ${payPeriod}*\n` +
@@ -1227,9 +1240,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `*Pay Period:* PP${payPeriod}'${year}\n` +
         `*Description:* ${request.stipendDescription}\n` +
         `*Cancelled by:* ${user.firstName} ${user.lastName} (${user.role})\n` +
-        `*View Request:* ${requestUrl}`,
+        `*<${requestUrl}|Click here to view Request>*`,
         'general',
-        storage
+        storage,
+        psmEmails,
+        leadPSMEmail,
+        financeTeam
       );
 
       res.json({ success: true, message: `Cancelled committed period PP${payPeriod}` });
@@ -1263,14 +1279,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!newAmount || typeof newAmount !== 'number' || newAmount <= 0) {
         return res.status(400).json({ message: "Valid amount is required" });
       }
-
+      const practice = await storage.getPracticeById(request.practiceId);
+      const portfolioName = practice?.portfolioId || 'Unknown';
       await storage.updateCommittedPeriodAmount(requestId, payPeriod, year, newAmount);
-
+      const psms = await storage.getPSMByGroupID(portfolioName);
+      const psmEmails = psms.map(psm => psm.email);
+      const leadPSMEmail = [];
+      const financeTeam = true;
       // Send Slack notification
       await sendSlackNotification(
         `Stipend amount for request #${requestId} updated to $${newAmount.toFixed(2)} for PP${payPeriod} by ${user.firstName} ${user.lastName}`,
         'general',
-        storage
+        storage,
+        psmEmails,
+        leadPSM,
+        financeTeam
       );
 
       res.json({ success: true, message: `Updated period PP${payPeriod} amount to $${newAmount.toFixed(2)}` });
