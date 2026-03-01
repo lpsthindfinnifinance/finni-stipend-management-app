@@ -16,6 +16,8 @@ import axios from "axios";
 import { WebClient } from '@slack/web-api';
 
 const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
+console.log("SLACK_BOT_TOKEN",process.env.SLACK_BOT_TOKEN)
+console.log("SLACK_FINANCE_GROUP_ID",process.env.SLACK_FINANCE_GROUP_ID)
 
 // Slack notification helper
 async function sendSlackNotification(message: string, notificationType: string = 'general', storage?: any, toUserEmails: string[] = [], ccUserEmails: string[] = [], toFinanceTeam: boolean = false) {
