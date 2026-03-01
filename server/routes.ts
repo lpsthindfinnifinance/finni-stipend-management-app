@@ -698,7 +698,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const psms = await storage.getPSMByGroupID(portfolioName);
       const leadPSM = await storage.getLeadPSM();
       const psmEmails = psms.map(psm => psm.email);
-      const leadPSMEmail = leadPSM.map(x => x.email);
+      // const leadPSMEmail = leadPSM.map(x => x.email);
+      const leadPSMEmail = leadPSM ? [leadPSM.email] : [];
+      
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `🆕 *New Stipend Request Submitted*\n` +
