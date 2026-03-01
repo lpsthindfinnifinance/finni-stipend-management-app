@@ -1063,11 +1063,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
 
+      console.log("Goog till that point")
+
       const psms = await storage.getPSMByGroupID(portfolioName);
+      console.log("Goog till point 2")
       const psmEmails = psms.map(psm => psm.email);
+      console.log("Goog till point 3")
       const leadPSM = newStatus === "pending_lead_psm" ? await storage.getLeadPSM() : [];
+      console.log("Goog till point 4")
       const leadPSMEmail = leadPSM?.email ? [leadPSM.email] : [];
+      console.log("Goog till point 5")
       const financeTeam = newStatus === "pending_finance" ? true : false;
+      console.log("Goog till point 6")
 
       // Send Slack notification with enhanced details
       await sendSlackNotification(
@@ -1088,6 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         psmEmails,
         financeTeam
       );
+      console.log("Goog till point 7")
       
       res.json(updated);
     } catch (error) {
