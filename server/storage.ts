@@ -164,15 +164,31 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getPSMByGroupID(groupID: string): Promise<User> {
-    const [user] = await db.select().from(users).where(and(eq(users.portfolio_id, groupID), eq(users.is_active, true)));
-    return user;
-  }
+  async getPSMByGroupID(groupID: string): Promise<User[]> {
+  const psms = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.portfolio_id, groupID), 
+        eq(users.is_active, true)
+      )
+    );
+  return psms; // No [user] brackets, return the full list
+}
 
-   async getLeadPSM(): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(and(eq(users.role, "Lead PSM"), eq(users.is_active, true)));
-    return user;
-  }
+async getLeadPSM(): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.role, "Lead PSM"), 
+        eq(users.is_active, true)
+      )
+    );
+  return user; // Will be the user object or 'undefined'
+}
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
