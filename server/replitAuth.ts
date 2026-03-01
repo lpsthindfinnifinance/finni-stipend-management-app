@@ -165,20 +165,42 @@ export async function setupAuth(app: Express) {
 	passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
 	
+	// app.get("/api/login", (req: Request, res: Response, next: NextFunction) => {
+	// 	const domains = process.env.REPLIT_DOMAINS!.split(",");
+	// 	if (!domains.includes(req.hostname)) {
+	// 		return res.status(400).json({ error: "Invalid hostname" });
+	// 	}
+		
+	// 	passport.authenticate(`replitauth:${req.hostname}`, {
+	// 		//prompt: "login consent",
+ //   state: req.query.returnTo as string || "/dashboard",
+	// 		scope: [
+	// 			"openid",
+	// 			"https://www.googleapis.com/auth/userinfo.email",
+	// 			"https://www.googleapis.com/auth/userinfo.profile",
+	// 		],
+	// 	})(req, res, next);
+	// });
+
 	app.get("/api/login", (req: Request, res: Response, next: NextFunction) => {
-		const domains = process.env.REPLIT_DOMAINS!.split(",");
-		if (!domains.includes(req.hostname)) {
-			return res.status(400).json({ error: "Invalid hostname" });
-		}
-		passport.authenticate(`replitauth:${req.hostname}`, {
-			//prompt: "login consent",
-   state: req.query.returnTo as string || "/dashboard",
-			scope: [
-				"openid",
-				"https://www.googleapis.com/auth/userinfo.email",
-				"https://www.googleapis.com/auth/userinfo.profile",
-			],
-		})(req, res, next);
+	    const domains = process.env.REPLIT_DOMAINS!.split(",");
+	    if (!domains.includes(req.hostname)) {
+	        return res.status(400).json({ error: "Invalid hostname" });
+	    }
+	
+	    // NEW LOGIC: Capture the returnTo parameter from the query string
+	    // If it doesn't exist, default to /dashboard
+	    const returnTo = (req.query.returnTo as string) || "/dashboard";
+	
+	    passport.authenticate(`replitauth:${req.hostname}`, {
+	        // Pass the target URL into the 'state' parameter
+	        state: returnTo, 
+	        scope: [
+	            "openid",
+	            "https://www.googleapis.com/auth/userinfo.email",
+	            "https://www.googleapis.com/auth/userinfo.profile",
+	        ],
+	    })(req, res, next);
 	});
 
 	app.get(
