@@ -695,7 +695,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${endPeriod}\n`;
       }
 
-      const practice = await storage.getPracticeById(request.practiceId);
       const psms = await storage.getPSMByGroupID(portfolioName);
       const leadPSM = await storage.getLeadPSM();
       const psmEmails = psms.map(psm => psm.email);
@@ -1064,7 +1063,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
 
-      const practice = await storage.getPracticeById(request.practiceId);
       const psms = await storage.getPSMByGroupID(portfolioName);
       const psmEmails = psms.map(psm => psm.email);
       const leadPSM = newStatus === "pending_lead_psm" ? await storage.getLeadPSM() : [];
@@ -1142,7 +1140,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payPeriodInfo = `*Effective Pay Period:* PP${request.effectivePayPeriod}\n` +
                        `*Recurring Until:* PP${request.recurringEndPeriod || 26}\n`;
       }
-      const practice = await storage.getPracticeById(request.practiceId);
       // Send Slack notification with enhanced details
       await sendSlackNotification(
         `❌ *Stipend Request Rejected*\n` +
