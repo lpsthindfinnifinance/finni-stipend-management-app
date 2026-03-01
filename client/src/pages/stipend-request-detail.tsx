@@ -834,7 +834,7 @@ export default function StipendRequestDetail() {
                     <p className="font-medium text-destructive">Request Rejected</p>
                     {request.rejectedBy && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        Rejected by {request.rejectedBy} on {formatDate(request.rejectedAt)}
+                        Rejected by {request.rejectedByDetails?.name} on {formatDate(request.rejectedAt)}
                       </p>
                     )}
                     {request.rejectionReason && (
