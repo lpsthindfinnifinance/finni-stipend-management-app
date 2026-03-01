@@ -765,38 +765,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // app.get('/api/stipend-requests/pending', isAuthenticated, async (req: any, res) => {
+  //   try {
+  //     // const userId = req.user.claims.sub;
+  //     const userId = req.user.id;
+  //     const user = await storage.getUser(userId);
+      
+  //     if (!user) {
+  //       return res.status(404).json({ message: "User not found" });
+  //     }
+
+  //     // Role-based pending logic:
+  //     // - PSM: See pending_finance (requests awaiting Finance approval, even though Lead PSM approved)
+  //     // - Lead PSM: See pending_lead_psm (requests awaiting their approval)
+  //     // - Finance: See pending_finance (requests awaiting their approval)
+  //     // - Admin: See pending_lead_psm (same as Lead PSM)
+  //     let status: string | undefined;
+  //     if (user.role === "PSM") status = "pending_finance";
+  //     else if (user.role === "Lead PSM") status = "pending_lead_psm";
+  //     else if (user.role === "Finance") status = "pending_finance";
+  //     else if (user.role === "Admin") status = "pending_lead_psm";
+      
+  //     if (!status) {
+  //       return res.json([]);
+  //     }
+
+  //     const requests = await storage.getStipendRequests({ status });
+  //     res.json(requests);
+  //   } catch (error) {
+  //     console.error("Error fetching pending requests:", error);
+  //     res.status(500).json({ message: "Failed to fetch pending requests" });
+  //   }
+  // });
+
   app.get('/api/stipend-requests/pending', isAuthenticated, async (req: any, res) => {
-    try {
-      // const userId = req.user.claims.sub;
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Role-based pending logic:
-      // - PSM: See pending_finance (requests awaiting Finance approval, even though Lead PSM approved)
-      // - Lead PSM: See pending_lead_psm (requests awaiting their approval)
-      // - Finance: See pending_finance (requests awaiting their approval)
-      // - Admin: See pending_lead_psm (same as Lead PSM)
-      let status: string | undefined;
-      if (user.role === "PSM") status = "pending_finance";
-      else if (user.role === "Lead PSM") status = "pending_lead_psm";
-      else if (user.role === "Finance") status = "pending_finance";
-      else if (user.role === "Admin") status = "pending_lead_psm";
-      
-      if (!status) {
-        return res.json([]);
-      }
-
-      const requests = await storage.getStipendRequests({ status });
-      res.json(requests);
-    } catch (error) {
-      console.error("Error fetching pending requests:", error);
-      res.status(500).json({ message: "Failed to fetch pending requests" });
+  try {
+    const userId = req.user.id;
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-  });
+
+    // Define the list of statuses each role is allowed to see
+    let statuses: string[] = [];
+    
+    if (user.role === "PSM" || user.role === "Admin") {
+      // PSM and Admin see both stages of the approval pipeline
+      statuses = ["pending_lead_psm", "pending_finance"];
+    } else if (user.role === "Lead PSM") {
+      // Lead PSMs only see what is waiting for their specific action
+      statuses = ["pending_lead_psm"];
+    } else if (user.role === "Finance") {
+      // Finance only sees what has already passed Lead PSM approval
+      statuses = ["pending_finance"];
+    }
+
+    if (statuses.length === 0) {
+      return res.json([]);
+    }
+
+    // Map through the statuses to fetch all relevant requests
+    const requestPromises = statuses.map(status => storage.getStipendRequests({ status }));
+    const results = await Promise.all(requestPromises);
+    
+    // Flatten the array of arrays into a single list of requests
+    const allRequests = results.flat();
+
+    // Optional: Sort by creation date (newest first)
+    allRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json(allRequests);
+  } catch (error) {
+    console.error("Error fetching pending requests:", error);
+    res.status(500).json({ message: "Failed to fetch pending requests" });
+  }
+});
 
   app.get('/api/stipend-requests/approved', isAuthenticated, async (req: any, res) => {
     try {
