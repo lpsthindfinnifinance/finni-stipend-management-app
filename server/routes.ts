@@ -110,7 +110,7 @@ async function sendSlackNotification(message: string, notificationType: string =
 
   try {
     await axios.post(webhookUrl, {
-      text: message,
+      text: finalMessage,
     });
     console.log(`✓ Slack notification sent for ${notificationType}`);
   } catch (error) {
