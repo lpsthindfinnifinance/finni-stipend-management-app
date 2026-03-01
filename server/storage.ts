@@ -1012,6 +1012,19 @@ async getLeadPSM(): Promise<User | undefined> {
       financeApprover = approver;
     }
 
+    let rejectedByDetails = null;
+    if (request.rejectedBy) {
+      const [rejector] = await db
+        .select({
+          id: users.id,
+          name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.id, request.rejectedBy));
+      rejectedByDetails = rejector;
+    }
+
     // Get practice information
     const [practice] = await db
       .select({
@@ -1026,6 +1039,7 @@ async getLeadPSM(): Promise<User | undefined> {
       requestor,
       leadPsmApprover,
       financeApprover,
+      rejectedByDetails,
       practice,
     };
   }
