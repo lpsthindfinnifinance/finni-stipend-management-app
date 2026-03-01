@@ -170,8 +170,8 @@ export class DatabaseStorage implements IStorage {
     .from(users)
     .where(
       and(
-        eq(users.portfolio_id, groupID), 
-        eq(users.is_active, true)
+        eq(users.portfolioId, groupID), 
+        eq(users.isActive, true)
       )
     );
   return psms; // No [user] brackets, return the full list
@@ -184,7 +184,7 @@ async getLeadPSM(): Promise<User | undefined> {
     .where(
       and(
         eq(users.role, "Lead PSM"), 
-        eq(users.is_active, true)
+        eq(users.isActive, true)
       )
     );
   return user; // Will be the user object or 'undefined'
