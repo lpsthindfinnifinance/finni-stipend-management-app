@@ -38,8 +38,8 @@ async function sendSlackNotification(message: string, notificationType: string =
           if (result.ok && result.user?.id) {
             tags.push(`<@${result.user.id}>`);
           }
-        } catch (e) {
-          console.error(`Slack lookup failed for ${email}`);
+        } catch (e: any) {
+          console.error(`Slack lookup failed for ${email}. Error:`, e.data?.error || e.message);
         }
       }
       return tags;
