@@ -46,7 +46,7 @@ export interface IStorage {
   // User operations (Required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getPSMByGroupID(groupID: string): Promise<User | undefined>;
+  getPSMByGroupID(groupID: string): Promise<User[]>;
   getLeadPSM(): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
