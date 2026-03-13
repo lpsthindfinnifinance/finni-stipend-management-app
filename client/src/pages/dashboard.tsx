@@ -170,6 +170,9 @@ export default function Dashboard() {
                     {formatCurrency(summary?.stipendCommitted || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
+                    of this {formatCurrency(summary?.stipendGuaranteed || 0)} is Guaranteed Earnings.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
                     For upcoming pay periods till PP26 this year
                   </p>
                 </CardContent>
