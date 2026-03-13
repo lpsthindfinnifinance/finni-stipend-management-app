@@ -1920,7 +1920,7 @@ async getLeadPSM(): Promise<User | undefined> {
       db.select({
           totalPaid: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${practiceLedger.transactionType} = 'paid' OR ${practiceLedger.transactionType} = 'opening_balance_stipend_paid' THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`,
           totalCommitted: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${practiceLedger.transactionType} = 'committed' THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`,
-          totalGuaranteed: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${stipendRequests.requestType} = 'guaranteed_earnings' AND   THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`
+          totalGuaranteed: sql<number>`COALESCE(ABS(SUM(CASE WHEN ${stipendRequests.requestType} = 'guaranteed_earnings' THEN CAST(${practiceLedger.amount} AS DECIMAL) ELSE 0 END)), 0)`
         })
         .from(practiceLedger)
         .leftJoin(stipendRequests, eq(practiceLedger.relatedRequestId, stipendRequests.id))
