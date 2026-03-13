@@ -1892,6 +1892,7 @@ async getLeadPSM(): Promise<User | undefined> {
         totalCap: 0,
         stipendPaid: 0,
         stipendCommitted: 0,
+        stipendGuaranteed: 0,
         availableBalanceTillPP26: 0,
         availableBalancePerPP: 0,
         pendingApprovals: 0,
@@ -1940,6 +1941,7 @@ async getLeadPSM(): Promise<User | undefined> {
     const totalStipendCap = Number(stipendMetrics[0].totalCap);
     const totalStipendPaid = Number(ledgerTotals[0].totalPaid);
     const totalStipendCommitted = Number(ledgerTotals[0].totalCommitted);
+    const totalStipendGuaranteed = Number(ledgerTotals[0].totalGuaranteed);
     const pendingCount = Number(pendingResult[0].count);
 
     // Calculate Available Balance
@@ -1951,6 +1953,7 @@ async getLeadPSM(): Promise<User | undefined> {
       totalCap: totalStipendCap,
       stipendPaid: totalStipendPaid,
       stipendCommitted: totalStipendCommitted,
+      stipendGuaranteed: totalStipendGuaranteed,
       availableBalanceTillPP26: availableBalanceTillPP26,
       availableBalancePerPP: availableBalancePerPP,
       pendingApprovals: pendingCount,
