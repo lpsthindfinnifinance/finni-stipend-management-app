@@ -466,7 +466,7 @@ export default function NewRequest() {
 
                 <div className="space-y-2">
                   <Label htmlFor="justification">
-                    Justification * (minimum 10 characters)
+                    Request Details * (minimum 10 characters)
                   </Label>
                   <Textarea
                     id="justification"
