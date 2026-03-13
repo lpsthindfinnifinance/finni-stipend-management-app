@@ -358,6 +358,7 @@ export default function NewRequest() {
                       <SelectItem value="marketing">Marketing</SelectItem>
                       <SelectItem value="equipment">Equipment</SelectItem>
                       <SelectItem value="training">Training</SelectItem>
+                      <SelectItem value="guaranteed_earnings">Guaranteed Earnings</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
