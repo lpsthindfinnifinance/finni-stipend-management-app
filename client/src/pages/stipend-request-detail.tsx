@@ -630,7 +630,7 @@ export default function StipendRequestDetail() {
         {/* Justification Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Justification</CardTitle>
+            <CardTitle className="text-lg">Stipend Details</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap" data-testid="text-justification">
