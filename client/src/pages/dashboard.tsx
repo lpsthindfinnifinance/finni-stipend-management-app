@@ -169,7 +169,7 @@ export default function Dashboard() {
                   <div className="text-2xl font-mono font-semibold" data-testid="text-stipend-committed">
                     {formatCurrency(summary?.stipendCommitted || 0)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-s text-muted-foreground mt-2">
                     of this {formatCurrency(summary?.stipendGuaranteed || 0)} is Guaranteed Earnings.
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
