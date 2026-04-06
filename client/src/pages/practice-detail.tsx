@@ -305,10 +305,10 @@ export default function PracticeDetail() {
                 <CardContent className="space-y-3">
                   {/* Per Pay Period - Primary/Emphasized */}
                   <div>
-                    <div className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
+                    <div className="text-xl font-mono font-bold text-green-600 dark:text-green-400">
                       {formatCurrency((balance as any)?.availablePerPP || 0)}
                     </div>
-                    <p className="text-xs text-muted-foreground">Per Pay Period</p>
+                    <p className="text-xl text-muted-foreground">Per Pay Period</p>
                   </div>
                   {/* Till PP26 - Secondary/Smaller (Year-scoped) */}
                   <div>
