@@ -453,7 +453,7 @@ export default function PracticeDetail() {
                           <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Stipend Type</th>
                           <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Stipend Description</th>
                           <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Amount</th>
-                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Running Balance</th>
+                          {/* <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground sticky top-0 bg-card z-50 border-b">Running Balance</th> */}
                         </tr>
                       </thead>
                       <tbody className="[&_tr:last-child]:border-0">
@@ -505,9 +505,11 @@ export default function PracticeDetail() {
                               <td className={`p-4 align-middle text-right font-mono font-semibold ${getTransactionColor(entry.amount)}`}>
                                 {getTransactionSign(entry.amount)}
                               </td>
+                              {/*
                               <td className="p-4 align-middle text-right font-mono font-semibold">
-                                {formatCurrency(entry.runningBalance)}
-                              </td>
+                              {formatCurrency(entry.runningBalance)}
+                               </td>
+                               */}
                             </tr>
                           );
                         })}
