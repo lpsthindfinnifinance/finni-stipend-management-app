@@ -1352,8 +1352,8 @@ console.log("Point P good")
         'general',
         storage,
         [],            // toUserEmails (Finance team tagged via flag)
-        psmEmails,     // ccUserEmails
-        true           // toFinanceTeam
+        [],     // ccUserEmails
+        false           // toFinanceTeam
       );
   
       res.json({ success: true, message: `Updated period PP${payPeriod} amount to $${newAmount.toFixed(2)}` });
