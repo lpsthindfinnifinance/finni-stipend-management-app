@@ -7,9 +7,13 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "gcp-build": "npm run build",
+    "deploy": "gcloud builds submit --project=bizopsfinance --config cloudbuild.yaml --substitutions=COMMIT_SHA=$(git rev-parse HEAD)",
     "start": "NODE_ENV=production node dist/index.js",
+    "start:local": "NODE_ENV=production LOCAL_AUTH=true sh -c 'if [ -f .env ]; then exec node --env-file=.env dist/index.js; else exec node dist/index.js; fi'",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx server/seed.ts",
+    "create-admin": "tsx server/create-admin.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

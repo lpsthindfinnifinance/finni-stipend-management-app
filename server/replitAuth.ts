@@ -13,10 +13,6 @@ import { Strategy, type VerifyFunction } from "openid-client/passport";
 import passport from "passport";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-	throw new Error("Environment variable REPLIT_DOMAINS not provided");
-}
-
 const getOidcConfig = memoize(
 	async () => {
 		try {
@@ -32,6 +28,53 @@ const getOidcConfig = memoize(
 	},
 	{ maxAge: 3600 * 1000 },
 );
+
+function isLocalAuthEnabled() {
+	return process.env.NODE_ENV !== "production" || process.env.LOCAL_AUTH === "true";
+}
+
+function isLocalHostname(hostname: string) {
+	const normalizedHostname = hostname.replace(/^\[|\]$/g, "");
+	return ["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(
+		normalizedHostname,
+	);
+}
+
+function getLocalAuthBaseUrl() {
+	return `http://localhost:${process.env.PORT || "5001"}`;
+}
+
+function getAuthDomains() {
+	const configuredDomains = (process.env.REPLIT_DOMAINS ?? "")
+		.split(",")
+		.map((domain) => domain.trim())
+		.filter(Boolean);
+
+	if (isLocalAuthEnabled()) {
+		configuredDomains.push("localhost");
+	}
+
+	return Array.from(new Set(configuredDomains));
+}
+
+function isAllowedAuthHostname(hostname: string) {
+	return (
+		getAuthDomains().includes(hostname) ||
+		(isLocalAuthEnabled() && isLocalHostname(hostname))
+	);
+}
+
+function getAuthStrategyHostname(hostname: string) {
+	return isLocalHostname(hostname) ? "localhost" : hostname;
+}
+
+function getCallbackURL(domain: string) {
+	if (isLocalHostname(domain)) {
+		return `${getLocalAuthBaseUrl()}/api/callback`;
+	}
+
+	return `https://${domain}/api/callback`;
+}
 
 export function getSession() {
 	const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -49,7 +92,7 @@ export function getSession() {
 		saveUninitialized: false,
 		cookie: {
 			httpOnly: true,
-			secure: true,
+			secure: !isLocalAuthEnabled(),
 			maxAge: sessionTtl,
 		},
 	});
@@ -131,12 +174,20 @@ export async function setupAuth(app: Express) {
 
 			// User authorized - proceed with login
 			//const user = {};
-			const dbUser = await storage.getUserByEmail(claims.email);
+			const email = claims.email;
+			if (typeof email !== "string") {
+				verified(new Error("Invalid email claim in token response"), false);
+				return;
+			}
+			const dbUser = await storage.getUserByEmail(email);
 			if (!dbUser) {
-		        // This should not happen, but it's a safe check
-		        verified(new Error("Failed to retrieve user profile after auth."), false);
-		        return;
-		      }
+				// This should not happen, but it's a safe check
+				verified(
+					new Error("Failed to retrieve user profile after auth."),
+					false,
+				);
+				return;
+			}
 			updateUserSession(dbUser, tokens);
 			verified(null, dbUser);
 		} catch (error) {
@@ -145,7 +196,7 @@ export async function setupAuth(app: Express) {
 		}
 	};
 
-	for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
+	for (const domain of getAuthDomains()) {
 		console.log("domain", domain);
 		const strategy = new Strategy(
 			{
@@ -153,7 +204,7 @@ export async function setupAuth(app: Express) {
 				config,
 				scope:
 					"openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
-				callbackURL: `https://${domain}/api/callback`,
+				callbackURL: getCallbackURL(domain),
 			},
 
 			verify,
@@ -164,16 +215,15 @@ export async function setupAuth(app: Express) {
 	passport.serializeUser((user: Express.User, cb) => cb(null, user));
 	passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-	
 	// app.get("/api/login", (req: Request, res: Response, next: NextFunction) => {
 	// 	const domains = process.env.REPLIT_DOMAINS!.split(",");
 	// 	if (!domains.includes(req.hostname)) {
 	// 		return res.status(400).json({ error: "Invalid hostname" });
 	// 	}
-		
+
 	// 	passport.authenticate(`replitauth:${req.hostname}`, {
 	// 		//prompt: "login consent",
- //   state: req.query.returnTo as string || "/dashboard",
+	//   state: req.query.returnTo as string || "/dashboard",
 	// 		scope: [
 	// 			"openid",
 	// 			"https://www.googleapis.com/auth/userinfo.email",
@@ -183,52 +233,61 @@ export async function setupAuth(app: Express) {
 	// });
 
 	app.get("/api/login", (req: Request, res: Response, next: NextFunction) => {
-	    const domains = process.env.REPLIT_DOMAINS!.split(",");
-	    if (!domains.includes(req.hostname)) {
-	        return res.status(400).json({ error: "Invalid hostname" });
-	    }
-	
-	    // NEW LOGIC: Capture the returnTo parameter from the query string
-	    // If it doesn't exist, default to /dashboard
-	    const returnTo = (req.query.returnTo as string) || "/dashboard";
-	
-	    passport.authenticate(`replitauth:${req.hostname}`, {
-	        // Pass the target URL into the 'state' parameter
-	        state: returnTo, 
-	        scope: [
-	            "openid",
-	            "https://www.googleapis.com/auth/userinfo.email",
-	            "https://www.googleapis.com/auth/userinfo.profile",
-	        ],
-	    })(req, res, next);
+		if (!isAllowedAuthHostname(req.hostname)) {
+			return res.status(400).json({ error: "Invalid hostname" });
+		}
+
+		if (
+			isLocalAuthEnabled() &&
+			isLocalHostname(req.hostname) &&
+			req.hostname !== "localhost"
+		) {
+			return res.redirect(`${getLocalAuthBaseUrl()}${req.originalUrl}`);
+		}
+
+		// NEW LOGIC: Capture the returnTo parameter from the query string
+		// If it doesn't exist, default to /dashboard
+		const returnTo = (req.query.returnTo as string) || "/dashboard";
+		const strategyHostname = getAuthStrategyHostname(req.hostname);
+
+		passport.authenticate(`replitauth:${strategyHostname}`, {
+			// Pass the target URL into the 'state' parameter
+			state: returnTo,
+			scope: [
+				"openid",
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			],
+		})(req, res, next);
 	});
 
 	app.get(
 		"/api/callback",
 		(req: Request, res: Response, next: NextFunction) => {
-			const domains = process.env.REPLIT_DOMAINS!.split(",");
-			if (!domains.includes(req.hostname)) {
+			if (!isAllowedAuthHostname(req.hostname)) {
 				console.log(req.hostname);
 				console.error("Invalid hostname");
 				return res.status(400).json({ error: "Invalid hostname" });
 			}
+			const strategyHostname = getAuthStrategyHostname(req.hostname);
 			console.log("host:::::::", req.hostname);
 			// passport.authenticate(`replitauth:${req.hostname}`, {
-				// successReturnToOrRedirect: "/dashboard",
-				// failureRedirect: "/unauthorized",
-				// failureMessage: true,
-    // 
-   passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any) => {
-    if (err || !user) return res.redirect("/unauthorized");
-    req.logIn(user, (loginErr) => {
-        if (loginErr) return next(loginErr);
-        // This line uses the 'state' we saved in Change 1
-        const redirectTo = req.query.state as string || "/dashboard";
-        res.redirect(redirectTo);
-    });
-    })(req, res, next);
-
-
+			// successReturnToOrRedirect: "/dashboard",
+			// failureRedirect: "/unauthorized",
+			// failureMessage: true,
+			//
+			passport.authenticate(
+				`replitauth:${strategyHostname}`,
+				(err: any, user: any) => {
+					if (err || !user) return res.redirect("/unauthorized");
+					req.logIn(user, (loginErr) => {
+						if (loginErr) return next(loginErr);
+						// This line uses the 'state' we saved in Change 1
+						const redirectTo = (req.query.state as string) || "/dashboard";
+						res.redirect(redirectTo);
+					});
+				},
+			)(req, res, next);
 		},
 		(err: any, req: Request, res: Response, next: NextFunction) => {
 			if (err) {
@@ -302,36 +361,35 @@ export async function setupAuth(app: Express) {
 	});
 
 	app.get("/api/logout", (req: any, res: any, next: any) => {
-	  // Use the modern error-first callback for req.logout
-	  req.logout(function(err: any) {
-	    if (err) {
-	      // If logout fails, log it and pass the error
-	      console.error("req.logout error:", err);
-	      return next(err);
-	    }
-	
-	    // On success, try to build the OIDC logout URL
-	    try {
-	      // We must get the config object again inside this function scope
-	      // Note: This assumes 'config' is available in this scope.
-	      // If 'config' was defined inside setupAuth, this is correct.
-	      const logoutUrl = client.buildEndSessionUrl(config, {
-	        client_id: process.env.OIDC_CLIENT_ID!,
-	        
-	        // Add the trailing slash to redirect to the root path "/"
-	        post_logout_redirect_uri: `${req.protocol}://${req.hostname}/`,
-	      });
-	      
-	      // Redirect the user to Replit's OIDC logout page
-	      res.redirect(logoutUrl.href);
-	
-	    } catch (error) {
-	      console.error("Error building end session URL:", error);
-	      // If building the URL fails, just redirect to the homepage
-	      // This prevents the "Service Unavailable" crash.
-	      res.redirect("/");
-	    }
-	  });
+		// Use the modern error-first callback for req.logout
+		req.logout((err: any) => {
+			if (err) {
+				// If logout fails, log it and pass the error
+				console.error("req.logout error:", err);
+				return next(err);
+			}
+
+			// On success, try to build the OIDC logout URL
+			try {
+				// We must get the config object again inside this function scope
+				// Note: This assumes 'config' is available in this scope.
+				// If 'config' was defined inside setupAuth, this is correct.
+				const logoutUrl = client.buildEndSessionUrl(config, {
+					client_id: process.env.OIDC_CLIENT_ID!,
+
+					// Add the trailing slash to redirect to the root path "/"
+					post_logout_redirect_uri: `${req.protocol}://${req.hostname}/`,
+				});
+
+				// Redirect the user to Replit's OIDC logout page
+				res.redirect(logoutUrl.href);
+			} catch (error) {
+				console.error("Error building end session URL:", error);
+				// If building the URL fails, just redirect to the homepage
+				// This prevents the "Service Unavailable" crash.
+				res.redirect("/");
+			}
+		});
 	});
 }
 
@@ -339,15 +397,16 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 	const user = req.user as any;
 
 	//if (!req.isAuthenticated() || !user.expires_at) {
-		//return res.status(401).json({ message: "Unauthorized" });
+	//return res.status(401).json({ message: "Unauthorized" });
 	//}
 
-  if (!req.isAuthenticated() || !user.expires_at) {
-    // This redirects the user to the login page and tells the login 
-    // route where to send them back to (req.originalUrl)
-    return res.redirect(`/api/login?returnTo=${encodeURIComponent(req.originalUrl)}`);
-}
-
+	if (!req.isAuthenticated() || !user.expires_at) {
+		// This redirects the user to the login page and tells the login
+		// route where to send them back to (req.originalUrl)
+		return res.redirect(
+			`/api/login?returnTo=${encodeURIComponent(req.originalUrl)}`,
+		);
+	}
 
 	const now = Math.floor(Date.now() / 1000);
 	if (now <= user.expires_at) {
